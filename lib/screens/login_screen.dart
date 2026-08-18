@@ -104,6 +104,14 @@ class _LoginScreenState extends State<LoginScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // TeamFlo Logo
+            Image.asset(
+              'lib/assets/images/TeamFlo.png',
+              width: 120,
+              height: 120,
+            ),
+            const SizedBox(height:24),
+
             // Title
             Text(
               _isLogin ? 'Welcome Back' : 'Create Account',

@@ -71,4 +71,29 @@ class AuthService {
       return null;
     }
   }
+
+  // Get user data from Firestore
+  Future<Map<String, dynamic>?> getUserData(String uid) async {
+    try {
+      DocumentSnapshot doc = await _firestore.collection('users').doc(uid).get();
+      return doc.data() as Map<String, dynamic>?;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Update user profile
+  Future<String?> updateUserProfile({
+    required String uid,
+    required String name,
+  }) async {
+    try {
+      await _firestore.collection('users').doc(uid).update({
+        'name': name,
+      });
+      return null;
+    } catch (e) {
+      return e.toString();
+    }
+  }
 }

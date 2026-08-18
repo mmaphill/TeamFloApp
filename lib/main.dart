@@ -6,6 +6,7 @@ import 'app.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'services/auth_service.dart';
+import 'config/colors.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -39,8 +40,17 @@ class TeamFloApp extends StatelessWidget {
         //
         // This works for code too, not just values: Most code changes can be
         // tested with just a hot reload.
-        primarySwatch: Colors.blue,
         useMaterial3: true,
+        colorScheme: ColorScheme.dark(
+          primary: AppColors.primary,
+          surface: AppColors.surface,
+          onSurface: AppColors.onSurface,
+        ),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: AppColors.primary,
+          foregroundColor: AppColors.onPrimary,
+        ),
+        scaffoldBackgroundColor: AppColors.dark,
       ),
       home: const AuthStateHandler(),
     );

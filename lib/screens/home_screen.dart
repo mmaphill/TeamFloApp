@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import 'profile_screen.dart';
+import '../config/colors.dart';
 
 class HomeScreen extends StatefulWidget {
   final String userId;
@@ -45,15 +47,23 @@ class _HomeScreenState extends State<HomeScreen> {
             const Text('📰 Feed'),
             const Text('📅 Calendar'),
             const Text('⏰ Class Schedule'),
-            const Text('👤 Profile'),
           ],
         ),
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: AppColors.primary,
+        selectedItemColor: AppColors.light,
+        unselectedItemColor: AppColors.dark,
         onTap: (index) {
           setState(() => _selectedIndex = index);
-          // TODO: Switch between different screens
+          if (index == 3) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const ProfileScreen()),
+            );
+          }
         },
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.feed), label: 'Feed'),
