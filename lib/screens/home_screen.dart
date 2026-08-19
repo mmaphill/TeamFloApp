@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import 'profile_screen.dart';
 import '../config/colors.dart';
+import 'feed_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final String userId;
@@ -44,7 +45,6 @@ class _HomeScreenState extends State<HomeScreen> {
               style: TextStyle(fontSize: 16),
             ),
             const SizedBox(height: 10),
-            const Text('📰 Feed'),
             const Text('📅 Calendar'),
             const Text('⏰ Class Schedule'),
           ],
@@ -58,6 +58,12 @@ class _HomeScreenState extends State<HomeScreen> {
         unselectedItemColor: AppColors.dark,
         onTap: (index) {
           setState(() => _selectedIndex = index);
+          if (index == 0) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const FeedScreen()),
+            );
+          }
           if (index == 3) {
             Navigator.push(
               context,

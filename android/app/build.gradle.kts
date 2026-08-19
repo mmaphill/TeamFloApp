@@ -9,7 +9,7 @@ plugins {
 
 android {
     namespace = "com.example.team_flo_app"
-    compileSdk = 34
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
