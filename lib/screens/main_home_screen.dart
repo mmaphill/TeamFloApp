@@ -1,7 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:team_flo_app/widgets/belt_rank_badge.dart';
-import '../config/colors.dart ';
+import '../config/colors.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
 import 'create_post_screen.dart';

@@ -3,9 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import '../services/journal_service.dart';
 import '../models/journal_entry_model.dart';
-import '../config/colors.dart ';
-import '../services/navigation_service.dart';
-import '../widgets/bottom_nav_wrapper.dart';
+import '../config/colors.dart';
 import 'journal_entry_screen.dart';
 
 class CalendarScreen extends StatefulWidget {

@@ -5,7 +5,6 @@ import '../services/auth_service.dart';
 import '../services/feed_service.dart';
 import '../models/post_model.dart';
 import 'comments_bottom_sheet.dart';
-import 'create_post_screen.dart';
 
 class FeedScreen extends StatefulWidget {
   const FeedScreen({super.key});
