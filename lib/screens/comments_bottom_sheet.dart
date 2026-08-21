@@ -7,10 +7,10 @@ class CommentsBottomSheet extends StatefulWidget {
   final String currentUserId;
 
   const CommentsBottomSheet({
-    Key? key,
+    super.key,
     required this.postId,
     required this.currentUserId,
-  }) : super(key: key);
+  });
 
   @override
   State<CommentsBottomSheet> createState() => _CommentsBottomSheetState();

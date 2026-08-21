@@ -204,11 +204,10 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
       appBar: AppBar(
         title: Text(DateFormat('MMMM d, yyyy').format(widget.date)),
         actions: [
-          if (_userData != null)
-            Padding(
-              padding: const EdgeInsets.only(right: 12),
-              child: BeltRankBadge(beltRank: _userData.currentBelt, width: 180, height: 180,),
-            ),
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: BeltRankBadge(beltRank: _userData.currentBelt, width: 180, height: 180,),
+          ),
           IconButton(
             icon: const Icon(Icons.check),
             onPressed: _saveEntry,
@@ -360,7 +359,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
             // Position dropdown
             const Text('Position', style: TextStyle(fontWeight: FontWeight.bold)),
             DropdownButtonFormField<String>(
-              value: _entry.position,
+              initialValue: _entry.position,
               decoration: InputDecoration(
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
@@ -394,7 +393,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
             // Technique dropdown
             const Text('Technique', style: TextStyle(fontWeight: FontWeight.bold)),
             DropdownButtonFormField<String>(
-              value: _entry.technique,
+              initialValue: _entry.technique,
               decoration: InputDecoration(
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
@@ -535,7 +534,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.3),
+                color: AppColors.primary.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Text(

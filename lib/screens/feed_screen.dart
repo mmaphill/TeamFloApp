@@ -4,12 +4,11 @@ import '../models/user_model.dart';
 import '../services/auth_service.dart';
 import '../services/feed_service.dart';
 import '../models/post_model.dart';
-import '../widgets/belt_rank_badge.dart';
 import 'comments_bottom_sheet.dart';
 import 'create_post_screen.dart';
 
 class FeedScreen extends StatefulWidget {
-  const FeedScreen({Key? key}) : super(key: key);
+  const FeedScreen({super.key});
 
   @override
   State<FeedScreen> createState() => _FeedScreenState();
@@ -40,31 +39,6 @@ class _FeedScreenState extends State<FeedScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Community Feed'),
-        actions: [
-          if (_userData != null)
-            Padding(
-              padding: const EdgeInsets.only(right: 12),
-              child: BeltRankBadge(
-                beltRank: _userData.currentBelt,
-                width: 50,
-                height: 50,
-              ),
-            ),
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const CreatePostScreen(),
-                ),
-              );
-            },
-          ),
-        ],
-      ),
       body: StreamBuilder<List<PostModel>>(
         stream: _feedService.getPostsStream(),
         builder: (context, snapshot) {

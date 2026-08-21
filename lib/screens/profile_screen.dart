@@ -9,7 +9,6 @@ import '../models/belt_rank_model.dart';
 import '../models/competition_stats_model.dart';
 import '../config/colors.dart';
 import '../services/storage_service.dart';
-import '../widgets/belt_rank_badge.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -42,11 +41,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _picker = ImagePicker();
     _storageService = StorageService();
 
+    // Initialize with default
     _userData = UserModel(
       uid: '',
       email: '',
       name: '',
-      role: '',
+      role: 'member',
       createdAt: DateTime.now(),
     );
 
@@ -97,7 +97,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       // Set currentBelt to the most recent belt rank
       String? currentBelt;
       if (user.beltRankHistory.isNotEmpty) {
-        // Sort by date and get the latest
         List<BeltRank> sorted = List.from(user.beltRankHistory);
         sorted.sort((a, b) => b.promotionDate.compareTo(a.promotionDate));
         currentBelt = sorted.first.rank;
@@ -117,8 +116,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           avatarColor: user.avatarColor,
           currentBelt: currentBelt,
         );
-        _nameController.text = _userData!.name;
-        _goalsController.text = _userData!.goals;
+        _nameController.text = _userData.name;
+        _goalsController.text = _userData.goals;
       });
     }
   }
@@ -136,8 +135,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     // Get current belt from history
     String? currentBelt;
-    if (_userData!.beltRankHistory.isNotEmpty) {
-      List<BeltRank> sorted = List.from(_userData!.beltRankHistory);
+    if (_userData.beltRankHistory.isNotEmpty) {
+      List<BeltRank> sorted = List.from(_userData.beltRankHistory);
       sorted.sort((a, b) => b.promotionDate.compareTo(a.promotionDate));
       currentBelt = sorted.first.rank;
     }
@@ -146,10 +145,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       uid: _currentUser.uid,
       name: _nameController.text,
       goals: _goalsController.text,
-      beltRankHistory: _userData!.beltRankHistory,
-      competitionStats: _userData!.competitionStats,
-      photoUrl: _userData!.photoUrl,
-      avatarColor: _userData!.avatarColor,
+      beltRankHistory: _userData.beltRankHistory,
+      competitionStats: _userData.competitionStats,
+      photoUrl: _userData.photoUrl,
+      avatarColor: _userData.avatarColor,
       currentBelt: currentBelt,
     );
 
@@ -171,41 +170,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Profile'),
-        actions: [
-          if (_userData != null)
-            Padding(
-              padding: const EdgeInsets.only(right: 12),
-              child: BeltRankBadge(beltRank: _userData.currentBelt, width: 180, height: 180,),
-            ),
-          if (!_isEditing)
-            IconButton(
-              icon: const Icon(Icons.edit),
-              onPressed: () => setState(() => _isEditing = true),
-            ),
-          if (_isEditing)
-            TextButton(
-              onPressed: _isSaving ? null : _saveProfile,
-              child: _isSaving
-                  ? const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-                  : const Text(
-                'Save',
-                style: TextStyle(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-        ],
-      ),
-      body: _userData == null
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -225,6 +190,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             if (_errorMessage != null) const SizedBox(height: 16),
 
+            // Edit/Save Button Row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const SizedBox(width: 48), // Spacer to center title
+                const Text(
+                  'Profile',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                if (!_isEditing)
+                  IconButton(
+                    icon: const Icon(Icons.edit),
+                    onPressed: () => setState(() => _isEditing = true),
+                  )
+                else
+                  TextButton(
+                    onPressed: _isSaving ? null : _saveProfile,
+                    child: _isSaving
+                        ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                        : const Text(
+                      'Save',
+                      style: TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 24),
+
             // Profile Avatar with Edit Option
             GestureDetector(
               onTap: _isEditing ? () => _showAvatarOptions() : null,
@@ -233,19 +236,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   children: [
                     if (_userData.photoUrl != null &&
                         _userData.photoUrl!.isNotEmpty)
-                    // Photo avatar
                       CircleAvatar(
                         radius: 50,
-                        backgroundImage:
-                        NetworkImage(_userData.photoUrl!),
+                        backgroundImage: NetworkImage(_userData.photoUrl!),
                       )
                     else
-                    // Color avatar with initial
                       CircleAvatar(
                         radius: 50,
                         backgroundColor: Color(int.parse(
-                          _userData.avatarColor
-                              .replaceFirst('#', '0xff'),
+                          _userData.avatarColor.replaceFirst('#', '0xff'),
                         )),
                         child: Text(
                           _userData.name.isNotEmpty
@@ -266,8 +265,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           decoration: BoxDecoration(
                             color: Colors.blue,
                             shape: BoxShape.circle,
-                            border:
-                            Border.all(color: Colors.white, width: 2),
+                            border: Border.all(color: Colors.white, width: 2),
                           ),
                           child: IconButton(
                             icon: const Icon(Icons.edit,
@@ -363,12 +361,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
-                      mainAxisAlignment:
-                      MainAxisAlignment.spaceBetween,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Column(
-                          crossAxisAlignment:
-                          CrossAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               rank.rank,
@@ -391,8 +387,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             icon: const Icon(Icons.delete, size: 18),
                             onPressed: () {
                               setState(() {
-                                _userData.beltRankHistory
-                                    .removeAt(index);
+                                _userData.beltRankHistory.removeAt(index);
                               });
                             },
                           ),
@@ -458,12 +453,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
-                          mainAxisAlignment:
-                          MainAxisAlignment.spaceBetween,
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Column(
-                              crossAxisAlignment:
-                              CrossAxisAlignment.start,
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
                                   stats.format,
@@ -483,8 +476,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 icon: const Icon(Icons.delete, size: 18),
                                 onPressed: () {
                                   setState(() {
-                                    _userData.competitionStats
-                                        .removeAt(index);
+                                    _userData.competitionStats.removeAt(index);
                                   });
                                 },
                               ),
@@ -492,8 +484,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         const SizedBox(height: 8),
                         Row(
-                          mainAxisAlignment:
-                          MainAxisAlignment.spaceAround,
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
                             Column(
                               children: [
@@ -524,9 +515,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 const Text('Win Rate',
                                     style: TextStyle(fontSize: 12)),
                                 Text(
-                                  stats.totalWins +
-                                      stats.totalLosses ==
-                                      0
+                                  stats.totalWins + stats.totalLosses == 0
                                       ? '0%'
                                       : '${((stats.totalWins / (stats.totalWins + stats.totalLosses)) * 100).toStringAsFixed(1)}%',
                                   style: const TextStyle(
@@ -553,8 +542,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: ElevatedButton.icon(
                   icon: const Icon(Icons.add),
                   label: const Text('Add Competition Record'),
-                  onPressed: () =>
-                      _showAddCompetitionStatsDialog(),
+                  onPressed: () => _showAddCompetitionStatsDialog(),
                 ),
               ),
             if (_isEditing) ...[
@@ -575,8 +563,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
                           valueColor:
-                          AlwaysStoppedAnimation<Color>(
-                              Colors.white),
+                          AlwaysStoppedAnimation<Color>(Colors.white),
                         ),
                       )
                           : const Text(

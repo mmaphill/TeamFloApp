@@ -1,16 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
-import '../models/user_model.dart';
-import '../services/auth_service.dart';
 import '../services/journal_service.dart';
 import '../models/journal_entry_model.dart';
 import '../config/colors.dart ';
-import '../widgets/belt_rank_badge.dart';
+import '../services/navigation_service.dart';
+import '../widgets/bottom_nav_wrapper.dart';
 import 'journal_entry_screen.dart';
 
 class CalendarScreen extends StatefulWidget {
-  const CalendarScreen({Key? key}) : super(key: key);
+  const CalendarScreen({super.key});
 
   @override
   State<CalendarScreen> createState() => _CalendarScreenState();
@@ -33,15 +32,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Training Journal'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () => _openJournalEntry(DateTime.now()),
-          ),
-        ],
-      ),
       body: Column(
         children: [
           // Month/Year header with navigation

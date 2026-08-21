@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../models/user_model.dart';
 import '../services/schedule_service.dart';
 import '../models/class_schedule_model.dart';
 import '../config/colors.dart';
@@ -16,8 +15,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   final ScheduleService _scheduleService = ScheduleService();
   final User _currentUser = FirebaseAuth.instance.currentUser!;
 
-  late UserModel _userData;
-
   @override
   void initState() {
     super.initState();
@@ -26,9 +23,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Class Schedule'),
-      ),
       body: StreamBuilder<List<ClassSchedule>>(
         stream: _scheduleService.getClassesStream(),
         builder: (context, snapshot) {
