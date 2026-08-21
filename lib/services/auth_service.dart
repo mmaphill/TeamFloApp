@@ -1,6 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../models/belt_rank_model.dart';
+import '../models/competition_stats_model.dart';
+
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -82,16 +85,55 @@ class AuthService {
     }
   }
 
-  // Update user profile
+  // Update user profile with new data
   Future<String?> updateUserProfile({
     required String uid,
     required String name,
+    required String goals,
+    required List<BeltRank> beltRankHistory,
+    required List<CompetitionStats> competitionStats,
+    String? photoUrl,
+    required String avatarColor,
+    String? currentBelt,
   }) async {
     try {
       await _firestore.collection('users').doc(uid).update({
         'name': name,
+        'goals': goals,
+        'beltRankHistory': beltRankHistory.map((b) => b.toMap()).toList(),
+        'competitionStats': competitionStats.map((c) => c.toMap()).toList(),
+        'photoUrl': photoUrl,
+        'avatarColor': avatarColor,
+        'currentBelt': currentBelt,
       });
-      return null;
+      return null; // Success
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  // Update another user's profile (admin only)
+  Future<String?> updateUserProfileAsAdmin({
+    required String targetUid,
+    required String name,
+    required String goals,
+    required List<BeltRank> beltRankHistory,
+    required List<CompetitionStats> competitionStats,
+  }) async {
+    try {
+      // Check if current user is admin
+      String? currentRole = await getUserRole(_auth.currentUser!.uid);
+      if (currentRole != 'admin') {
+        return 'Only admins can edit other users';
+      }
+
+      await _firestore.collection('users').doc(targetUid).update({
+        'name': name,
+        'goals': goals,
+        'beltRankHistory': beltRankHistory.map((b) => b.toMap()).toList(),
+        'competitionStats': competitionStats.map((c) => c.toMap()).toList(),
+      });
+      return null; // Success
     } catch (e) {
       return e.toString();
     }

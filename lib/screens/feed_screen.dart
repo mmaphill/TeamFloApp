@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../models/user_model.dart';
+import '../services/auth_service.dart';
 import '../services/feed_service.dart';
 import '../models/post_model.dart';
+import '../widgets/belt_rank_badge.dart';
 import 'comments_bottom_sheet.dart';
 import 'create_post_screen.dart';
 
@@ -16,12 +19,39 @@ class _FeedScreenState extends State<FeedScreen> {
   final FeedService _feedService = FeedService();
   final User _currentUser = FirebaseAuth.instance.currentUser!;
 
+  late UserModel _userData;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    final authService = AuthService();
+    final data = await authService.getUserData(FirebaseAuth.instance.currentUser!.uid);
+    if (data != null) {
+      setState(() {
+        _userData = UserModel.fromMap(data);
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Community Feed'),
         actions: [
+          if (_userData != null)
+            Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: BeltRankBadge(
+                beltRank: _userData.currentBelt,
+                width: 50,
+                height: 50,
+              ),
+            ),
           IconButton(
             icon: const Icon(Icons.add),
             onPressed: () {
