@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../models/belt_rank_model.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
-import '../widgets/belt_rank_badge.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
