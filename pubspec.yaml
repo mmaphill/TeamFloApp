@@ -35,10 +35,3 @@ flutter:
   assets:
     - lib/assets/images/TeamFlo.png
     - lib/assets/images/belt_ranks/
-
-flutter_launcher_icons:
-  android: true
-  ios: false
-  image_path: "lib/assets/images/app_icon.png"
-  adaptive_icon_background: "#121212"
-  adaptive_icon_foreground: "lib/assets/images/app_icon.png"
