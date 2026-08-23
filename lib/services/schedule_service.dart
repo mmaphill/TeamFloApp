@@ -73,6 +73,99 @@ class ScheduleService {
     }
   }
 
+  // Get Attendees details for a class
+  Future<List<Map<String, String>>> getClassAttendees(String classId) async {
+    try {
+      DocumentSnapshot doc = await _firestore.collection('classes').doc(classId).get();
+      List<String> attendeeIds = List<String>.from(doc['attendees'] ?? []);
+
+      List<Map<String, String>> attendees = [];
+      for (String userId in attendeeIds) {
+        DocumentSnapshot userDoc = await _firestore.collection('users').doc(userId).get();
+        if (userDoc.exists) {
+          attendees.add({
+            'name': userDoc['name'] ?? 'Unknown',
+          });
+        }
+      }
+      return attendees;
+    } catch (e) {
+      return [];
+    }
+  }
+
+  // Get next 5 upcoming classes
+  Stream<List<ClassSchedule>> getUpcomingClassesStream() {
+    return getClassesStream().map((allClasses) {
+      DateTime now = DateTime.now();
+
+      // Calculate next occurrence for each class
+      List<MapEntry<ClassSchedule, DateTime>> classesWithTime = [];
+
+      for (var classSchedule in allClasses) {
+        DateTime nextOccurrence = _getNextClassDateTime(classSchedule.day, classSchedule.startTime);
+
+        // Only include if it's in the future
+        if (nextOccurrence.isAfter(now)) {
+          classesWithTime.add(MapEntry(classSchedule, nextOccurrence));
+        }
+      }
+
+      // Sort by date/time
+      classesWithTime.sort((a, b) => a.value.compareTo(b.value));
+
+      // Take only next 5
+      return classesWithTime
+          .take(5)
+          .map((entry) => entry.key)
+          .toList();
+    });
+  }
+
+  // Calculate next occurrence of a class
+  DateTime _getNextClassDateTime(String day, String startTime) {
+    final days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    int classIndex = days.indexOf(day);
+    if (classIndex == -1) classIndex = 0; // Default to Monday
+
+    int todayIndex = DateTime.now().weekday - 1; // 0 = Monday
+    DateTime now = DateTime.now();
+
+    // Parse the start time
+    DateTime classTime = _parseTime(startTime);
+
+    // Calculate days until next occurrence
+    int daysUntilClass = (classIndex - todayIndex) % 7;
+    if (daysUntilClass == 0) {
+      // It's today - check if time has passed
+      if (classTime.hour < now.hour ||
+          (classTime.hour == now.hour && classTime.minute <= now.minute)) {
+        daysUntilClass = 7; // Next week
+      }
+    }
+
+    return now.add(Duration(days: daysUntilClass))
+        .copyWith(hour: classTime.hour, minute: classTime.minute, second: 0, millisecond: 0);
+  }
+
+  // Parse time string like "7:00 PM" to DateTime
+  DateTime _parseTime(String timeStr) {
+    final parts = timeStr.trim().split(' ');
+    if (parts.length < 2) {
+      return DateTime.now(); // Fallback
+    }
+
+    final timeParts = parts[0].split(':');
+    int hour = int.parse(timeParts[0]);
+    int minute = int.parse(timeParts[1]);
+
+    if (parts[1].toUpperCase() == 'PM' && hour != 12) hour += 12;
+    if (parts[1].toUpperCase() == 'AM' && hour == 12) hour = 0;
+
+    DateTime now = DateTime.now();
+    return DateTime(now.year, now.month, now.day, hour, minute);
+  }
+
   // Clear all classes and seed fresh data
   Future<void> clearAndSeedSchedule() async {
     try {
