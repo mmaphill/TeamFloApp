@@ -61,8 +61,14 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_titles[_selectedIndex]),
-        backgroundColor: AppColors.primary,
+        leading: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: CircleAvatar(
+            backgroundImage: AssetImage('lib/assets/images/TeamFlo.png'),
+            radius: 20,
+          ),
+        ),
+        backgroundColor: AppColors.dark,
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 12),
@@ -93,7 +99,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
       ),
       body: _screens[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: AppColors.primary,
+        backgroundColor: const Color(0xFF3A3A3A),
         selectedItemColor: AppColors.light,
         unselectedItemColor: AppColors.dark,
         elevation: 16.0,
