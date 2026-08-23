@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import '../config/colors.dart';
 import '../services/feed_service.dart';
 import '../services/auth_service.dart';
 import '../services/storage_service.dart';
@@ -129,6 +130,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Create Post'),
+        backgroundColor: AppColors.dark,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -217,12 +219,20 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             Row(
               children: [
                 ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF3A3A3A),
+                    foregroundColor: AppColors.light,
+                  ),
                   icon: const Icon(Icons.image),
                   label: const Text('Image'),
                   onPressed: _pickImage,
                 ),
                 const SizedBox(width: 8),
                 ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF3A3A3A),
+                    foregroundColor: AppColors.light,
+                  ),
                   icon: const Icon(Icons.videocam),
                   label: const Text('Video'),
                   onPressed: _pickVideo,
@@ -236,6 +246,10 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: _isLoading ? null : _createPost,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF3A3A3A),
+                  foregroundColor: AppColors.light,
+                ),
                 child: _isLoading
                     ? const SizedBox(
                   height: 20,
