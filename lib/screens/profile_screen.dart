@@ -288,6 +288,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 8),
             TextField(
               controller: _nameController,
+              textCapitalization: TextCapitalization.words,
               enabled: _isEditing,
               decoration: InputDecoration(
                 border: OutlineInputBorder(
@@ -415,6 +416,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 8),
             TextField(
               controller: _goalsController,
+              textCapitalization: TextCapitalization.sentences,
               enabled: _isEditing,
               maxLines: 4,
               decoration: InputDecoration(

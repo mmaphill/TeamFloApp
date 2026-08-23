@@ -165,6 +165,17 @@ class _FeedScreenState extends State<FeedScreen> {
                 Text('${post.likedBy.length}'),
                 const SizedBox(width: 16),
 
+                // Dislike Button
+                // IconButton(
+                //   icon: Icon(
+                //     isThumbsDown ? Icons.thumb_down : Icons.thumb_down_outlined,
+                //     color: isThumbsDown ? const Color(0xFFEA2327) : Colors.grey,
+                //   ),
+                //   onPressed: () => _feedService.thumbDown(post.postId, _currentUser.uid),
+                // )
+                // Text('${post.tDownBy.length}')
+                // const SizedBox(width: 16),
+
                 // Comment Button
                 IconButton(
                   icon: const Icon(Icons.comment),

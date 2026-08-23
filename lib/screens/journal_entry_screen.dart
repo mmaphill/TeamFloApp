@@ -202,7 +202,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(DateFormat('MMMM d, yyyy').format(widget.date)),
+        backgroundColor: AppColors.dark,
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 12),
@@ -231,6 +231,10 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
                     top: 0,
                     right: 0,
                     child: IconButton(
+                      style: IconButton.styleFrom(
+                        backgroundColor: const Color(0xFF3A3A3A),
+                        foregroundColor: AppColors.light,
+                      ),
                       icon: const Icon(Icons.close, color: Colors.white),
                       onPressed: () => setState(() => _selectedPhoto = null),
                     ),
@@ -490,6 +494,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
             const Text('General Notes', style: TextStyle(fontWeight: FontWeight.bold)),
             TextField(
               controller: _notesController,
+              textCapitalization: TextCapitalization.sentences,
               maxLines: 4,
               decoration: InputDecoration(
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
@@ -566,6 +571,13 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
         }
 
         List<ClassSchedule> classes = snapshot.data!;
+
+        // Remove duplicates by classId
+        final Map<String, ClassSchedule> uniqueClasses ={};
+        for (var classSchedule in classes) {
+          uniqueClasses[classSchedule.className] = classSchedule;
+        }
+        classes = uniqueClasses.values.toList();
 
         return Wrap(
           spacing: 8,

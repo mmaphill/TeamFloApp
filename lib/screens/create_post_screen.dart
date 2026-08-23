@@ -155,6 +155,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             Expanded(
               child: TextField(
                 controller: _contentController,
+                textCapitalization: TextCapitalization.sentences,
                 maxLines: null,
                 expands: true,
                 textAlignVertical: TextAlignVertical.top,

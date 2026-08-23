@@ -113,6 +113,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                 Expanded(
                   child: TextField(
                     controller: _commentController,
+                    textCapitalization: TextCapitalization.sentences,
                     decoration: InputDecoration(
                       hintText: 'Add a comment...',
                       border: OutlineInputBorder(
