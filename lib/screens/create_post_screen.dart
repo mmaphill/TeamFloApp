@@ -5,7 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../config/colors.dart';
-import '../services/feed_service.dart';
+import '../services/chat_service.dart';
 import '../services/auth_service.dart';
 import '../services/storage_service.dart';
 
@@ -17,7 +17,7 @@ class CreatePostScreen extends StatefulWidget {
 }
 
 class _CreatePostScreenState extends State<CreatePostScreen> {
-  final FeedService _feedService = FeedService();
+  final ChatService _chatService = ChatService();
   final AuthService _authService = AuthService();
   final StorageService _storageService = StorageService();
   final ImagePicker _picker = ImagePicker();
@@ -105,7 +105,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       }
     }
 
-    String? error = await _feedService.createPost(
+    String? error = await _chatService.createPost(
       userId: _currentUser.uid,
       userName: _userName ?? 'Anonymous',
       content: _contentController.text,

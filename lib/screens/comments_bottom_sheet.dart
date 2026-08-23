@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../services/feed_service.dart';
+import '../services/chat_service.dart';
 import '../services/auth_service.dart';
 
 class CommentsBottomSheet extends StatefulWidget {
@@ -17,7 +17,7 @@ class CommentsBottomSheet extends StatefulWidget {
 }
 
 class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
-  final FeedService _feedService = FeedService();
+  final ChatService _chatService = ChatService();
   final AuthService _authService = AuthService();
   final _commentController = TextEditingController();
 
@@ -48,7 +48,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
 
     setState(() => _isLoading = true);
 
-    await _feedService.addComment(
+    await _chatService.addComment(
       postId: widget.postId,
       userId: widget.currentUserId,
       userName: _userName ?? 'Anonymous',
@@ -78,7 +78,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
           // Comments List
           Expanded(
             child: StreamBuilder<List<Map<String, dynamic>>>(
-              stream: _feedService.getCommentStream(widget.postId),
+              stream: _chatService.getCommentStream(widget.postId),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
@@ -157,7 +157,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
               if (isOwnComment)
                 IconButton(
                   icon: const Icon(Icons.delete, size: 18),
-                  onPressed: () => _feedService.deleteComment(
+                  onPressed: () => _chatService.deleteComment(
                     widget.postId,
                     comment['commentId'],
                     widget.currentUserId,

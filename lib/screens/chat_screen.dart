@@ -2,19 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
-import '../services/feed_service.dart';
+import '../services/chat_service.dart';
 import '../models/post_model.dart';
 import 'comments_bottom_sheet.dart';
 
-class FeedScreen extends StatefulWidget {
-  const FeedScreen({super.key});
+class ChatScreen extends StatefulWidget {
+  const ChatScreen({super.key});
 
   @override
-  State<FeedScreen> createState() => _FeedScreenState();
+  State<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _FeedScreenState extends State<FeedScreen> {
-  final FeedService _feedService = FeedService();
+class _ChatScreenState extends State<ChatScreen> {
+  final ChatService _chatService = ChatService();
   final User _currentUser = FirebaseAuth.instance.currentUser!;
 
   late UserModel _userData;
@@ -39,7 +39,7 @@ class _FeedScreenState extends State<FeedScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: StreamBuilder<List<PostModel>>(
-        stream: _feedService.getPostsStream(),
+        stream: _chatService.getPostsStream(),
         builder: (context, snapshot) {
           // Loading state
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -160,7 +160,7 @@ class _FeedScreenState extends State<FeedScreen> {
                     isLikedByCurrentUser ? Icons.favorite : Icons.favorite_border,
                     color: isLikedByCurrentUser ? const Color(0xFFEA2327) : Colors.grey,
                   ),
-                  onPressed: () => _feedService.likePost(post.postId, _currentUser.uid),
+                  onPressed: () => _chatService.likePost(post.postId, _currentUser.uid),
                 ),
                 Text('${post.likedBy.length}'),
                 const SizedBox(width: 16),
@@ -171,7 +171,7 @@ class _FeedScreenState extends State<FeedScreen> {
                 //     isThumbsDown ? Icons.thumb_down : Icons.thumb_down_outlined,
                 //     color: isThumbsDown ? const Color(0xFFEA2327) : Colors.grey,
                 //   ),
-                //   onPressed: () => _feedService.thumbDown(post.postId, _currentUser.uid),
+                //   onPressed: () => _chatService.thumbDown(post.postId, _currentUser.uid),
                 // )
                 // Text('${post.tDownBy.length}')
                 // const SizedBox(width: 16),
@@ -203,7 +203,7 @@ class _FeedScreenState extends State<FeedScreen> {
           ),
           TextButton(
             onPressed: () {
-              _feedService.deletePost(postId, _currentUser.uid);
+              _chatService.deletePost(postId, _currentUser.uid);
               Navigator.pop(context);
             },
             child: const Text('Delete'),

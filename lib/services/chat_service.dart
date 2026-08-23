@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/post_model.dart';
 
-class FeedService {
+class ChatService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   // Create a new post

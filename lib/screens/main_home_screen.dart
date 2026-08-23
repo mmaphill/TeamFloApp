@@ -5,7 +5,7 @@ import '../config/colors.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
 import 'create_post_screen.dart';
-import 'feed_screen.dart';
+import 'chat_screen.dart';
 import 'calendar_screen.dart';
 import 'home_screen.dart';
 import 'journal_entry_screen.dart';
@@ -26,7 +26,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
 
   final List<Widget> _screens = [
     const HomeScreen(),
-    const FeedScreen(),
+    const ChatScreen(),
     const CalendarScreen(),
     const ScheduleScreen(),
     const ProfileScreen(),
@@ -34,7 +34,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
 
   final List<String> _titles = [
     'Team Flo BJJ',
-    'Community Feed',
+    'Community Chat',
     'Training Journal',
     'Class Schedule',
     'Profile',
@@ -80,7 +80,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
               icon: const Icon(Icons.logout),
               onPressed: _logout,
             ),
-          if (_selectedIndex == 1) // FeedScreen
+          if (_selectedIndex == 1) // ChatScreen
             IconButton(
               icon: const Icon(Icons.add),
               onPressed: () {
@@ -110,7 +110,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
         },
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.feed), label: 'Feed'),
+          BottomNavigationBarItem(icon: Icon(Icons.feed), label: 'Chat'),
           BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: 'Calendar'),
           BottomNavigationBarItem(icon: Icon(Icons.schedule), label: 'Schedule'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),

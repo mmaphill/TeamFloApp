@@ -138,7 +138,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 DateTime(cellDate.year, cellDate.month, cellDate.day);
 
                 bool hasEntry = entries.containsKey(dateKey);
-                bool isToday = DateTime.now().difference(dateKey).inDays == 0;
+                DateTime today = DateTime.now();
+                bool isToday = dateKey.year == today.year &&
+                               dateKey.month == today.month &&
+                               dateKey.day == today.day;
 
                 return GestureDetector(
                   onTap: () => _openJournalEntry(cellDate),
