@@ -44,6 +44,15 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
   void initState() {
     super.initState();
     _loadUserData();
+
+    // Initialize with default/empty value
+    _userData = UserModel(
+      uid: '',
+      email: '',
+      name: '',
+      role: 'member',
+      createdAt: DateTime.now(),
+    );
   }
 
   Future<void> _loadUserData() async {

@@ -9,6 +9,7 @@ import '../models/belt_rank_model.dart';
 import '../models/competition_stats_model.dart';
 import '../config/colors.dart';
 import '../services/storage_service.dart';
+import '../services/validation_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -26,6 +27,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isSaving = false;
   bool _isLoading = false;
   String? _errorMessage;
+  String? _nameError;
+  String? _goalError;
 
   // Controllers
   late TextEditingController _nameController;
@@ -40,6 +43,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _goalsController = TextEditingController();
     _picker = ImagePicker();
     _storageService = StorageService();
+    _nameError = null;
+    _goalError = null;
 
     // Initialize with default
     _userData = UserModel(
@@ -209,7 +214,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   )
                 else
                   TextButton(
-                    onPressed: _isSaving ? null : _saveProfile,
+                    onPressed: (_isSaving || _nameError != null || _goalError != null) ? null : _saveProfile,
                     child: _isSaving
                         ? const SizedBox(
                       width: 20,
@@ -295,6 +300,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
+              onChanged: (value) {
+                setState(() {
+                  _nameError = ValidationService.validateName(value);
+                });
+              }
             ),
             const SizedBox(height: 24),
 
@@ -425,6 +435,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 hintText: 'Enter your training goals...',
               ),
+              onChanged: (value) {
+                setState(() {
+                  _goalError = ValidationService.validateContent(value);
+                });
+              }
             ),
             const SizedBox(height: 24),
 
@@ -553,7 +568,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 children: [
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: _isSaving ? null : _saveProfile,
+                      onPressed: (_isSaving || _nameError != null || _goalError != null) ? null : _saveProfile,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,

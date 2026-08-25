@@ -173,7 +173,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 //   ),
                 //   onPressed: () => _chatService.thumbDown(post.postId, _currentUser.uid),
                 // )
-                // Text('${post.tDownBy.length}')
+                // Text('${post.DownBy.length}')
                 // const SizedBox(width: 16),
 
                 // Comment Button

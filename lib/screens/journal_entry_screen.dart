@@ -13,6 +13,7 @@ import '../services/storage_service.dart';
 import '../models/journal_entry_model.dart';
 import '../models/class_schedule_model.dart';
 import '../config/colors.dart';
+import '../services/validation_service.dart';
 import '../widgets/belt_rank_badge.dart';
 
 class JournalEntryScreen extends StatefulWidget {
@@ -41,6 +42,8 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
   late UserModel _userData;
   File? _selectedPhoto;
   bool _isLoading = true;
+  String? _notesError;
+  String? _contentError;
 
   late TextEditingController _submissionsController;
   late TextEditingController _timesSubmittedController;
@@ -48,16 +51,19 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
 
   final List<String> positions = [
     'Closed Guard',
+    'Spider Guard',
     'Open Guard',
     'Half Guard',
     'Side Control',
     'Mount',
     'Back Control',
+    'Back Mount',
+    '3/4 Mount',
     'Knee on Belly',
     'North-South',
   ];
 
-  final List<String> techniques = ['Pass', 'Sweep', 'Submit'];
+  final List<String> techniques = ['Pass', 'Escape', 'Retention', 'Sweep', 'Submit',];
 
   @override
   void initState() {
@@ -65,6 +71,8 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
     _submissionsController = TextEditingController();
     _timesSubmittedController = TextEditingController();
     _notesController = TextEditingController();
+    _notesError = null;
+    _contentError = null;
 
     _userData = UserModel(
       uid: '',
@@ -210,7 +218,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.check),
-            onPressed: _saveEntry,
+            onPressed: (_notesError != null || _contentError != null) ? null : _saveEntry,
           ),
         ],
       ),
@@ -501,23 +509,27 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
                 hintText: 'Notes about your training...',
               ),
               onChanged: (val) {
-                setState(() => _entry = JournalEntry(
-                  entryId: _entry.entryId,
-                  userId: _entry.userId,
-                  date: _entry.date,
-                  photoUrl: _entry.photoUrl,
-                  classesAttended: _entry.classesAttended,
-                  energy: _entry.energy,
-                  sleep: _entry.sleep,
-                  water: _entry.water,
-                  food: _entry.food,
-                  position: _entry.position,
-                  technique: _entry.technique,
-                  submissions: _entry.submissions,
-                  timesSubmitted: _entry.timesSubmitted,
-                  generalNotes: val,
-                  createdAt: _entry.createdAt,
-                ));
+                setState(() {
+                  _notesError = ValidationService.validateLength(val, 0, 1000, 'Notes');
+                  _contentError = ValidationService.validateContent(val);
+                  _entry = JournalEntry(
+                    entryId: _entry.entryId,
+                    userId: _entry.userId,
+                    date: _entry.date,
+                    photoUrl: _entry.photoUrl,
+                    classesAttended: _entry.classesAttended,
+                    energy: _entry.energy,
+                    sleep: _entry.sleep,
+                    water: _entry.water,
+                    food: _entry.food,
+                    position: _entry.position,
+                    technique: _entry.technique,
+                    submissions: _entry.submissions,
+                    timesSubmitted: _entry.timesSubmitted,
+                    generalNotes: val,
+                    createdAt: _entry.createdAt,);
+                  }
+                );
               },
             ),
             const SizedBox(height: 24),

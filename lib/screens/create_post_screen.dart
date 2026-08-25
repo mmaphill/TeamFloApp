@@ -8,6 +8,7 @@ import '../config/colors.dart';
 import '../services/chat_service.dart';
 import '../services/auth_service.dart';
 import '../services/storage_service.dart';
+import '../services/validation_service.dart';
 
 class CreatePostScreen extends StatefulWidget {
   const CreatePostScreen({super.key});
@@ -25,6 +26,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
 
   bool _isLoading = false;
   String? _errorMessage;
+  String? _contentError;
   late User _currentUser;
   String? _userName;
   List<File> _selectedMedia = [];
@@ -35,6 +37,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     super.initState();
     _currentUser = FirebaseAuth.instance.currentUser!;
     _loadUserName();
+    _contentError = null;
   }
 
   @override
@@ -165,6 +168,11 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
+                onChanged: (value) {
+                  setState(() {
+                    _contentError = ValidationService.validateContent(value);
+                  });
+                },
               ),
             ),
             const SizedBox(height: 16),

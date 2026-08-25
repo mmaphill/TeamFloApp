@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/chat_service.dart';
 import '../services/auth_service.dart';
+import '../services/validation_service.dart';
 
 class CommentsBottomSheet extends StatefulWidget {
   final String postId;
@@ -23,11 +24,13 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
 
   bool _isLoading = false;
   String? _userName;
+  String? _contentError;
 
   @override
   void initState() {
     super.initState();
     _loadUserName();
+    _contentError = null;
   }
 
   @override
@@ -124,12 +127,17 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                         vertical: 12,
                       ),
                     ),
+                    onChanged: (value) {
+                      setState(() {
+                        _contentError = ValidationService.validateContent(value);
+                      });
+                    },
                   ),
                 ),
                 const SizedBox(width: 8),
                 IconButton(
                   icon: const Icon(Icons.send),
-                  onPressed: _isLoading ? null : _postComment,
+                  onPressed: (_isLoading || _contentError != null) ? null : _postComment,
                 ),
               ],
             ),

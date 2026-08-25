@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:team_flo_app/services/validation_service.dart';
 import '../services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -18,6 +19,9 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLogin = true; // Toggle between logging in and signup
   bool _isLoading = false;
   String? _errorMessage;
+  String? _nameError;
+  String? _emailError;
+  String? _passwordError;
 
   @override
   void dispose() {
@@ -97,6 +101,16 @@ class _LoginScreenState extends State<LoginScreen> {
     });
   }
 
+  bool _canSubmit() {
+    if (_isLoading) return false;
+
+    if (_isLogin) {
+      return _emailError == null && _passwordError == null;
+    } else {
+      return _nameError == null && _emailError == null && _passwordError == null;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -147,6 +161,11 @@ class _LoginScreenState extends State<LoginScreen> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
+                onChanged: (value) {
+                  setState(() {
+                    _nameError = ValidationService.validateName(value);
+                  });
+                },
               ),
               const SizedBox(height: 16),
             ],
@@ -161,6 +180,11 @@ class _LoginScreenState extends State<LoginScreen> {
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
+              onChanged: (value) {
+                setState(() {
+                  _emailError = ValidationService.validateEmail(value);
+                });
+              },
             ),
             const SizedBox(height: 16),
 
@@ -174,12 +198,17 @@ class _LoginScreenState extends State<LoginScreen> {
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
+              onChanged: (value) {
+                setState(() {
+                  _passwordError = ValidationService.validatePasswordLogin(value);
+                });
+              },
             ),
             const SizedBox(height: 24),
 
             // Login/Signup button
             ElevatedButton(
-              onPressed: _isLoading ? null : (_isLogin ? _handleLogin : _handleSignup),
+              onPressed: _canSubmit() ? (_isLogin ? _handleLogin : _handleSignup) : null,
               child: _isLoading ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2),) : Text(_isLogin ? 'Login' : 'Sign Up'),
             ),
             const SizedBox(height: 16),
