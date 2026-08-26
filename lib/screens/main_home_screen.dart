@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:team_flo_app/screens/privacy_policy_screen.dart';
 import 'package:team_flo_app/widgets/belt_rank_badge.dart';
 import '../config/colors.dart';
 import '../models/user_model.dart';
@@ -44,6 +45,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
   void initState() {
     super.initState();
     _loadUserData();
+    _checkPrivacyPolicy();
 
     // Initialize with default/empty value
     _userData = UserModel(
@@ -53,6 +55,21 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
       role: 'member',
       createdAt: DateTime.now(),
     );
+  }
+
+  Future<void> _checkPrivacyPolicy() async {
+    final userData = await _authService.getUserData(
+      FirebaseAuth.instance.currentUser!.uid,
+    );
+
+    if (mounted && userData != null && userData['privacyPolicyAcknowledged'] != true) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const PrivacyPolicyScreen(isFirstLogin: true),
+        ),
+      );
+    }
   }
 
   Future<void> _loadUserData() async {

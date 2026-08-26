@@ -108,10 +108,13 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       }
     }
 
+
     String? error = await _chatService.createPost(
       userId: _currentUser.uid,
       userName: _userName ?? 'Anonymous',
-      content: _contentController.text,
+      content: ValidationService.sanitizeContent(_contentController.text),
+      mediaUrls: mediaUrls,
+      mediaTypes: uploadedMediaTypes,
     );
 
     setState(() => _isLoading = false);

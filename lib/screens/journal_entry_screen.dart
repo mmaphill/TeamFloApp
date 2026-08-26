@@ -174,7 +174,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
       technique: _entry.technique,
       submissions: _entry.submissions,
       timesSubmitted: _entry.timesSubmitted,
-      generalNotes: _entry.generalNotes,
+      generalNotes: ValidationService.sanitizeContent(_entry.generalNotes),
       createdAt: _entry.createdAt,
       updatedAt: DateTime.now(),
     );
@@ -190,6 +190,10 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
       Navigator.pop(context);
     }
   }
+
+  // Future<void> _updateEntry() async {
+  //
+  // }
 
   @override
   void dispose() {

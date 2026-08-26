@@ -36,6 +36,7 @@ class AuthService {
         'name': name,
         'role': role,
         'createdAt': DateTime.now(),
+        'privacyPolicyAcknowledged': false,
       });
 
       return null; // Success
@@ -134,6 +135,18 @@ class AuthService {
         'competitionStats': competitionStats.map((c) => c.toMap()).toList(),
       });
       return null; // Success
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  // Privacy Policy Acknowledgement
+  Future<String?> acknowledgePrivacyPolicy(String uid) async {
+    try {
+      await _firestore.collection('users').doc(uid).update({
+        'privacyPolicyAcknowledged': true,
+      });
+      return null;
     } catch (e) {
       return e.toString();
     }

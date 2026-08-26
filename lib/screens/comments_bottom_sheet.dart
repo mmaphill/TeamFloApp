@@ -25,6 +25,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
   bool _isLoading = false;
   String? _userName;
   String? _contentError;
+  String? _userRole;
 
   @override
   void initState() {
@@ -42,7 +43,10 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
   Future<void> _loadUserName() async {
     final data = await _authService.getUserData(widget.currentUserId);
     if (data != null) {
-      setState(() => _userName = data['name'] ?? 'Anonymous');
+      setState(() {
+        _userName = data['name'] ?? 'Anonymous';
+        _userRole = data['role'];
+      });
     }
   }
 
@@ -55,7 +59,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
       postId: widget.postId,
       userId: widget.currentUserId,
       userName: _userName ?? 'Anonymous',
-      content: _commentController.text,
+      content: ValidationService.sanitizeContent(_commentController.text),
     );
 
     _commentController.clear();
@@ -149,6 +153,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
 
   Widget _buildCommentTile(Map<String, dynamic> comment) {
     bool isOwnComment = comment['userId'] == widget.currentUserId;
+    bool isAdmin = _userRole == 'admin';
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -162,14 +167,26 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                 comment['userName'],
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
-              if (isOwnComment)
+              if (isOwnComment || isAdmin)
                 IconButton(
                   icon: const Icon(Icons.delete, size: 18),
-                  onPressed: () => _chatService.deleteComment(
-                    widget.postId,
-                    comment['commentId'],
-                    widget.currentUserId,
-                  ),
+                  onPressed: () async {
+                    final result = await _chatService.deleteComment(
+                      widget.postId,
+                      comment['commentId'],
+                      widget.currentUserId,
+                    );
+
+                    if (result == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Comment deleted')),
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error: $result')),
+                      );
+                    }
+                  },
                 ),
             ],
           ),

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:team_flo_app/screens/privacy_policy_screen.dart';
 import '../services/auth_service.dart';
 import '../models/user_model.dart';
 import '../models/belt_rank_model.dart';
@@ -148,8 +149,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     String? error = await _authService.updateUserProfile(
       uid: _currentUser.uid,
-      name: _nameController.text,
-      goals: _goalsController.text,
+      name: ValidationService.sanitizeName(_nameController.text),
+      goals: ValidationService.sanitizeContent(_goalsController.text),
       beltRankHistory: _userData.beltRankHistory,
       competitionStats: _userData.competitionStats,
       photoUrl: _userData.photoUrl,
@@ -607,6 +608,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ],
               ),
             ],
+            // Privacy Policy
+            const SizedBox(height: 32),
+            Center(
+              child: ElevatedButton(
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const PrivacyPolicyScreen(isFirstLogin: false,),
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.grey.shade700,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('View Privacy Policy'),
+              ),
+            ),
           ],
         ),
       ),

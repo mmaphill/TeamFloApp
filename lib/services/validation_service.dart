@@ -60,4 +60,70 @@ class ValidationService {
 
     return null;
   }
+
+  // Sanitize text input (for posts, comments, journal)
+  static String sanitizeContent(String content) {
+    // Trim whitespace
+    String sanitized = content.trim();
+
+    // Remove multiple consecutive spaces
+    sanitized = sanitized.replaceAll(RegExp(r' +'), ' ');
+
+    // Remove control characters (invisible characters)
+    sanitized = sanitized.replaceAll(RegExp(r'[\x00-\x1F\x7F]'), ' ');
+
+    // Limit the max character size to 5000
+    if (sanitized.length > 5000) {
+      sanitized = sanitized.substring(0, 5000);
+    }
+
+    return sanitized;
+  }
+
+  // Sanitize user name
+  static String sanitizeName(String name) {
+    // Trim whitespace
+    String sanitized = name.trim();
+
+    // Remove multiple consecutive spaces
+    sanitized = sanitized.replaceAll(RegExp(r' +'), ' ');
+
+    return sanitized;
+  }
+
+  // Sanitize email
+  static String sanitizeEmail(String email) {
+    // Trim whitespace and set everything to lowercase
+    return email.trim().toLowerCase();
+  }
+
+  // Sanitize URL (for links in content)
+  static String? sanitizeUrl(String url) {
+    String sanitized = url.trim();
+
+    // Only allow http:// and https://
+    if (!sanitized.startsWith('http://') && !sanitized.startsWith('https://')) return null;
+
+    // Reject JavaScript URLs
+    if (sanitized.contains('javascript:')) return null;
+
+    return sanitized;
+  }
+
+  // Generic text sanitization
+  static String sanitizeText(String text, {int maxLength = 1000}) {
+    // Remove whitespace
+    String sanitized = text.trim();
+
+    // Remove control characters
+    sanitized = sanitized.replaceAll(RegExp(r'[\x00-\x1F\x7F]'), ' ');
+
+    // Remove extra white spaces
+    sanitized = sanitized.replaceAll(RegExp(r' +'), ' ');
+
+    // Enforce max length
+    if (sanitized.length > maxLength) sanitized = sanitized.substring(0, maxLength);
+
+    return sanitized;
+  }
 }

@@ -1,4 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:team_flo_app/services/auth_service.dart';
 import '../models/post_model.dart';
 
 class ChatService {
@@ -17,11 +19,11 @@ class ChatService {
         'userId': userId,
         'userName': userName,
         'content': content,
+        'mediaUrls': mediaUrls,
+        'mediaTypes': mediaTypes,
         'createdAt': DateTime.now(),
         'likedBy': [],
         'commentCount': 0,
-        'mediaUrls': mediaUrls,
-        'mediaTypes': mediaTypes,
       });
       return null; // Success
     } catch (e) {
@@ -68,15 +70,27 @@ class ChatService {
   // Delete a post (only author can delete)
   Future<String?> deletePost(String postId, String userId) async {
     try {
-      DocumentSnapshot doc =
-      await _firestore.collection('posts').doc(postId).get();
+      DocumentSnapshot doc = await _firestore
+          .collection('posts')
+          .doc(postId)
+          .get();
 
-      if (doc['userId'] != userId) {
-        return 'You can only delete your own posts';
+      final authService = AuthService();
+      final currentUserRole = await authService.getUserRole(
+          FirebaseAuth.instance.currentUser!.uid);
+
+      if (doc['userId'] != userId && currentUserRole != 'admin') {
+        return 'Would you like to report this post?';
       }
 
+      await _firestore
+          .collection('posts')
+          .doc(postId)
+          .delete();
+
       await _firestore.collection('posts').doc(postId).delete();
-      return null; // Success
+
+      return null;
     } catch (e) {
       return e.toString();
     }
@@ -127,7 +141,7 @@ class ChatService {
     });
   }
 
-  // Delete a comment
+  // Delete a comment (author or admin can delete)
   Future<String?> deleteComment(String postId, String commentId, String userId) async {
     try {
       DocumentSnapshot doc = await _firestore
@@ -137,16 +151,21 @@ class ChatService {
           .doc(commentId)
           .get();
 
-      if(doc['userId'] != userId) {
+      // Get current user's role
+      final authService = AuthService();
+      final currentUserRole = await authService.getUserRole(FirebaseAuth.instance.currentUser!.uid);
+
+      // Allow if user is the author OR admin
+      if(doc['userId'] != userId && currentUserRole != 'admin') {
         return 'Would you like to report this comment?';
       }
 
       await _firestore
-        .collection('posts')
-        .doc(postId)
-        .collection('comments')
-        .doc(commentId)
-        .delete();
+          .collection('posts')
+          .doc(postId)
+          .collection('comments')
+          .doc(commentId)
+          .delete();
 
       // Decrease comment count
       await _firestore.collection('posts').doc(postId).update({

@@ -18,6 +18,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final User _currentUser = FirebaseAuth.instance.currentUser!;
 
   late UserModel _userData;
+  String? _userRole;
 
   @override
   void initState() {
@@ -31,6 +32,7 @@ class _ChatScreenState extends State<ChatScreen> {
     if (data != null) {
       setState(() {
         _userData = UserModel.fromMap(data);
+        _userRole = data['role'];
       });
     }
   }
@@ -107,7 +109,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     ],
                   ),
                 ),
-                if (post.userId == _currentUser.uid)
+                if (post.userId == _currentUser.uid || _userRole == 'admin')
                   PopupMenuButton(
                     itemBuilder: (context) => [
                       PopupMenuItem(

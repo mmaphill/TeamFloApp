@@ -8,6 +8,7 @@ class ClassSchedule {
   final int capacity; // Max attendees
   final List<String> attendees; // List of user IDs attending
   final String instructor; // Instructor name
+  final String instructorUid;
 
   ClassSchedule({
     required this.classId,
@@ -16,9 +17,10 @@ class ClassSchedule {
     required this.startTime,
     required this.endTime,
     required this.classType,
-    this.capacity = 30,
-    this.attendees = const [],
-    this.instructor = 'Coach',
+    required this.capacity,
+    required this.attendees,
+    required this.instructor,
+    required this.instructorUid,
   });
 
   factory ClassSchedule.fromMap(Map<String, dynamic> map, String classId) {
@@ -32,6 +34,7 @@ class ClassSchedule {
       capacity: map['capacity'] ?? 30,
       attendees: List<String>.from(map['attendees'] ?? []),
       instructor: map['instructor'] ?? 'Coach',
+      instructorUid: map['instructorUid'] ?? '',
     );
   }
 
@@ -45,6 +48,7 @@ class ClassSchedule {
       'capacity': capacity,
       'attendees': attendees,
       'instructor': instructor,
+      'instructorUid': instructorUid,
     };
   }
 }

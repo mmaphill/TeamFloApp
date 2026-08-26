@@ -1,5 +1,7 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:team_flo_app/screens/privacy_policy_screen.dart';
 import 'package:team_flo_app/services/validation_service.dart';
 import '../services/auth_service.dart';
 
@@ -48,13 +50,31 @@ class _LoginScreenState extends State<LoginScreen> {
       if (kDebugMode) {
         print('Login Successful!');
       }
+
+      // Get user data to check privacy policy
+      final userData = await _authService.getUserData(
+        FirebaseAuth.instance.currentUser!.uid,
+      );
+
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Login successful!')),
-        );
+        // If privacy policy NOT acknowledged, show it (forces them to read)
+        if (userData != null && userData['privacyPolicyAcknowledged'] != true) {
+          Navigator.pushReplacement(  // ← USE pushReplacement to replace login screen
+            context,
+            MaterialPageRoute(
+              builder: (context) => const PrivacyPolicyScreen(isFirstLogin: true),
+            ),
+          );
+        } else {
+          // Privacy policy already acknowledged, go to home
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Login successful!')),
+          );
+          // The StreamBuilder in main.dart will handle navigation to MainHomeScreen
+        }
       }
     } else {
-      setState(() =>_errorMessage = error);
+      setState(() => _errorMessage = error);
     }
   }
 
@@ -70,9 +90,9 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     String? error = await _authService.signup(
-      email: _emailController.text.trim(),
+      email: ValidationService.sanitizeEmail(_emailController.text.trim()),
       password: _passwordController.text,
-      name: _nameController.text,
+      name: ValidationService.sanitizeName(_nameController.text),
       role: 'member', // New users are members by default
     );
 

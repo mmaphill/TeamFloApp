@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/class_schedule_model.dart';
 
 class ScheduleService {
@@ -19,15 +20,15 @@ class ScheduleService {
   // Add attendance for a user
   Future<String?> markAttendance(String classId, String userId) async {
     try {
-      DocumentSnapshot doc = await _firestore.collection('classes').doc(classId).get();
-      List<String> attendees = List<String>.from(doc['attendees'] ?? []);
-
-      if (!attendees.contains(userId)) {
-        attendees.add(userId);
-        await _firestore.collection('classes').doc(classId).update({
-          'attendees': attendees,
-        });
-      }
+      await _firestore
+          .collection('classes')
+          .doc(classId)
+          .collection('attendance')
+          .add({
+        'userId': userId,
+        'classId': classId,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
       return null; // Success
     } catch (e) {
       return e.toString();
@@ -91,6 +92,33 @@ class ScheduleService {
       return attendees;
     } catch (e) {
       return [];
+    }
+  }
+
+  // Create Class - Instructor version
+  Future<void> createClass({
+    required String className,
+    required String day,
+    required String startTime,
+    required String endTime,
+    required String classType,
+    required String instructor,
+  }) async {
+    try {
+      await _firestore.collection('classes').add({
+        'className': className,
+        'day': day,
+        'startTime': startTime,
+        'endTime': endTime,
+        'classType': classType,
+        'instructor': instructor,
+        'capacity': 30,
+        'attendees': [],
+        'createdBy': FirebaseAuth.instance.currentUser!.uid,
+      });
+    } catch (e) {
+      print('Error creating class: $e');
+      rethrow;
     }
   }
 
@@ -213,6 +241,7 @@ class ScheduleService {
           ...classData,
           'capacity': 30,
           'attendees': [],
+          'instructorUid': FirebaseAuth.instance.currentUser!.uid,
         });
       }
 
@@ -222,7 +251,7 @@ class ScheduleService {
     }
   }
 
-// Keep the original for future use
+  // Keep the original for future use
   Future<void> seedInitialSchedule() async {
     QuerySnapshot existing = await _firestore.collection('classes').get();
     if (existing.docs.isNotEmpty) {
