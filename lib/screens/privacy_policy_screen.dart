@@ -129,33 +129,72 @@ We implement industry-standard security:
 - Uploaded Media: Retained while post/entry exists
 - Deleted Accounts: Data deleted within 30 days
 
-7. YOUR PRIVACY RIGHTS
+7. DATA DELETION & ACCOUNT DELETION
 
-You have the right to:
-- Access your personal data
-- Update your information
-- Delete your account
-- Export your data
+Users have the right to delete their account at any time:
 
-To exercise these rights, contact: [phill.w.nunez@gmail.com]
-Use subject heading: [Team Flo Account Request]
+How to Delete Your Account:
+1. Go to Profile screen
+2. Scroll to settings
+3. Tap "Delete Account"
+4. Confirm deletion
 
-8. THIRD-PARTY SERVICES
+What Happens When You Delete:
+- Your user profile is deleted
+- All posts and comments are deleted
+- All journal entries are deleted
+- All uploaded photos/videos are deleted
+- Your data is removed from Firebase within 24 hours
 
-We use Firebase (by Google) for:
-- Authentication
-- Database storage
-- File storage
+Note: Once deleted, your account cannot be recovered.
 
-Firebase Privacy Policy: https://firebase.google.com/support/privacy
+Data Retention After Deletion:
+- Personal data: Deleted immediately
+- Backup data: Deleted within 30 days
+- Crash logs: May retain anonymized data for up to 90 days
 
-9. ACCOUNT DELETION
+8. DATA PORTABILITY
 
-To delete your account:
-1. Request from Admin
-2. Email [phill.w.nunez@gmail.com]
+Users have the right to receive a copy of their data in a structured format.
 
-Your data will be permanently removed within 30 days.
+To Request Your Data:
+Email: [phill.w.nunez@gmail.com]
+Subject: "Data Export Request"
+
+Include:
+- Your email address used for account
+- Confirmation of identity
+
+We will provide your data within 30 days in JSON format, including:
+- Profile information
+- All posts and comments
+- Journal entries
+- Training statistics
+- Uploaded photos/videos (as links)
+
+9. YOUR PRIVACY RIGHTS
+
+Depending on your location, you have rights regarding your data:
+
+For EU Residents (GDPR):
+- Right to access your data
+- Right to correct inaccurate data
+- Right to delete your data ("right to be forgotten")
+- Right to restrict processing
+- Right to data portability
+- Right to object to processing
+
+For California Residents (CCPA):
+- Right to know what data is collected
+- Right to delete personal information
+- Right to opt-out of data sales (we don't sell data)
+- Right to non-discrimination for exercising your rights
+
+To Exercise Your Rights:
+Contact: [phill.w.nunez@gmail.com]
+Response Time: 30-45 days
+
+We will not discriminate against you for exercising these rights.
 
 10. CONTACT US
 

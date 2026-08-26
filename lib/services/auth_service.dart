@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 import '../models/belt_rank_model.dart';
 import '../models/competition_stats_model.dart';
@@ -7,6 +8,7 @@ import '../models/competition_stats_model.dart';
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseStorage _storage = FirebaseStorage.instance;
 
   // Stream to listen to auth state changes
   Stream<User?> get authStateChanges => _auth.authStateChanges();
@@ -147,6 +149,77 @@ class AuthService {
         'privacyPolicyAcknowledged': true,
       });
       return null;
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  // Delete user account and all associated data
+  Future<String?> deleteAccount(String uid) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        return 'No user logged in';
+      }
+
+      // Delete user document from Firestore
+      await _firestore.collection('users').doc(uid).delete();
+
+      // Delete user's posts
+      final postsQuery = await _firestore
+          .collection('posts')
+          .where('userId', isEqualTo: uid)
+          .get();
+      for (var doc in postsQuery.docs) {
+        await doc.reference.delete();
+      }
+
+      // Delete user's journal entries
+      final journalQuery = await _firestore
+          .collection('users')
+          .doc(uid)
+          .collection('journal')
+          .get();
+      for (var doc in journalQuery.docs) {
+        await doc.reference.delete();
+      }
+
+      // Delete user files from Storage
+      final profilePath = 'profiles/$uid';
+      final postsPath = 'posts/$uid';
+      final journalPath = 'journals/$uid';
+
+      try {
+        final profileList = await _storage.ref(profilePath).listAll();
+        for (var file in profileList.items) {
+          await file.delete();
+        }
+      } catch (e) {
+        // Directory might not exist
+      }
+
+      try {
+        final postsList = await _storage.ref(postsPath).listAll();
+        for (var file in postsList.items) {
+          await file.delete();
+        }
+      } catch (e) {
+        // Directory might not exist
+      }
+
+      try {
+        final journalList = await _storage.ref(journalPath).listAll();
+        for (var file in journalList.items) {
+          await file.delete();
+        }
+      } catch (e) {
+        // Directory might not exist
+      }
+
+      // Delete Firebase Auth user
+      await user.delete();
+
+      return null; // Success
     } catch (e) {
       return e.toString();
     }
