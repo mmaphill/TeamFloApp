@@ -13,6 +13,8 @@ import '../services/storage_service.dart';
 import '../services/validation_service.dart';
 
 class ProfileScreen extends StatefulWidget {
+  static final GlobalKey<_ProfileScreenState> profileKey = GlobalKey<_ProfileScreenState>();
+
   const ProfileScreen({super.key});
 
   @override
@@ -24,6 +26,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final User _currentUser = FirebaseAuth.instance.currentUser!;
 
   late UserModel _userData;
+  late UserModel _originalUserData;
   bool _isEditing = false;
   bool _isSaving = false;
   bool _isLoading = false;
@@ -122,10 +125,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
           avatarColor: user.avatarColor,
           currentBelt: currentBelt,
         );
+        _originalUserData = _userData;
         _nameController.text = _userData.name;
         _goalsController.text = _userData.goals;
       });
     }
+  }
+
+  bool hasUnsavedChanges() {
+    return _nameController.text != _originalUserData.name ||
+        _goalsController.text != _originalUserData.goals ||
+        _userData.beltRankHistory.length != _originalUserData.beltRankHistory.length ||
+        _userData.competitionStats.length != _originalUserData.competitionStats.length;
+  }
+
+  Future<void> saveProfile() async {
+    await _saveProfile();
   }
 
   Future<void> _saveProfile() async {
@@ -175,317 +190,225 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Error Message
-            if (_errorMessage != null)
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.red.shade100,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  _errorMessage!,
-                  style: TextStyle(color: Colors.red.shade700),
-                ),
-              ),
-            if (_errorMessage != null) const SizedBox(height: 16),
-
-            // Edit/Save Button Row
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return PopScope(
+        canPop: false,
+        child: Scaffold(
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(width: 48), // Spacer to center title
-                const Text(
-                  'Profile',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+                // Error Message
+                if (_errorMessage != null)
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade100,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      _errorMessage!,
+                      style: TextStyle(color: Colors.red.shade700),
+                    ),
                   ),
-                ),
-                if (!_isEditing)
-                  IconButton(
-                    icon: const Icon(Icons.edit),
-                    onPressed: () => setState(() => _isEditing = true),
-                  )
-                else
-                  TextButton(
-                    onPressed: (_isSaving || _nameError != null || _goalError != null) ? null : _saveProfile,
-                    child: _isSaving
-                        ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                        : const Text(
-                      'Save',
+                if (_errorMessage != null) const SizedBox(height: 16),
+
+                // Edit/Save Button Row
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const SizedBox(width: 48), // Spacer to center title
+                    const Text(
+                      'Profile',
                       style: TextStyle(
-                        color: AppColors.primary,
+                        fontSize: 20,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 24),
-
-            // Profile Avatar with Edit Option
-            GestureDetector(
-              onTap: _isEditing ? () => _showAvatarOptions() : null,
-              child: Center(
-                child: Stack(
-                  children: [
-                    if (_userData.photoUrl != null &&
-                        _userData.photoUrl!.isNotEmpty)
-                      CircleAvatar(
-                        radius: 50,
-                        backgroundImage: NetworkImage(_userData.photoUrl!),
+                    if (!_isEditing)
+                      IconButton(
+                        icon: const Icon(Icons.edit),
+                        onPressed: () => setState(() => _isEditing = true),
                       )
                     else
-                      CircleAvatar(
-                        radius: 50,
-                        backgroundColor: Color(int.parse(
-                          _userData.avatarColor.replaceFirst('#', '0xff'),
-                        )),
-                        child: Text(
-                          _userData.name.isNotEmpty
-                              ? _userData.name[0].toUpperCase()
-                              : '?',
-                          style: const TextStyle(
-                            fontSize: 40,
+                      TextButton(
+                        onPressed: (_isSaving || _nameError != null || _goalError != null) ? null : _saveProfile,
+                        child: _isSaving
+                            ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                            : const Text(
+                          'Save',
+                          style: TextStyle(
+                            color: AppColors.primary,
                             fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    if (_isEditing)
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.blue,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
-                          ),
-                          child: IconButton(
-                            icon: const Icon(Icons.edit,
-                                color: Colors.white, size: 18),
-                            onPressed: () => _showAvatarOptions(),
                           ),
                         ),
                       ),
                   ],
                 ),
-              ),
-            ),
-            const SizedBox(height: 32),
+                const SizedBox(height: 24),
 
-            // Name Field
-            const Text(
-              'Full Name',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _nameController,
-              textCapitalization: TextCapitalization.words,
-              enabled: _isEditing,
-              decoration: InputDecoration(
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              onChanged: (value) {
-                setState(() {
-                  _nameError = ValidationService.validateName(value);
-                });
-              }
-            ),
-            const SizedBox(height: 24),
-
-            // Email (Read-only)
-            const Text(
-              'Email',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade300),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(_userData.email),
-            ),
-            const SizedBox(height: 24),
-
-            // Role (Read-only)
-            const Text(
-              'Role',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade300),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                _userData.role.toUpperCase(),
-                style: TextStyle(
-                  color: _userData.role == 'admin'
-                      ? Colors.red
-                      : Colors.green,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // Belt Rank History
-            const Text(
-              'Belt Rank History',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
-            const SizedBox(height: 12),
-            if (_userData.beltRankHistory.isEmpty)
-              const Text('No belt promotions yet')
-            else
-              Column(
-                children: _userData.beltRankHistory
-                    .asMap()
-                    .entries
-                    .map((entry) {
-                  int index = entry.key;
-                  BeltRank rank = entry.value;
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.shade300),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                // Profile Avatar with Edit Option
+                GestureDetector(
+                  onTap: _isEditing ? () => _showAvatarOptions() : null,
+                  child: Center(
+                    child: Stack(
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              rank.rank,
+                        if (_userData.photoUrl != null &&
+                            _userData.photoUrl!.isNotEmpty)
+                          CircleAvatar(
+                            radius: 50,
+                            backgroundImage: NetworkImage(_userData.photoUrl!),
+                          )
+                        else
+                          CircleAvatar(
+                            radius: 50,
+                            backgroundColor: Color(int.parse(
+                              _userData.avatarColor.replaceFirst('#', '0xff'),
+                            )),
+                            child: Text(
+                              _userData.name.isNotEmpty
+                                  ? _userData.name[0].toUpperCase()
+                                  : '?',
                               style: const TextStyle(
+                                fontSize: 40,
                                 fontWeight: FontWeight.bold,
+                                color: Colors.white,
                               ),
                             ),
-                            Text(
-                              DateFormat('MMM d, yyyy')
-                                  .format(rank.promotionDate),
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey,
-                              ),
-                            ),
-                          ],
-                        ),
+                          ),
                         if (_isEditing)
-                          IconButton(
-                            icon: const Icon(Icons.delete, size: 18),
-                            onPressed: () {
-                              setState(() {
-                                _userData.beltRankHistory.removeAt(index);
-                              });
-                            },
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.blue,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white, width: 2),
+                              ),
+                              child: IconButton(
+                                icon: const Icon(Icons.edit,
+                                    color: Colors.white, size: 18),
+                                onPressed: () => _showAvatarOptions(),
+                              ),
+                            ),
                           ),
                       ],
                     ),
-                  );
-                }).toList(),
-              ),
-            if (_isEditing)
-              Padding(
-                padding: const EdgeInsets.only(top: 12),
-                child: ElevatedButton.icon(
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add Belt Rank'),
-                  onPressed: () => _showAddBeltRankDialog(),
+                  ),
                 ),
-              ),
-            const SizedBox(height: 24),
+                const SizedBox(height: 32),
 
-            // Goals Section
-            const Text(
-              'Goals',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _goalsController,
-              textCapitalization: TextCapitalization.sentences,
-              enabled: _isEditing,
-              maxLines: 4,
-              decoration: InputDecoration(
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
+                // Name Field
+                const Text(
+                  'Full Name',
+                  style: TextStyle(fontWeight: FontWeight.bold),
                 ),
-                hintText: 'Enter your training goals...',
-              ),
-              onChanged: (value) {
-                setState(() {
-                  _goalError = ValidationService.validateContent(value);
-                });
-              }
-            ),
-            const SizedBox(height: 24),
-
-            // Competition Stats
-            const Text(
-              'Competition Stats',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
-            const SizedBox(height: 12),
-            if (_userData.competitionStats.isEmpty)
-              const Text('No competition records yet')
-            else
-              Column(
-                children: _userData.competitionStats
-                    .asMap()
-                    .entries
-                    .map((entry) {
-                  int index = entry.key;
-                  CompetitionStats stats = entry.value;
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.shade300),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _nameController,
+                  textCapitalization: TextCapitalization.words,
+                  enabled: _isEditing,
+                  decoration: InputDecoration(
+                    border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
+                  ),
+                  onChanged: (value) {
+                    setState(() {
+                      _nameError = ValidationService.validateName(value);
+                    });
+                  }
+                ),
+                const SizedBox(height: 24),
+
+                // Email (Read-only)
+                const Text(
+                  'Email',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade300),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(_userData.email),
+                ),
+                const SizedBox(height: 24),
+
+                // Role (Read-only)
+                const Text(
+                  'Role',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade300),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    _userData.role.toUpperCase(),
+                    style: TextStyle(
+                      color: _userData.role == 'admin'
+                          ? Colors.red
+                          : Colors.green,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Belt Rank History
+                const Text(
+                  'Belt Rank History',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                const SizedBox(height: 12),
+                if (_userData.beltRankHistory.isEmpty)
+                  const Text('No belt promotions yet')
+                else
+                  Column(
+                    children: (_userData.beltRankHistory.toList()
+                        ..sort((a, b) => b.promotionDate.compareTo(a.promotionDate)))
+                        .asMap()
+                        .entries
+                        .map((entry) {
+                      int index = entry.key;
+                      BeltRank rank = entry.value;
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  stats.format,
+                                  rank.rank,
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 14,
                                   ),
                                 ),
                                 Text(
-                                  stats.rank,
-                                  style: const TextStyle(fontSize: 12),
+                                  DateFormat('MMM d, yyyy')
+                                      .format(rank.promotionDate),
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey,
+                                  ),
                                 ),
                               ],
                             ),
@@ -494,152 +417,284 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 icon: const Icon(Icons.delete, size: 18),
                                 onPressed: () {
                                   setState(() {
-                                    _userData.competitionStats.removeAt(index);
+                                    _userData.beltRankHistory.removeAt(index);
                                   });
                                 },
                               ),
                           ],
                         ),
-                        const SizedBox(height: 8),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      );
+                    }).toList(),
+                  ),
+                if (_isEditing)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add Belt Rank'),
+                      onPressed: () => _showAddBeltRankDialog(),
+                    ),
+                  ),
+                const SizedBox(height: 24),
+
+                // Goals Section
+                const Text(
+                  'Goals',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _goalsController,
+                  textCapitalization: TextCapitalization.sentences,
+                  enabled: _isEditing,
+                  maxLines: 4,
+                  decoration: InputDecoration(
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    hintText: 'Enter your training goals...',
+                  ),
+                  onChanged: (value) {
+                    setState(() {
+                      _goalError = ValidationService.validateContent(value);
+                    });
+                  }
+                ),
+                const SizedBox(height: 24),
+
+                // Competition Stats
+                const Text(
+                  'Competition Stats',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                const SizedBox(height: 12),
+                if (_userData.competitionStats.isEmpty)
+                  const Text('No competition records yet')
+                else
+                  Column(
+                    children: _userData.competitionStats
+                        .asMap()
+                        .entries
+                        .map((entry) {
+                      int index = entry.key;
+                      CompetitionStats stats = entry.value;
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Column(
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Text('Wins',
-                                    style: TextStyle(fontSize: 12)),
-                                Text(
-                                  '${stats.totalWins}',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      stats.format,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    Text(
+                                      stats.rank,
+                                      style: const TextStyle(fontSize: 12),
+                                    ),
+                                  ],
+                                ),
+                                if (_isEditing)
+                                  IconButton(
+                                    icon: const Icon(Icons.delete, size: 18),
+                                    onPressed: () {
+                                      setState(() {
+                                        _userData.competitionStats.removeAt(index);
+                                      });
+                                    },
                                   ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              children: [
+                                Column(
+                                  children: [
+                                    const Text('Wins',
+                                        style: TextStyle(fontSize: 12)),
+                                    Text(
+                                      '${stats.totalWins}',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Column(
+                                  children: [
+                                    const Text('Losses',
+                                        style: TextStyle(fontSize: 12)),
+                                    Text(
+                                      '${stats.totalLosses}',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Column(
+                                  children: [
+                                    const Text('Win Rate',
+                                        style: TextStyle(fontSize: 12)),
+                                    Text(
+                                      stats.totalWins + stats.totalLosses == 0
+                                          ? '0%'
+                                          : '${((stats.totalWins / (stats.totalWins + stats.totalLosses)) * 100).toStringAsFixed(1)}%',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
-                            Column(
-                              children: [
-                                const Text('Losses',
-                                    style: TextStyle(fontSize: 12)),
-                                Text(
-                                  '${stats.totalLosses}',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            Column(
-                              children: [
-                                const Text('Win Rate',
-                                    style: TextStyle(fontSize: 12)),
-                                Text(
-                                  stats.totalWins + stats.totalLosses == 0
-                                      ? '0%'
-                                      : '${((stats.totalWins / (stats.totalWins + stats.totalLosses)) * 100).toStringAsFixed(1)}%',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
+                            const SizedBox(height: 8),
+                            Text(
+                              'By: Sub ${stats.submissionWins}W/${stats.submissionLosses}L | Pts ${stats.pointWins}W/${stats.pointLosses}L | Ref ${stats.refDecisionWins}W/${stats.refDecisionLosses}L',
+                              style: const TextStyle(fontSize: 11),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'By: Sub ${stats.submissionWins}W/${stats.submissionLosses}L | Pts ${stats.pointWins}W/${stats.pointLosses}L | Ref ${stats.refDecisionWins}W/${stats.refDecisionLosses}L',
-                          style: const TextStyle(fontSize: 11),
-                        ),
-                      ],
-                    ),
-                  );
-                }).toList(),
-              ),
-            if (_isEditing)
-              Padding(
-                padding: const EdgeInsets.only(top: 12),
-                child: ElevatedButton.icon(
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add Competition Record'),
-                  onPressed: () => _showAddCompetitionStatsDialog(),
-                ),
-              ),
-            if (_isEditing) ...[
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: (_isSaving || _nameError != null || _goalError != null) ? null : _saveProfile,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                      ),
-                      child: _isSaving
-                          ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor:
-                          AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      )
-                          : const Text(
-                        'Save',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      );
+                    }).toList(),
+                  ),
+                if (_isEditing)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add Competition Record'),
+                      onPressed: () => _showAddCompetitionStatsDialog(),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () =>
-                          setState(() => _isEditing = false),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.grey.shade700,
-                        foregroundColor: Colors.white,
+                if (_isEditing) ...[
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: (_isSaving || _nameError != null || _goalError != null) ? null : _saveProfile,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                          ),
+                          child: _isSaving
+                              ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor:
+                              AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                              : const Text(
+                            'Save',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
                       ),
-                      child: const Text('Cancel'),
-                    ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () =>
+                              setState(() => _isEditing = false),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.grey.shade700,
+                            foregroundColor: Colors.white,
+                          ),
+                          child: const Text('Cancel'),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
-              ),
-            ],
-            // Privacy Policy
-            const SizedBox(height: 32),
-            Center(
-              child: ElevatedButton(
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const PrivacyPolicyScreen(isFirstLogin: false,),
+                // Privacy Policy
+                const SizedBox(height: 32),
+                Center(
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const PrivacyPolicyScreen(isFirstLogin: false,),
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.grey.shade700,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: const Text('View Privacy Policy'),
                   ),
                 ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.grey.shade700,
-                  foregroundColor: Colors.white,
+                // Delete Account Button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => _showDeleteAccountDialog(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red.shade700,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: const Text('Delete Account'),
+                  ),
                 ),
-                child: const Text('View Privacy Policy'),
-              ),
+              ],
             ),
-            // Delete Account Button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () => _showDeleteAccountDialog(),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red.shade700,
-                  foregroundColor: Colors.white,
-                ),
-                child: const Text('Delete Account'),
-              ),
-            ),
-          ],
+          ),
         ),
-      ),
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+
+        bool hasChanges = _nameController.text != _userData.name ||
+            _goalsController.text != _userData.goals;
+
+        if (!hasChanges) {
+          if (mounted) Navigator.pop(context);
+          return;
+        }
+
+        bool? shouldExit = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Unsaved Changes'),
+            content: const Text(
+              'It seems like your profile info has changed. Would you like to save before exiting this page?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Discard'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Save'),
+              ),
+            ],
+          ),
+        );
+
+        if (shouldExit == true) {
+          await _saveProfile();
+          if (mounted) Navigator.pop(context);
+        }
+      },
     );
   }
 
@@ -700,7 +755,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             TextButton(
               onPressed: selectedRank == null
                   ? null
-                  : () {
+                  : () async {
                 this.setState(() {
                   _userData.beltRankHistory.add(
                     BeltRank(
@@ -710,6 +765,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   );
                 });
                 Navigator.pop(context);
+
+                String? error = await _authService.updateUserProfile(
+                  uid: _currentUser.uid,
+                  name: _userData.name,
+                  goals: _userData.goals,
+                  beltRankHistory: _userData.beltRankHistory,
+                  competitionStats: _userData.competitionStats,
+                  photoUrl: _userData.photoUrl,
+                  avatarColor: _userData.avatarColor,
+                  currentBelt: _userData.currentBelt,
+                );
+
+                if (error == null) {
+                  await _loadUserData();
+                }
               },
               child: const Text('Add'),
             ),
@@ -966,6 +1036,48 @@ class _ProfileScreenState extends State<ProfileScreen> {
               await _deleteAccount();
             },
             child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _saveAndExit() async {
+    // Check if profile data has changed
+    bool hasChanges = _nameController.text != _userData.name ||
+        _goalsController.text != _userData.goals;
+
+    if (!hasChanges) {
+      // No changes, just exit
+      Navigator.pop(context);
+      return;
+    }
+
+    // Show dialog if there are changes
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Unsaved Changes'),
+        content: const Text(
+          'It seems like your profile info has changed. Would you like to save before exiting this page?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context); // Close dialog
+              Navigator.pop(context); // Exit profile screen
+            },
+            child: const Text('Discard'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context); // Close dialog
+              await _saveProfile();
+              if (mounted) {
+                Navigator.pop(context); // Exit after saving
+              }
+            },
+            child: const Text('Save'),
           ),
         ],
       ),

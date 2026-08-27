@@ -157,7 +157,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
 
     // Upload photo if selected
     if (_selectedPhoto != null) {
-      photoUrl = await _storageService.uploadImage(_selectedPhoto!, widget.userId);
+      photoUrl = await _storageService.uploadJournalImage(_selectedPhoto!, widget.userId);
     }
 
     _entry = JournalEntry(
@@ -220,6 +220,11 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
             padding: const EdgeInsets.only(right: 12),
             child: BeltRankBadge(beltRank: _userData.currentBelt, width: 180, height: 180,),
           ),
+          if (_entry.entryId.isNotEmpty)  // Only show if entry is saved
+            IconButton(
+              icon: const Icon(Icons.delete),
+              onPressed: () => _showDeleteDialog(),
+            ),
           IconButton(
             icon: const Icon(Icons.check),
             onPressed: (_notesError != null || _contentError != null) ? null : _saveEntry,
@@ -636,6 +641,51 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
         );
       },
     );
+  }
+
+  void _showDeleteDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Entry?'),
+        content: const Text('This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _deleteEntry();
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deleteEntry() async {
+    setState(() => _isLoading = true);
+
+    String? error = await _journalService.deleteJournalEntry(
+      widget.userId,
+      _entry.entryId,
+    );
+
+    setState(() => _isLoading = false);
+
+    if (error == null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Entry deleted')),
+      );
+      Navigator.pop(context);
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $error')),
+      );
+    }
   }
 
   @override

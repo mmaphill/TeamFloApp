@@ -28,7 +28,13 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
   }
 
   Future<void> _loadClassDetails() async {
-    List<String> attendeeIds = widget.classSchedule.attendees;
+    // Read fresh data from Firestore instead of using widget.classSchedule
+    DocumentSnapshot classDoc = await FirebaseFirestore.instance
+        .collection('classes')
+        .doc(widget.classSchedule.classId)
+        .get();
+
+    List<String> attendeeIds = List<String>.from(classDoc['attendees'] ?? []);
     List<Map<String, String>> attendees = [];
 
     for (String userId in attendeeIds) {
@@ -40,27 +46,14 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
 
         if (userDoc.exists && userDoc.data() != null) {
           final data = userDoc.data() as Map<String, dynamic>;
-          print('User $userId fields: ${data.keys.toList()}'); // Debug
-          print('Full user data: $data'); // Debug
-
-          // Try different field names
-          String name = data['name'] ??
-              data['userName'] ??
-              data['displayName'] ??
-              data['email'] ??
-              'Unknown User';
-
-          attendees.add({
-            'name': name,
-            'userId': userId,
-          });
+          String name = data['name'] ?? data['email'] ?? 'Unknown User';
+          attendees.add({'name': name, 'userId': userId});
         }
       } catch (e) {
         print('Error fetching attendee $userId: $e');
       }
     }
 
-    print('Total attendees loaded: ${attendees.length}');
     final isAttending = attendeeIds.contains(_currentUser.uid);
 
     setState(() {
@@ -234,37 +227,23 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '${widget.classSchedule.attendees.length}/${widget.classSchedule.capacity} Attending',
+                    '${_attendees.length}/${widget.classSchedule.capacity} Attending',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   const SizedBox(height: 12),
-                  if (widget.classSchedule.attendees.isEmpty)
+                  if (_attendees.isEmpty)
                     const Text('No one has joined yet')
                   else
-                    FutureBuilder<List<String>>(
-                      future: _getAttendeeNames(),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
-                          return const Text('Loading attendees...');
-                        }
-
-                        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                          return const Text('Attendees list unavailable');
-                        }
-
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: snapshot.data!
-                              .map((name) => Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            child: Text('• $name'),
-                          ))
-                              .toList(),
-                        );
-                      },
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: _attendees
+                          .map((attendee) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Text('• ${attendee['name']}'),
+                      )).toList(),
                     ),
                 ],
               ),
