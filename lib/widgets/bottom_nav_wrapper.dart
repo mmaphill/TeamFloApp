@@ -24,8 +24,31 @@ class _BottomNavWrapperState extends State<BottomNavWrapper> {
       body: widget.child,
       bottomNavigationBar: BottomNavigationBar(
         backgroundColor: AppColors.primary,
-        selectedItemColor: AppColors.light,
-        unselectedItemColor: AppColors.dark,
+        selectedItemColor: const Color(0xFFFFB2B3),
+        unselectedItemColor: AppColors.light,
+
+        type: BottomNavigationBarType.fixed,
+
+        elevation: 8.0, // shadow depth
+        iconSize: 24.0, // control the icon size
+
+        // Label styling
+        selectedLabelStyle: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+        unselectedLabelStyle: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w400,
+        ),
+
+        // Show/Hide Labels
+        showSelectedLabels: true,
+        showUnselectedLabels: true,
+
+        // Haptic Feedback on Tap
+        enableFeedback: true,
+
         currentIndex: widget.currentIndex,
         onTap: widget.onNavTap,
         items: const [
@@ -48,10 +71,6 @@ class _BottomNavWrapperState extends State<BottomNavWrapper> {
           BottomNavigationBarItem(
             icon: Icon(Icons.bar_chart),
             label: 'Stats',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Profile',
           ),
         ],
       ),

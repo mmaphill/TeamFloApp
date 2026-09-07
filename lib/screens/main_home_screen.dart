@@ -36,7 +36,6 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
     const CalendarScreen(),
     const ScheduleScreen(),
     const StatsScreen(),
-    ProfileScreen(key: ProfileScreen.profileKey),
   ];
 
   final List<String> _titles = [
@@ -45,7 +44,6 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
     'Training Journal',
     'Class Schedule',
     'Stats',
-    'Profile',
   ];
 
   @override
@@ -92,42 +90,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
             leading: Padding(
               padding: const EdgeInsets.all(8.0),
               child: GestureDetector(
-                onTap: () async {
-                  if (_selectedIndex == 5) {  // Only check if ON profile
-                    final profileState = ProfileScreen.profileKey.currentState;
-                    final hasChanges = profileState?.hasUnsavedChanges() ?? false;
-                    if (hasChanges) {
-                      bool? shouldExit = await showDialog<bool>(
-                        context: context,
-                        builder: (context) => AlertDialog(
-                          title: const Text('Unsaved Changes'),
-                          content: const Text('You have unsaved changes. Would you like to save before leaving?'),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(context),
-                              child: const Text('Cancel'),
-                            ),
-                            TextButton(
-                              onPressed: () => Navigator.pop(context, false),
-                              child: const Text('Discard'),
-                            ),
-                            TextButton(
-                              onPressed: () => Navigator.pop(context, true),
-                              child: const Text('Save'),
-                            ),
-                          ],
-                        ),
-                      );
-                      if (shouldExit == false) {
-                        setState(() => _selectedIndex = 0);
-                      } else if (shouldExit == true) {
-                        final profileState = ProfileScreen.profileKey.currentState;
-                        await profileState?.saveProfile();
-                        setState(() => _selectedIndex = 0);
-                      }
-                      return;
-                    }
-                  }
+                onTap: () {
                   setState(() => _selectedIndex = 0);  // Always go to home
                 },
                 child: CircleAvatar(
@@ -147,11 +110,6 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
                 ),
               ),
               // Custom actions based on selected screen
-              if (_selectedIndex == 0) // Home Screen
-                IconButton(
-                  icon: const Icon(Icons.logout),
-                  onPressed: _logout,
-                ),
               if (_selectedIndex == 1) // ChatScreen
                 IconButton(
                   icon: const Icon(Icons.add),
@@ -168,59 +126,54 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
                   icon: const Icon(Icons.add),
                   onPressed: () => _openJournalEntry(DateTime.now()),
                 ),
+              // Profile dropdown menu (all screens)
+              PopupMenuButton<String>(
+                child: CircleAvatar(
+                  backgroundImage: _userData?.photoUrl != null ? NetworkImage(_userData!.photoUrl!) : null,
+                  child: _userData?.photoUrl == null ? const Icon(Icons.person) : null,
+                  radius: 18,
+                ),
+                onSelected: (value) {
+                  if (value == 'profile') {
+                    _openProfileScreen();
+                  } else if (value == 'logout') {
+                    _logout();
+                  }
+                },
+                itemBuilder: (BuildContext context) => [
+                  const PopupMenuItem(
+                    value: 'profile',
+                    child: Row(
+                      children: [
+                        Icon(Icons.person, size: 20),
+                        SizedBox(width: 8),
+                        Text('View/Edit Profile'),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuDivider(),
+                  const PopupMenuItem(
+                    value: 'logout',
+                    child: Row(
+                      children: [
+                        Icon(Icons.logout, size: 20, color: Colors.red),
+                        SizedBox(width: 8),
+                        Text('Logout', style: TextStyle(color: Colors.red)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
           body: _screens[_selectedIndex],
           bottomNavigationBar: BottomNavigationBar(
             backgroundColor: const Color(0xFF3A3A3A),
-            selectedItemColor: AppColors.light,
-            unselectedItemColor: AppColors.dark,
+            selectedItemColor: const Color(0xFFFFB2B3),
+            unselectedItemColor: AppColors.light,
             elevation: 16.0,
-            type: BottomNavigationBarType.fixed,
             currentIndex: _selectedIndex,
             onTap: (index) async {
-              if (_selectedIndex == 5 && index != 5) {
-                // Check if there are ACTUAL unsaved changes
-                final profileState = ProfileScreen.profileKey.currentState;
-                final hasChanges = profileState?.hasUnsavedChanges() ?? false;
-                if (!hasChanges) {
-                  // No changes, just navigate
-                  setState(() => _selectedIndex = index);
-                  return;
-                }
-                // Has changes, show dialog
-                bool? shouldExit = await showDialog<bool>(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('Unsaved Changes'),
-                    content: const Text(
-                      'You have unsaved changes. Would you like to save before leaving?',
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('Cancel'),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, false),
-                        child: const Text('Discard'),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, true),
-                        child: const Text('Save'),
-                      ),
-                    ],
-                  ),
-                );
-                if (shouldExit == false) {
-                  setState(() => _selectedIndex = index);
-                } else if (shouldExit == true) {
-                  final profileState = ProfileScreen.profileKey.currentState;
-                  await profileState?.saveProfile();
-                  setState(() => _selectedIndex = index);
-                }
-                return;
-              }
               setState(() => _selectedIndex = index);
             },
             items: const [
@@ -232,8 +185,6 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
                   icon: Icon(Icons.schedule), label: 'Schedule'),
               BottomNavigationBarItem(
                   icon: Icon(Icons.bar_chart), label: 'Stats'),
-              BottomNavigationBarItem(
-                  icon: Icon(Icons.person), label: 'Profile'),
             ],
           ),
         );
@@ -271,6 +222,15 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
         .doc(_currentUser.uid)
         .snapshots()
         .map((doc) => doc.data());
+  }
+
+  void _openProfileScreen() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ProfileScreen(key: ProfileScreen.profileKey),
+      ),
+    );
   }
 
   void _openJournalEntry(DateTime date) {

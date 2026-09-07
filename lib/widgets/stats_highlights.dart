@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../services/analytics_service.dart';
 
 class StatsHighlightsWidget extends StatefulWidget {
-  const StatsHighlightsWidget({Key? key}) : super(key: key);
+  const StatsHighlightsWidget({super.key});
 
   @override
   State<StatsHighlightsWidget> createState() => _StatsHighlightsWidgetState();

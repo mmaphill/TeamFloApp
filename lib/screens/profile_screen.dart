@@ -193,6 +193,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return PopScope(
         canPop: false,
         child: Scaffold(
+          appBar: AppBar(
+            backgroundColor: AppColors.dark,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => Navigator.pop(context),
+            ),
+            actions: [
+              if (!_isEditing)
+                IconButton(
+                  icon: const Icon(Icons.edit),
+                  onPressed: () => setState(() => _isEditing = true),
+                )
+              else
+                TextButton(
+                  onPressed: (_isSaving || _nameError != null || _goalError != null) ? null : _saveProfile,
+                  child: _isSaving ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2),)
+                      : const Text(
+                    'Save',
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+            ],
+          ),
           body: SingleChildScrollView(
             padding: const EdgeInsets.all(16.0),
             child: Column(
@@ -212,44 +238,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                 if (_errorMessage != null) const SizedBox(height: 16),
-
-                // Edit/Save Button Row
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const SizedBox(width: 48), // Spacer to center title
-                    const Text(
-                      'Profile',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    if (!_isEditing)
-                      IconButton(
-                        icon: const Icon(Icons.edit),
-                        onPressed: () => setState(() => _isEditing = true),
-                      )
-                    else
-                      TextButton(
-                        onPressed: (_isSaving || _nameError != null || _goalError != null) ? null : _saveProfile,
-                        child: _isSaving
-                            ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                            : const Text(
-                          'Save',
-                          style: TextStyle(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 24),
 
                 // Profile Avatar with Edit Option
                 GestureDetector(

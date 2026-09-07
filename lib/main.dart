@@ -34,8 +34,8 @@ class TeamFloApp extends StatelessWidget {
         ),
         bottomNavigationBarTheme: BottomNavigationBarThemeData(
           backgroundColor: AppColors.primary,
-          selectedItemColor: AppColors.light,
-          unselectedItemColor: AppColors.dark,
+          selectedItemColor: const Color(0xFFFFB2B3),
+          unselectedItemColor: AppColors.light,
         ),
         scaffoldBackgroundColor: AppColors.dark,
       ),
