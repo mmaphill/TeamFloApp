@@ -35,3 +35,9 @@ flutter:
   assets:
     - lib/assets/images/TeamFlo.png
     - lib/assets/images/belt_ranks/
+
+flutter_launcher_icons:
+  image_path: "lib/assets/images/AppIcon.png"
+  ios: true
+  android: true
+  remove_alpha_ios: true

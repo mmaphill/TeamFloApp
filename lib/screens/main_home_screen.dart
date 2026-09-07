@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:team_flo_app/screens/privacy_policy_screen.dart';
+import 'package:team_flo_app/screens/stats_screen.dart';
 import 'package:team_flo_app/widgets/belt_rank_badge.dart';
 import '../config/colors.dart';
 import '../models/user_model.dart';
@@ -34,6 +35,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
     const ChatScreen(),
     const CalendarScreen(),
     const ScheduleScreen(),
+    const StatsScreen(),
     ProfileScreen(key: ProfileScreen.profileKey),
   ];
 
@@ -42,6 +44,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
     'Community Chat',
     'Training Journal',
     'Class Schedule',
+    'Stats',
     'Profile',
   ];
 
@@ -90,7 +93,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
               padding: const EdgeInsets.all(8.0),
               child: GestureDetector(
                 onTap: () async {
-                  if (_selectedIndex == 4) {  // Only check if ON profile
+                  if (_selectedIndex == 5) {  // Only check if ON profile
                     final profileState = ProfileScreen.profileKey.currentState;
                     final hasChanges = profileState?.hasUnsavedChanges() ?? false;
                     if (hasChanges) {
@@ -176,7 +179,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
             type: BottomNavigationBarType.fixed,
             currentIndex: _selectedIndex,
             onTap: (index) async {
-              if (_selectedIndex == 4 && index != 4) {
+              if (_selectedIndex == 5 && index != 5) {
                 // Check if there are ACTUAL unsaved changes
                 final profileState = ProfileScreen.profileKey.currentState;
                 final hasChanges = profileState?.hasUnsavedChanges() ?? false;
@@ -227,6 +230,8 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
                   icon: Icon(Icons.calendar_today), label: 'Calendar'),
               BottomNavigationBarItem(
                   icon: Icon(Icons.schedule), label: 'Schedule'),
+              BottomNavigationBarItem(
+                  icon: Icon(Icons.bar_chart), label: 'Stats'),
               BottomNavigationBarItem(
                   icon: Icon(Icons.person), label: 'Profile'),
             ],

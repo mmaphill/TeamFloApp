@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/belt_rank_model.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
+import '../widgets/stats_highlights.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -70,15 +71,21 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
+      body: SingleChildScrollView(
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text(
-              'Welcome to TeamFlo!',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            // Welcome Content
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Text(
+                'Team Flo BJJ',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
             ),
             const SizedBox(height: 20),
+
+            // Stats widget
+            const StatsHighlightsWidget(),
           ],
         ),
       ),

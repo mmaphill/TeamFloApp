@@ -46,6 +46,10 @@ class _BottomNavWrapperState extends State<BottomNavWrapper> {
             label: 'Schedule',
           ),
           BottomNavigationBarItem(
+            icon: Icon(Icons.bar_chart),
+            label: 'Stats',
+          ),
+          BottomNavigationBarItem(
             icon: Icon(Icons.person),
             label: 'Profile',
           ),

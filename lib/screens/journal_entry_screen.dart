@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:team_flo_app/widgets/submission_counter_widget.dart';
 import 'dart:io';
 import '../models/belt_rank_model.dart';
 import '../models/user_model.dart';
@@ -46,14 +47,19 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
   String? _contentError;
 
   late TextEditingController _submissionsController;
+  late TextEditingController _submissionAttemptsController;
   late TextEditingController _timesSubmittedController;
   late TextEditingController _notesController;
 
   final List<String> positions = [
     'Closed Guard',
     'Spider Guard',
+    'Lasso Guard',
     'Open Guard',
     'Half Guard',
+    'De La Riva',
+    'X Guard',
+    'Single-leg X',
     'Side Control',
     'Mount',
     'Back Control',
@@ -63,12 +69,13 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
     'North-South',
   ];
 
-  final List<String> techniques = ['Pass', 'Escape', 'Retention', 'Sweep', 'Submit',];
+  final List<String> techniques = ['Pass', 'Escape', 'Retention', 'Sweep', 'Submission',];
 
   @override
   void initState() {
     super.initState();
     _submissionsController = TextEditingController();
+    _submissionAttemptsController = TextEditingController();
     _timesSubmittedController = TextEditingController();
     _notesController = TextEditingController();
     _notesError = null;
@@ -126,6 +133,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
       if (existing != null) {
         _entry = existing;
         _submissionsController.text = existing.submissions.toString();
+        _submissionAttemptsController.text = existing.submissionAttempts.toString();
         _timesSubmittedController.text = existing.timesSubmitted.toString();
         _notesController.text = existing.generalNotes;
       } else {
@@ -136,6 +144,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
           createdAt: DateTime.now(),
         );
         _submissionsController.text = '0';
+        _submissionAttemptsController.text = '0';
         _timesSubmittedController.text = '0';
         _notesController.text = '';
       }
@@ -173,6 +182,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
       position: _entry.position,
       technique: _entry.technique,
       submissions: _entry.submissions,
+      submissionAttempts: _entry.submissionAttempts,
       timesSubmitted: _entry.timesSubmitted,
       generalNotes: ValidationService.sanitizeContent(_entry.generalNotes),
       createdAt: _entry.createdAt,
@@ -198,6 +208,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
   @override
   void dispose() {
     _submissionsController.dispose();
+    _submissionAttemptsController.dispose();
     _timesSubmittedController.dispose();
     _notesController.dispose();
     super.dispose();
@@ -294,6 +305,8 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
             const Text('Daily Metrics',
                 style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
+
+            // Energy slider
             _buildMetricSlider('Energy', _entry.energy, (val) {
               setState(() => _entry = JournalEntry(
                 entryId: _entry.entryId,
@@ -313,6 +326,8 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
                 createdAt: _entry.createdAt,
               ));
             }),
+
+            // Sleep Slider
             _buildMetricSlider('Sleep', _entry.sleep, (val) {
               setState(() => _entry = JournalEntry(
                 entryId: _entry.entryId,
@@ -332,6 +347,8 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
                 createdAt: _entry.createdAt,
               ));
             }),
+
+            // Water Slider
             _buildMetricSlider('Water', _entry.water, (val) {
               setState(() => _entry = JournalEntry(
                 entryId: _entry.entryId,
@@ -351,6 +368,8 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
                 createdAt: _entry.createdAt,
               ));
             }),
+
+            // Food Slider
             _buildMetricSlider('Food', _entry.food, (val) {
               setState(() => _entry = JournalEntry(
                 entryId: _entry.entryId,
@@ -445,47 +464,12 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
             ),
             const SizedBox(height: 12),
 
-            // Submissions count
-            const Text('Submissions', style: TextStyle(fontWeight: FontWeight.bold)),
-            TextField(
-              controller: _submissionsController,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                hintText: 'Number of submissions',
-              ),
-              onChanged: (val) {
-                setState(() => _entry = JournalEntry(
-                  entryId: _entry.entryId,
-                  userId: _entry.userId,
-                  date: _entry.date,
-                  photoUrl: _entry.photoUrl,
-                  classesAttended: _entry.classesAttended,
-                  energy: _entry.energy,
-                  sleep: _entry.sleep,
-                  water: _entry.water,
-                  food: _entry.food,
-                  position: _entry.position,
-                  technique: _entry.technique,
-                  submissions: int.tryParse(val) ?? 0,
-                  timesSubmitted: _entry.timesSubmitted,
-                  generalNotes: _entry.generalNotes,
-                  createdAt: _entry.createdAt,
-                ));
-              },
-            ),
-            const SizedBox(height: 12),
-
-            // Times submitted count
-            const Text('Times Submitted', style: TextStyle(fontWeight: FontWeight.bold)),
-            TextField(
-              controller: _timesSubmittedController,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                hintText: 'Number of times submitted',
-              ),
-              onChanged: (val) {
+            // Submission Counter Widget
+            SubmissionCounterWidget(
+              initialSuccessful: _entry.submissions,
+              initialAttempted: _entry.submissionAttempts,
+              initialTimesSubmitted: _entry.timesSubmitted,
+              onChanged: (successful, submissionAttempts, timesSubmitted) {
                 setState(() => _entry = JournalEntry(
                   entryId: _entry.entryId,
                   userId: _entry.userId,
@@ -499,13 +483,75 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
                   position: _entry.position,
                   technique: _entry.technique,
                   submissions: _entry.submissions,
-                  timesSubmitted: int.tryParse(val) ?? 0,
+                  submissionAttempts: _entry.submissionAttempts,
+                  timesSubmitted: _entry.timesSubmitted,
                   generalNotes: _entry.generalNotes,
                   createdAt: _entry.createdAt,
                 ));
               },
             ),
-            const SizedBox(height: 12),
+
+            // Legacy Submissions count - comment out if you don't want this.
+            // const Text('Submissions', style: TextStyle(fontWeight: FontWeight.bold)),
+            // TextField(
+            //   controller: _submissionsController,
+            //   keyboardType: TextInputType.number,
+            //   decoration: InputDecoration(
+            //     border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+            //     hintText: 'Number of submissions',
+            //   ),
+            //   onChanged: (val) {
+            //     setState(() => _entry = JournalEntry(
+            //       entryId: _entry.entryId,
+            //       userId: _entry.userId,
+            //       date: _entry.date,
+            //       photoUrl: _entry.photoUrl,
+            //       classesAttended: _entry.classesAttended,
+            //       energy: _entry.energy,
+            //       sleep: _entry.sleep,
+            //       water: _entry.water,
+            //       food: _entry.food,
+            //       position: _entry.position,
+            //       technique: _entry.technique,
+            //       submissions: int.tryParse(val) ?? 0,
+            //       timesSubmitted: _entry.timesSubmitted,
+            //       generalNotes: _entry.generalNotes,
+            //       createdAt: _entry.createdAt,
+            //     ));
+            //   },
+            // ),
+            // const SizedBox(height: 12),
+
+            // Times submitted count - Legacy function, comment out if you don't want
+            // const Text('Times Submitted', style: TextStyle(fontWeight: FontWeight.bold)),
+            // TextField(
+            //   controller: _timesSubmittedController,
+            //   keyboardType: TextInputType.number,
+            //   decoration: InputDecoration(
+            //     border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+            //     hintText: 'Number of times submitted',
+            //   ),
+            //   onChanged: (val) {
+            //     setState(() => _entry = JournalEntry(
+            //       entryId: _entry.entryId,
+            //       userId: _entry.userId,
+            //       date: _entry.date,
+            //       photoUrl: _entry.photoUrl,
+            //       classesAttended: _entry.classesAttended,
+            //       energy: _entry.energy,
+            //       sleep: _entry.sleep,
+            //       water: _entry.water,
+            //       food: _entry.food,
+            //       position: _entry.position,
+            //       technique: _entry.technique,
+            //       submissions: _entry.submissions,
+            //       timesSubmitted: int.tryParse(val) ?? 0,
+            //       generalNotes: _entry.generalNotes,
+            //       createdAt: _entry.createdAt,
+            //     ));
+            //   },
+            // ),
+            // const SizedBox(height: 12),
 
             // General notes
             const Text('General Notes', style: TextStyle(fontWeight: FontWeight.bold)),

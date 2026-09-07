@@ -17,6 +17,7 @@ class JournalEntry {
   final String? position; // Closed Guard, Open Guard, etc.
   final String? technique; // Pass, Sweep, Submit
   final int submissions; // Number of submissions
+  final int submissionAttempts; // Total number of submissions attempted
   final int timesSubmitted; // Number of times submitted
   final String generalNotes; // Notes about training
 
@@ -37,6 +38,7 @@ class JournalEntry {
     this.position,
     this.technique,
     this.submissions = 0,
+    this.submissionAttempts = 0,
     this.timesSubmitted = 0,
     this.generalNotes = '',
     required this.createdAt,
@@ -57,6 +59,7 @@ class JournalEntry {
       position: map['position'],
       technique: map['technique'],
       submissions: map['submissions'] ?? 0,
+      submissionAttempts: map['submissionAttempts'] ?? 0,
       timesSubmitted: map['timesSubmitted'] ?? 0,
       generalNotes: map['generalNotes'] ?? '',
       createdAt: (map['createdAt'] as dynamic)?.toDate() ?? DateTime.now(),
@@ -77,6 +80,7 @@ class JournalEntry {
       'position': position,
       'technique': technique,
       'submissions': submissions,
+      'submissionAttempts': submissionAttempts,
       'timesSubmitted': timesSubmitted,
       'generalNotes': generalNotes,
       'createdAt': createdAt,
