@@ -9,7 +9,7 @@ class AnalyticsService {
       final snapshot = await _firestore
           .collection('users')
           .doc(uid)
-          .collection('journalEntries')
+          .collection('journal')
           .orderBy('date', descending: true)
           .get();
 

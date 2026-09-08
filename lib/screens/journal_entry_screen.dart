@@ -482,9 +482,9 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
                   food: _entry.food,
                   position: _entry.position,
                   technique: _entry.technique,
-                  submissions: _entry.submissions,
-                  submissionAttempts: _entry.submissionAttempts,
-                  timesSubmitted: _entry.timesSubmitted,
+                  submissions: successful,
+                  submissionAttempts: submissionAttempts,
+                  timesSubmitted: timesSubmitted,
                   generalNotes: _entry.generalNotes,
                   createdAt: _entry.createdAt,
                 ));
