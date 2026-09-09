@@ -14,6 +14,7 @@ class StorageService {
       String downloadUrl = await ref.getDownloadURL();
       return downloadUrl;
     } catch (e) {
+      print('ERROR uploading journal image: $e');
       return null;
     }
   }

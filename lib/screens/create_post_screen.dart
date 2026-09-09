@@ -96,18 +96,27 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
 
     for (int i = 0; i < _selectedMedia.length; i++) {
       String? url;
+      print('Starting upload for media $i: ${_mediaTypes[i]}');
+
       if (_mediaTypes[i] == 'image') {
         url = await _storageService.uploadImage(_selectedMedia[i], _currentUser.uid);
       } else {
         url = await _storageService.uploadVideo(_selectedMedia[i], _currentUser.uid);
       }
 
+      print('Upload result for media $i: $url');
+
       if (url != null) {
         mediaUrls.add(url);
         uploadedMediaTypes.add(_mediaTypes[i]);
+        print('Added URL: $url');
+      } else {
+        print('Upload failed - URL is null for media $i');
       }
     }
 
+    print('Final mediaUrl count: ${mediaUrls.length}');
+    print('Final mediaTypes count: ${uploadedMediaTypes.length}');
 
     String? error = await _chatService.createPost(
       userId: _currentUser.uid,

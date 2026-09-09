@@ -182,7 +182,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 // Comment Button
                 IconButton(
                   icon: const Icon(Icons.comment),
-                  onPressed: () => _showCommentsBottomSheet(post.postId),
+                  onPressed: () => _showCommentsBottomSheet(post.postId, post),
                 ),
                 Text('${post.commentCount}'),
               ],
@@ -236,13 +236,14 @@ class _ChatScreenState extends State<ChatScreen> {
     print('=================');
   }
 
-  void _showCommentsBottomSheet(String postId) {
+  void _showCommentsBottomSheet(String postId, PostModel post) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       builder: (context) => CommentsBottomSheet(
         postId: postId,
         currentUserId: _currentUser.uid,
+        post: post,
       ),
     );
   }

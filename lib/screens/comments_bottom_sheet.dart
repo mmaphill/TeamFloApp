@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../models/post_model.dart';
 import '../services/chat_service.dart';
 import '../services/auth_service.dart';
 import '../services/validation_service.dart';
@@ -6,11 +7,13 @@ import '../services/validation_service.dart';
 class CommentsBottomSheet extends StatefulWidget {
   final String postId;
   final String currentUserId;
+  final PostModel? post;  // ADD THIS
 
   const CommentsBottomSheet({
     super.key,
     required this.postId,
     required this.currentUserId,
+    this.post,  // ADD THIS
   });
 
   @override
@@ -70,9 +73,41 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
   Widget build(BuildContext context) {
     return DraggableScrollableSheet(
       expand: false,
+      initialChildSize: 0.8,
+      minChildSize: 0.5,
       builder: (context, scrollController) => Column(
         children: [
-          // Header
+          // Post Preview (if available)
+          if (widget.post != null)
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(color: Colors.grey[300]!),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.post!.userName,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    widget.post!.content,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+
+          // Comments Header
           Container(
             padding: const EdgeInsets.all(16),
             child: const Text(
@@ -154,12 +189,15 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
   Widget _buildCommentTile(Map<String, dynamic> comment) {
     bool isOwnComment = comment['userId'] == widget.currentUserId;
     bool isAdmin = _userRole == 'admin';
+    bool isLikedByCurrentUser = (comment['likedBy'] as List?)?.contains(widget.currentUserId) ?? false;
+    int likeCount = (comment['likedBy'] as List?)?.length ?? 0;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Comment Header
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -190,7 +228,36 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                 ),
             ],
           ),
+
+          // Comment Content
           Text(comment['content']),
+          const SizedBox(height: 8),
+
+          // Like Button
+          Row(
+            children: [
+              IconButton(
+                icon: Icon(
+                  isLikedByCurrentUser ? Icons.favorite : Icons.favorite_border,
+                  color: isLikedByCurrentUser ? const Color(0xFFEA2327) : Colors.grey,
+                  size: 18,
+                ),
+                onPressed: () async {
+                  final result = await _chatService.likeComment(
+                    widget.postId,
+                    comment['commentId'],
+                    widget.currentUserId,
+                  );
+
+                  if (result != null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error: $result')),
+                    );
+                  }
+                },
+              ),
+            ],
+          ),
         ],
       ),
     );

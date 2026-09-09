@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:team_flo_app/screens/privacy_policy_screen.dart';
+import '../models/photo_crop_model.dart';
 import '../services/auth_service.dart';
 import '../models/user_model.dart';
 import '../models/belt_rank_model.dart';
@@ -11,6 +12,7 @@ import '../models/competition_stats_model.dart';
 import '../config/colors.dart';
 import '../services/storage_service.dart';
 import '../services/validation_service.dart';
+import 'crop_photo_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   static final GlobalKey<_ProfileScreenState> profileKey = GlobalKey<_ProfileScreenState>();
@@ -72,29 +74,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _pickAvatarPhoto() async {
     final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
     if (image != null) {
-      setState(() => _isLoading = true);
-      String? photoUrl = await _storageService.uploadProfileImage(
-        File(image.path),
-        _currentUser.uid,
-      );
-      setState(() {
-        if (photoUrl != null) {
-          _userData = UserModel(
-            uid: _userData.uid,
-            email: _userData.email,
-            name: _userData.name,
-            role: _userData.role,
-            createdAt: _userData.createdAt,
-            beltRankHistory: _userData.beltRankHistory,
-            goals: _userData.goals,
-            competitionStats: _userData.competitionStats,
-            photoUrl: photoUrl,
-            avatarColor: _userData.avatarColor,
-            currentBelt: _userData.currentBelt,
+      if (mounted) {
+        // Navigate to crop screen
+        final result = await Navigator.push<Map<String, dynamic>>(
+          context,
+          MaterialPageRoute(
+            builder: (context) => CropPhotoScreen(
+              imageFile: File(image.path),
+            ),
+          ),
+        );
+
+        if (result != null) {
+          setState(() => _isLoading = true);
+
+          // Upload the cropped image (not the original)
+          String? photoUrl = await _storageService.uploadProfileImage(
+            result['croppedFile'] as File,
+            _currentUser.uid,
           );
+
+          setState(() {
+            if (photoUrl != null) {
+              _userData = UserModel(
+                uid: _userData.uid,
+                email: _userData.email,
+                name: _userData.name,
+                role: _userData.role,
+                createdAt: _userData.createdAt,
+                beltRankHistory: _userData.beltRankHistory,
+                goals: _userData.goals,
+                competitionStats: _userData.competitionStats,
+                photoUrl: photoUrl,
+                avatarColor: _userData.avatarColor,
+                currentBelt: _userData.currentBelt,
+                photoCropData: PhotoCropData(), // No need to store crop data
+              );
+            }
+            _isLoading = false;
+          });
         }
-        _isLoading = false;
-      });
+      }
     }
   }
 
@@ -247,9 +267,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       children: [
                         if (_userData.photoUrl != null &&
                             _userData.photoUrl!.isNotEmpty)
-                          CircleAvatar(
-                            radius: 50,
-                            backgroundImage: NetworkImage(_userData.photoUrl!),
+                          Container(
+                            width: 100,
+                            height: 100,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white10, width: 1),
+                            ),
+                            clipBehavior: Clip.antiAlias,
+                            child: Transform(
+                              alignment: Alignment.center,
+                              transform: Matrix4.translationValues(_userData.photoCropData?.offsetX ?? 0, _userData.photoCropData?.offsetY ?? 0, 0)
+                                ..multiply(Matrix4.diagonal3Values(_userData.photoCropData?.scale ?? 1.0, _userData.photoCropData?.scale ?? 1.0, 1.0)),
+                              child: Image.network(_userData.photoUrl!, fit: BoxFit.cover),
+                            ),
                           )
                         else
                           CircleAvatar(

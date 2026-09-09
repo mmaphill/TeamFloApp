@@ -1,5 +1,6 @@
 import 'belt_rank_model.dart';
 import 'competition_stats_model.dart';
+import 'photo_crop_model.dart';
 
 class UserModel {
   final String uid;
@@ -11,6 +12,7 @@ class UserModel {
   final String goals;
   final List<CompetitionStats> competitionStats;
   final String? photoUrl;
+  final PhotoCropData? photoCropData;
   final String avatarColor;
   final String? currentBelt;
 
@@ -24,6 +26,7 @@ class UserModel {
     this.goals = '',
     this.competitionStats = const [],
     this.photoUrl,
+    this.photoCropData,
     this.avatarColor = '#2196F3',
     this.currentBelt,
   });
@@ -43,6 +46,7 @@ class UserModel {
         ?.map((item) => CompetitionStats.fromMap(item as Map<String, dynamic>))
         .toList() ?? [],
       photoUrl: map['photoUrl'],
+      photoCropData: map['photoCropData'] != null ? PhotoCropData.fromMap(map['photoCropData'] as Map<String, dynamic>) : null,
       avatarColor: map['avatarColor'] ?? '#2196F3',
       currentBelt: map['currentBelt'],
     );
@@ -59,6 +63,7 @@ class UserModel {
       'goals': goals,
       'competitionStats': competitionStats.map((c) => c.toMap()).toList(),
       'photoUrl': photoUrl,
+      'photoCropData': photoCropData?.toMap(),
       'avatarColor': avatarColor,
       'currentBelt': currentBelt,
     };

@@ -15,6 +15,11 @@ class ChatService {
     List<String> mediaTypes = const [],
   }) async {
     try {
+      print('🔥 createPost called with:');
+      print('  content: $content');
+      print('  mediaUrls: ${mediaUrls.length} items → $mediaUrls');
+      print('  mediaTypes: ${mediaTypes.length} items → $mediaTypes');
+
       await _firestore.collection('posts').add({
         'userId': userId,
         'userName': userName,
@@ -25,8 +30,10 @@ class ChatService {
         'likedBy': [],
         'commentCount': 0,
       });
+      print('✓ Post created successfully');
       return null; // Success
     } catch (e) {
+      print('✗ ERROR creating post: $e');
       return e.toString();
     }
   }
@@ -113,6 +120,7 @@ class ChatService {
         'userName': userName,
         'content': content,
         'createdAt': DateTime.now(),
+        'likedBy': [],
       });
 
       // Increase comment count
@@ -174,6 +182,52 @@ class ChatService {
 
       return null;
     } catch (e) {
+      return e.toString();
+    }
+  }
+
+  // Like/unlike a comment
+  Future<String?> likeComment(String postId, String commentId, String userId) async {
+    try {
+      print('Liking comment: $commentId');
+      DocumentSnapshot doc = await _firestore
+          .collection('posts')
+          .doc(postId)
+          .collection('comments')
+          .doc(commentId)
+          .get();
+
+      // Handle case where likedBy field doesn't exist (old comments)
+      List<String> likedBy = [];
+      if (doc.exists && doc.data() is Map) {
+        final data = doc.data() as Map<String, dynamic>;
+        likedBy = List<String>.from(data['likedBy'] ?? []);
+      }
+
+      print('Current likedBy: $likedBy, userId: $userId');
+
+      if (likedBy.contains(userId)) {
+        // Unlike
+        likedBy.remove(userId);
+        print('Unliked comment');
+      } else {
+        // Like
+        likedBy.add(userId);
+        print('Liked comment');
+      }
+
+      await _firestore
+          .collection('posts')
+          .doc(postId)
+          .collection('comments')
+          .doc(commentId)
+          .update({
+        'likedBy': likedBy,
+      });
+      print('✓ Comment like updated successfully');
+      return null;
+    } catch (e) {
+      print('✗ ERROR liking comment: $e');
       return e.toString();
     }
   }
