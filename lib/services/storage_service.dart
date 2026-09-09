@@ -18,6 +18,18 @@ class StorageService {
     }
   }
 
+  Future<String?> uploadProfileImage(File imageFile, String userId) async {
+    try {
+      String fileName = 'profiles/$userId/profile.jpg';
+      Reference ref = _storage.ref().child(fileName);
+      await ref.putFile(imageFile);
+      String downloadUrl = await ref.getDownloadURL();
+      return downloadUrl;
+    } catch (e) {
+      return null;
+    }
+  }
+
   // Upload journal image
   Future<String?> uploadJournalImage(File imageFile, String userId) async {
     try {

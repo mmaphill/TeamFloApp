@@ -73,7 +73,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
     if (image != null) {
       setState(() => _isLoading = true);
-      String? photoUrl = await _storageService.uploadImage(
+      String? photoUrl = await _storageService.uploadProfileImage(
         File(image.path),
         _currentUser.uid,
       );

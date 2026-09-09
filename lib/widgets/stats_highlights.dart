@@ -38,7 +38,11 @@ class _StatsHighlightsWidgetState extends State<StatsHighlightsWidget> {
 
     return {
       'classesThisMonth': classesThisMonth,
-      'submissions': submissions,
+      'submissions': (
+        totalSubmissions: submissions.totalSubmissions,
+        submissionAttempts: submissions.submissionAttempts,
+        timesSubmitted: submissions.timesSubmitted,
+      ),
       'techniques': techniques,
       'overallWinRate': overallWinRate,
       'totalCompetitions': totalCompetitions,
@@ -72,7 +76,7 @@ class _StatsHighlightsWidgetState extends State<StatsHighlightsWidget> {
 
         final stats = snapshot.data!;
         final classesThisMonth = stats['classesThisMonth'] as int;
-        final submissions = stats['submissions'] as ({int totalSubmissions, int timesSubmitted});
+        final submissions = stats['submissions'] as ({int totalSubmissions, int submissionAttempts, int timesSubmitted});
         final techniques = stats['techniques'] as Map<String, int>;
         final overallWinRate = stats['overallWinRate'] as double;
         final totalCompetitions = stats['totalCompetitions'] as int;
@@ -108,7 +112,7 @@ class _StatsHighlightsWidgetState extends State<StatsHighlightsWidget> {
                       context,
                       'Submissions',
                       '${submissions.totalSubmissions}',
-                      '${submissions.timesSubmitted} tried',
+                      '${submissions.submissionAttempts} attempted',
                     ),
                   ),
                   const SizedBox(width: 12),

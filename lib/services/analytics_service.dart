@@ -63,18 +63,20 @@ class AnalyticsService {
   }
 
   // Aggregate submission counts (total submitted + times submitted)
-  ({int totalSubmissions, int timesSubmitted}) aggregateSubmissions(
+  ({int totalSubmissions, int submissionAttempts, int timesSubmitted}) aggregateSubmissions(
       List<Map<String, dynamic>> entries,
       ) {
     int totalSubmissions = 0;
+    int submissionAttempts = 0;
     int timesSubmitted = 0;
 
     for (final entry in entries) {
       totalSubmissions += entry['submissions'] as int? ?? 0;
+      submissionAttempts += entry['submissionAttempts'] as int? ?? 0;
       timesSubmitted += entry['timesSubmitted'] as int? ?? 0;
     }
 
-    return (totalSubmissions: totalSubmissions, timesSubmitted: timesSubmitted);
+    return (totalSubmissions: totalSubmissions, submissionAttempts: submissionAttempts, timesSubmitted: timesSubmitted);
   }
 
   // Get position frequency

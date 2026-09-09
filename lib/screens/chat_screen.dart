@@ -75,6 +75,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _buildPostCard(PostModel post) {
+    _debugPrintPost(post);
     bool isLikedByCurrentUser = post.likedBy.contains(_currentUser.uid);
 
     return Card(
@@ -221,6 +222,18 @@ class _ChatScreenState extends State<ChatScreen> {
     if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
     if (diff.inHours < 24) return '${diff.inHours}h ago';
     return '${diff.inDays}d ago';
+  }
+
+  void _debugPrintPost(PostModel post) {
+    print('=== POST DEBUG ===');
+    print('Post ID: ${post.postId}');
+    print('User: ${post.userName}');
+    print('Content: ${post.content}');
+    print('Media URLs: ${post.mediaUrls.length} items');
+    for (int i = 0; i < post.mediaUrls.length; i++) {
+      print('  [$i] ${post.mediaTypes[i]}: ${post.mediaUrls[i]}');
+    }
+    print('=================');
   }
 
   void _showCommentsBottomSheet(String postId) {

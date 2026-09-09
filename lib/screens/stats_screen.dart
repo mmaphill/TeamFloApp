@@ -49,7 +49,11 @@ class _StatsScreenState extends State<StatsScreen> {
       'journalEntries': journalEntries,
       'classesThisMonth': classesThisMonth,
       'techniques': techniques,
-      'submissions': submissions,
+      'submissions': (
+        totalSubmissions: submissions.totalSubmissions,
+        submissionAttempts: submissions.submissionAttempts,
+        timesSubmitted: submissions.timesSubmitted,
+      ),
       'positions': positions,
       'attendanceTrend': attendanceTrend,
       'metrics': metrics,
@@ -87,7 +91,7 @@ class _StatsScreenState extends State<StatsScreen> {
           final stats = snapshot.data!;
           final classesThisMonth = stats['classesThisMonth'] as int;
           final techniques = stats['techniques'] as Map<String, int>;
-          final submissions = stats['submissions'] as ({int totalSubmissions, int timesSubmitted});
+          final submissions = stats['submissions'] as ({int totalSubmissions, int submissionAttempts, int timesSubmitted});
           final positions = stats['positions'] as Map<String, int>;
           final attendanceTrend = stats['attendanceTrend'] as List<dynamic>;
           final metrics = stats['metrics'];
@@ -121,7 +125,7 @@ class _StatsScreenState extends State<StatsScreen> {
                     _buildSummaryCard(
                       'Submissions',
                       '${submissions.totalSubmissions}',
-                      '${submissions.timesSubmitted} attempted',
+                      '${submissions.submissionAttempts} attempted',
                     ),
                     const SizedBox(height: 12),
                     if (totalCompetitions > 0)
