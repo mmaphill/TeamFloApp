@@ -38,6 +38,21 @@ class ChatService {
     }
   }
 
+  // Get user name by ID
+  Future<String> getUserName(String userId) async {
+    try {
+      final docSnapshot = await _firestore.collection('users').doc(userId).get();
+
+      if (docSnapshot.exists && docSnapshot.data() != null) {
+        final name = docSnapshot['name'] ?? 'Unknown User';
+        return name;
+      }
+      return 'Unknown User';
+    } catch (e) {
+      return 'Unknown User';
+    }
+  }
+
   // Get all posts as a stream (real-time updates)
   Stream<List<PostModel>> getPostsStream() {
     return _firestore

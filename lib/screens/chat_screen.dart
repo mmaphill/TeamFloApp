@@ -5,6 +5,7 @@ import '../services/auth_service.dart';
 import '../services/chat_service.dart';
 import '../models/post_model.dart';
 import 'comments_bottom_sheet.dart';
+import 'likers_popup.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -157,16 +158,33 @@ class _ChatScreenState extends State<ChatScreen> {
             // Post Actions (Likes)
             Row(
               children: [
-                // Like Button
-                IconButton(
-                  icon: Icon(
-                    isLikedByCurrentUser ? Icons.favorite : Icons.favorite_border,
-                    color: isLikedByCurrentUser ? const Color(0xFFEA2327) : Colors.grey,
+                // Like Button with Long Press
+                GestureDetector(
+                  onLongPress: () {
+                    if (post.likedBy.isNotEmpty) {
+                      _showLikersPopup(post.likedBy, context);
+                    }
+                  },
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: Icon(
+                          isLikedByCurrentUser ? Icons.favorite : Icons.favorite_border,
+                          color: isLikedByCurrentUser ? const Color(0xFFEA2327) : Colors.grey,
+                        ),
+                        onPressed: () => _chatService.likePost(post.postId, _currentUser.uid),
+                      ),
+                      GestureDetector(
+                        onLongPress: () {
+                          if (post.likedBy.isNotEmpty) {
+                            _showLikersPopup(post.likedBy, context);
+                          }
+                        },
+                        child: Text('${post.likedBy.length}'),
+                      ),
+                    ],
                   ),
-                  onPressed: () => _chatService.likePost(post.postId, _currentUser.uid),
                 ),
-                Text('${post.likedBy.length}'),
-                const SizedBox(width: 16),
 
                 // Dislike Button
                 // IconButton(
@@ -189,6 +207,32 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showLikersPopup(List<String> likedBy, BuildContext context) {
+    final RenderBox renderBox = context.findRenderObject() as RenderBox;
+    final Offset position = renderBox.localToGlobal(Offset.zero);
+
+    showDialog(
+      context: context,
+      barrierColor: Colors.transparent,
+      builder: (context) => Stack(
+        children: [
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Container(color: Colors.transparent),
+          ),
+          Positioned(
+            left: position.dx + 50,
+            top: position.dy + 100,
+            child: LikersPopup(
+              likedBy: likedBy,
+              position: position,
+            ),
+          ),
+        ],
       ),
     );
   }

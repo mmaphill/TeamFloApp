@@ -3,6 +3,7 @@ import '../models/post_model.dart';
 import '../services/chat_service.dart';
 import '../services/auth_service.dart';
 import '../services/validation_service.dart';
+import 'likers_popup.dart';
 
 class CommentsBottomSheet extends StatefulWidget {
   final String postId;
@@ -236,27 +237,72 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
           // Like Button
           Row(
             children: [
-              IconButton(
-                icon: Icon(
-                  isLikedByCurrentUser ? Icons.favorite : Icons.favorite_border,
-                  color: isLikedByCurrentUser ? const Color(0xFFEA2327) : Colors.grey,
-                  size: 18,
-                ),
-                onPressed: () async {
-                  final result = await _chatService.likeComment(
-                    widget.postId,
-                    comment['commentId'],
-                    widget.currentUserId,
-                  );
-
-                  if (result != null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Error: $result')),
-                    );
+              // Like Button with Long Press
+              GestureDetector(
+                onLongPress: () {
+                  if (likeCount > 0) {
+                    final likedBy = (comment['likedBy'] as List<dynamic>? ?? []).cast<String>();
+                    _showLikersPopup(likedBy, context);
                   }
                 },
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: Icon(
+                        isLikedByCurrentUser ? Icons.favorite : Icons.favorite_border,
+                        color: isLikedByCurrentUser ? const Color(0xFFEA2327) : Colors.grey,
+                        size: 18,
+                      ),
+                      onPressed: () async {
+                        final result = await _chatService.likeComment(
+                          widget.postId,
+                          comment['commentId'],
+                          widget.currentUserId,
+                        );
+
+                        if (result != null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Error: $result')),
+                          );
+                        }
+                      },
+                    ),
+                    GestureDetector(
+                      onLongPress: () {
+                        if (likeCount > 0) {
+                          _showLikersPopup(comment['likedBy'] ?? [], context);
+                        }
+                      },
+                      child: Text(
+                        likeCount > 0 ? likeCount.toString() : '',
+                        style: const TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showLikersPopup(List<String> likedBy, BuildContext context) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.transparent,
+      builder: (context) => Stack(
+        children: [
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Container(color: Colors.transparent),
+          ),
+          Center(
+            child: LikersPopup(
+              likedBy: likedBy,
+              position: Offset.zero,
+            ),
           ),
         ],
       ),
