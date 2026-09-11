@@ -1,10 +1,12 @@
 class BeltRank {
   final String rank;
   final DateTime promotionDate;
+  final String? notes;
 
   BeltRank({
     required this.rank,
     required this.promotionDate,
+    this.notes,
   });
 
   factory BeltRank.fromMap(Map<String, dynamic> map) {

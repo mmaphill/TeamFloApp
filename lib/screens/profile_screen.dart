@@ -13,6 +13,7 @@ import '../config/colors.dart';
 import '../services/storage_service.dart';
 import '../services/validation_service.dart';
 import 'crop_photo_screen.dart';
+import 'edit_belt_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   static final GlobalKey<_ProfileScreenState> profileKey = GlobalKey<_ProfileScreenState>();
@@ -28,33 +29,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final User _currentUser = FirebaseAuth.instance.currentUser!;
 
   late UserModel _userData;
-  late UserModel _originalUserData;
-  late DateTime _selectedDate;
-  bool _isEditing = false;
-  bool _isSaving = false;
   bool _isLoading = false;
   String? _errorMessage;
-  String? _nameError;
-  String? _goalError;
 
   // Controllers
-  late TextEditingController _nameController;
-  late TextEditingController _goalsController;
   late ImagePicker _picker;
   late StorageService _storageService;
-  late TextEditingController _competitionController;
 
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController();
-    _goalsController = TextEditingController();
-    _competitionController = TextEditingController();
-    _selectedDate = DateTime.now();
     _picker = ImagePicker();
     _storageService = StorageService();
-    _nameError = null;
-    _goalError = null;
+    _errorMessage = null;
 
     // Initialize with default
     _userData = UserModel(
@@ -70,9 +57,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   void dispose() {
-    _nameController.dispose();
-    _goalsController.dispose();
-    _competitionController.dispose();
     super.dispose();
   }
 
@@ -113,7 +97,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 photoUrl: photoUrl,
                 avatarColor: _userData.avatarColor,
                 currentBelt: _userData.currentBelt,
-                photoCropData: PhotoCropData(), // No need to store crop data
+                photoCropData: PhotoCropData(),
               );
             }
             _isLoading = false;
@@ -150,36 +134,62 @@ class _ProfileScreenState extends State<ProfileScreen> {
           avatarColor: user.avatarColor,
           currentBelt: currentBelt,
         );
-        _originalUserData = _userData;
-        _nameController.text = _userData.name;
-        _goalsController.text = _userData.goals;
+        print('DEBUG: Loaded name="${_userData.name}", goals="${_userData.goals}"');
       });
     }
   }
 
-  bool hasUnsavedChanges() {
-    return _nameController.text != _originalUserData.name ||
-        _goalsController.text != _originalUserData.goals ||
-        _userData.beltRankHistory.length != _originalUserData.beltRankHistory.length ||
-        _userData.competitionStats.length != _originalUserData.competitionStats.length;
+  // ============ Edit Name Dialog ============
+  void _showEditNameDialog() {
+    final controller = TextEditingController(text: _userData.name);
+    String? error;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Edit Name'),
+          content: TextField(
+            controller: controller,
+            decoration: InputDecoration(
+              hintText: 'Enter your name',
+              errorText: error,
+              border: OutlineInputBorder(),
+            ),
+            onChanged: (value) {
+              setDialogState(() {
+                error = null;
+              });
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (controller.text.isEmpty) {
+                  setDialogState(() {
+                    error = 'Name cannot be empty';
+                  });
+                  return;
+                }
+
+                Navigator.pop(context);
+                await _saveName(controller.text);
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
-  Future<void> saveProfile() async {
-    await _saveProfile();
-  }
+  Future<void> _saveName(String newName) async {
+    setState(() => _isLoading = true);
 
-  Future<void> _saveProfile() async {
-    if (_nameController.text.isEmpty) {
-      setState(() => _errorMessage = 'Name cannot be empty');
-      return;
-    }
-
-    setState(() {
-      _isSaving = true;
-      _errorMessage = null;
-    });
-
-    // Get current belt from history
     String? currentBelt;
     if (_userData.beltRankHistory.isNotEmpty) {
       List<BeltRank> sorted = List.from(_userData.beltRankHistory);
@@ -189,8 +199,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     String? error = await _authService.updateUserProfile(
       uid: _currentUser.uid,
-      name: ValidationService.sanitizeName(_nameController.text),
-      goals: ValidationService.sanitizeContent(_goalsController.text),
+      name: ValidationService.sanitizeName(newName),
+      goals: _userData.goals,
       beltRankHistory: _userData.beltRankHistory,
       competitionStats: _userData.competitionStats,
       photoUrl: _userData.photoUrl,
@@ -198,886 +208,761 @@ class _ProfileScreenState extends State<ProfileScreen> {
       currentBelt: currentBelt,
     );
 
-    setState(() => _isSaving = false);
+    setState(() => _isLoading = false);
 
     if (error == null) {
       await _loadUserData();
-      setState(() => _isEditing = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile updated successfully!')),
+          const SnackBar(content: Text('Name updated!')),
         );
       }
     } else {
-      setState(() => _errorMessage = error);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $error')),
+        );
+      }
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return PopScope(
-        canPop: false,
-        child: Scaffold(
-          appBar: AppBar(
-            backgroundColor: AppColors.dark,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back),
-              onPressed: () => Navigator.pop(context),
-            ),
-            actions: [
-              if (!_isEditing)
-                IconButton(
-                  icon: const Icon(Icons.edit),
-                  onPressed: () => setState(() => _isEditing = true),
-                )
-              else
-                TextButton(
-                  onPressed: (_isSaving || _nameError != null || _goalError != null) ? null : _saveProfile,
-                  child: _isSaving ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2),)
-                      : const Text(
-                    'Save',
-                    style: TextStyle(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          body: SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Error Message
-                if (_errorMessage != null)
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.red.shade100,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      _errorMessage!,
-                      style: TextStyle(color: Colors.red.shade700),
-                    ),
-                  ),
-                if (_errorMessage != null) const SizedBox(height: 16),
-
-                // Profile Avatar with Edit Option
-                GestureDetector(
-                  onTap: _isEditing ? () => _showAvatarOptions() : null,
-                  child: Center(
-                    child: Stack(
-                      children: [
-                        if (_userData.photoUrl != null &&
-                            _userData.photoUrl!.isNotEmpty)
-                          Container(
-                            width: 100,
-                            height: 100,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white10, width: 1),
-                            ),
-                            clipBehavior: Clip.antiAlias,
-                            child: Transform(
-                              alignment: Alignment.center,
-                              transform: Matrix4.translationValues(_userData.photoCropData?.offsetX ?? 0, _userData.photoCropData?.offsetY ?? 0, 0)
-                                ..multiply(Matrix4.diagonal3Values(_userData.photoCropData?.scale ?? 1.0, _userData.photoCropData?.scale ?? 1.0, 1.0)),
-                              child: Image.network(_userData.photoUrl!, fit: BoxFit.cover),
-                            ),
-                          )
-                        else
-                          CircleAvatar(
-                            radius: 50,
-                            backgroundColor: Color(int.parse(
-                              _userData.avatarColor.replaceFirst('#', '0xff'),
-                            )),
-                            child: Text(
-                              _userData.name.isNotEmpty
-                                  ? _userData.name[0].toUpperCase()
-                                  : '?',
-                              style: const TextStyle(
-                                fontSize: 40,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        if (_isEditing)
-                          Positioned(
-                            bottom: 0,
-                            right: 0,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: Colors.blue,
-                                shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white, width: 2),
-                              ),
-                              child: IconButton(
-                                icon: const Icon(Icons.edit,
-                                    color: Colors.white, size: 18),
-                                onPressed: () => _showAvatarOptions(),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 32),
-
-                // Name Field
-                const Text(
-                  'Full Name',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _nameController,
-                  textCapitalization: TextCapitalization.words,
-                  enabled: _isEditing,
-                  decoration: InputDecoration(
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  onChanged: (value) {
-                    setState(() {
-                      _nameError = ValidationService.validateName(value);
-                    });
-                  }
-                ),
-                const SizedBox(height: 24),
-
-                // Email (Read-only)
-                const Text(
-                  'Email',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey.shade300),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(_userData.email),
-                ),
-                const SizedBox(height: 24),
-
-                // Role (Read-only)
-                const Text(
-                  'Role',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey.shade300),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    _userData.role.toUpperCase(),
-                    style: TextStyle(
-                      color: _userData.role == 'admin'
-                          ? Colors.red
-                          : Colors.green,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                // Belt Rank History
-                const Text(
-                  'Belt Rank History',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-                const SizedBox(height: 12),
-                if (_userData.beltRankHistory.isEmpty)
-                  const Text('No belt promotions yet')
-                else
-                  Column(
-                    children: (_userData.beltRankHistory.toList()
-                        ..sort((a, b) => b.promotionDate.compareTo(a.promotionDate)))
-                        .asMap()
-                        .entries
-                        .map((entry) {
-                      int index = entry.key;
-                      BeltRank rank = entry.value;
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade300),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  rank.rank,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                Text(
-                                  DateFormat('MMM d, yyyy')
-                                      .format(rank.promotionDate),
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            if (_isEditing)
-                              IconButton(
-                                icon: const Icon(Icons.delete, size: 18),
-                                onPressed: () {
-                                  setState(() {
-                                    _userData.beltRankHistory.removeAt(index);
-                                  });
-                                },
-                              ),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                if (_isEditing)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 12),
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.add),
-                      label: const Text('Add Belt Rank'),
-                      onPressed: () => _showAddBeltRankDialog(),
-                    ),
-                  ),
-                const SizedBox(height: 24),
-
-                // Goals Section
-                const Text(
-                  'Goals',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _goalsController,
-                  textCapitalization: TextCapitalization.sentences,
-                  enabled: _isEditing,
-                  maxLines: 4,
-                  decoration: InputDecoration(
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    hintText: 'Enter your training goals...',
-                  ),
-                  onChanged: (value) {
-                    setState(() {
-                      _goalError = ValidationService.validateContent(value);
-                    });
-                  }
-                ),
-                const SizedBox(height: 24),
-
-                // Competition Stats
-                const Text(
-                  'Competition Stats',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-                const SizedBox(height: 12),
-                if (_userData.competitionStats.isEmpty)
-                  const Text('No competition records yet')
-                else
-                  Column(
-                    children: _userData.competitionStats
-                        .asMap()
-                        .entries
-                        .map((entry) {
-                      int index = entry.key;
-                      CompetitionStats stats = entry.value;
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade300),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      stats.format,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                    Text(
-                                      stats.rank,
-                                      style: const TextStyle(fontSize: 12),
-                                    ),
-                                  ],
-                                ),
-                                if (_isEditing)
-                                  IconButton(
-                                    icon: const Icon(Icons.delete, size: 18),
-                                    onPressed: () {
-                                      setState(() {
-                                        _userData.competitionStats.removeAt(index);
-                                      });
-                                    },
-                                  ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceAround,
-                              children: [
-                                Column(
-                                  children: [
-                                    const Text('Wins',
-                                        style: TextStyle(fontSize: 12)),
-                                    Text(
-                                      '${stats.totalWins}',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                Column(
-                                  children: [
-                                    const Text('Losses',
-                                        style: TextStyle(fontSize: 12)),
-                                    Text(
-                                      '${stats.totalLosses}',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                Column(
-                                  children: [
-                                    const Text('Win Rate',
-                                        style: TextStyle(fontSize: 12)),
-                                    Text(
-                                      stats.totalWins + stats.totalLosses == 0
-                                          ? '0%'
-                                          : '${((stats.totalWins / (stats.totalWins + stats.totalLosses)) * 100).toStringAsFixed(1)}%',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'By: Sub ${stats.submissionWins}W/${stats.submissionLosses}L | Pts ${stats.pointWins}W/${stats.pointLosses}L | Ref ${stats.refDecisionWins}W/${stats.refDecisionLosses}L',
-                              style: const TextStyle(fontSize: 11),
-                            ),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                if (_isEditing)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 12),
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.add),
-                      label: const Text('Add Competition Record'),
-                      onPressed: () => _showAddCompetitionStatsDialog(),
-                    ),
-                  ),
-                if (_isEditing) ...[
-                  const SizedBox(height: 24),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: (_isSaving || _nameError != null || _goalError != null) ? null : _saveProfile,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            foregroundColor: Colors.white,
-                          ),
-                          child: _isSaving
-                              ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor:
-                              AlwaysStoppedAnimation<Color>(Colors.white),
-                            ),
-                          )
-                              : const Text(
-                            'Save',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () =>
-                              setState(() => _isEditing = false),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.grey.shade700,
-                            foregroundColor: Colors.white,
-                          ),
-                          child: const Text('Cancel'),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-                // Privacy Policy
-                const SizedBox(height: 32),
-                Center(
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const PrivacyPolicyScreen(isFirstLogin: false,),
-                      ),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.grey.shade700,
-                      foregroundColor: Colors.white,
-                    ),
-                    child: const Text('View Privacy Policy'),
-                  ),
-                ),
-                // Delete Account Button
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => _showDeleteAccountDialog(),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red.shade700,
-                      foregroundColor: Colors.white,
-                    ),
-                    child: const Text('Delete Account'),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      onPopInvokedWithResult: (didPop, result) async {
-        if (didPop) return;
-
-        bool hasChanges = _nameController.text != _userData.name ||
-            _goalsController.text != _userData.goals;
-
-        if (!hasChanges) {
-          if (mounted) Navigator.pop(context);
-          return;
-        }
-
-        bool? shouldExit = await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Unsaved Changes'),
-            content: const Text(
-              'It seems like your profile info has changed. Would you like to save before exiting this page?',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Discard'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('Save'),
-              ),
-            ],
-          ),
-        );
-
-        if (shouldExit == true) {
-          await _saveProfile();
-          if (mounted) Navigator.pop(context);
-        }
-      },
-    );
-  }
-
-  void _showAddBeltRankDialog() {
-    String? selectedRank;
-    DateTime selectedDate = DateTime.now();
-
-    final belts = [
-      'White',
-      'Blue',
-      'Purple',
-      'Brown',
-      'Black',
-      'Coral Belt',
-      'Red-Coral Belt',
-      'Red Belt'
-    ];
+  // ============ Edit Email Dialog ============
+  void _showEditEmailDialog() {
+    final controller = TextEditingController(text: _userData.email);
+    String? error;
 
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text('Add Belt Rank'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              DropdownButtonFormField<String>(
-                value: selectedRank,
-                decoration: const InputDecoration(labelText: 'Belt Rank'),
-                items: belts
-                    .map((b) => DropdownMenuItem(value: b, child: Text(b)))
-                    .toList(),
-                onChanged: (val) => setState(() => selectedRank = val),
-              ),
-              const SizedBox(height: 16),
-              ListTile(
-                title: const Text('Promotion Date'),
-                subtitle: Text(DateFormat('MMM d, yyyy').format(selectedDate)),
-                onTap: () async {
-                  final date = await showDatePicker(
-                    context: context,
-                    initialDate: selectedDate,
-                    firstDate: DateTime(2000),
-                    lastDate: DateTime.now(),
-                  );
-                  if (date != null) {
-                    setState(() => selectedDate = date);
-                  }
-                },
-              ),
-            ],
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Edit Email'),
+          content: TextField(
+            controller: controller,
+            decoration: InputDecoration(
+              hintText: 'Enter your email',
+              errorText: error,
+              border: OutlineInputBorder(),
+            ),
+            onChanged: (value) {
+              setDialogState(() {
+                error = null;
+              });
+            },
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
               child: const Text('Cancel'),
             ),
-            TextButton(
-              onPressed: selectedRank == null
-                  ? null
-                  : () async {
-                this.setState(() {
-                  _userData.beltRankHistory.add(
-                    BeltRank(
-                      rank: selectedRank!,
-                      promotionDate: selectedDate,
-                    ),
-                  );
-                });
-                Navigator.pop(context);
-
-                String? error = await _authService.updateUserProfile(
-                  uid: _currentUser.uid,
-                  name: _userData.name,
-                  goals: _userData.goals,
-                  beltRankHistory: _userData.beltRankHistory,
-                  competitionStats: _userData.competitionStats,
-                  photoUrl: _userData.photoUrl,
-                  avatarColor: _userData.avatarColor,
-                  currentBelt: _userData.currentBelt,
-                );
-
-                if (error == null) {
-                  await _loadUserData();
-                }
-              },
-              child: const Text('Add'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showAddCompetitionStatsDialog() {
-    String? selectedFormat = 'Gi';
-    String? selectedRank;
-    int submissionWins = 0;
-    int submissionLosses = 0;
-    int pointWins = 0;
-    int pointLosses = 0;
-    int refWins = 0;
-    int refLosses = 0;
-    int draws = 0;
-
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text('Add Competition Record'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildDateField('Competition Date'),
-                _buildTextField('Competition Name'),
-                DropdownButtonFormField<String>(
-                  value: selectedFormat,
-                  decoration: const InputDecoration(labelText: 'Format'),
-                  items: ['Gi', 'No Gi']
-                      .map((f) => DropdownMenuItem(value: f, child: Text(f)))
-                      .toList(),
-                  onChanged: (val) =>
-                      setState(() => selectedFormat = val ?? 'Gi'),
-                ),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  value: selectedRank,
-                  decoration: const InputDecoration(labelText: 'Rank'),
-                  items: (selectedFormat == 'Gi'
-                      ? [
-                    'White',
-                    'Blue',
-                    'Purple',
-                    'Brown',
-                    'Black'
-                  ]
-                      : ['Beginner', 'Intermediate', 'Advanced'])
-                      .map((r) => DropdownMenuItem(value: r, child: Text(r)))
-                      .toList(),
-                  onChanged: (val) => setState(() => selectedRank = val),
-                ),
-                const SizedBox(height: 16),
-                const Text('Wins by Type',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-                _buildNumberField('Submission Wins', submissionWins,
-                        (val) => setState(() => submissionWins = val)),
-                _buildNumberField('Point Wins', pointWins,
-                        (val) => setState(() => pointWins = val)),
-                _buildNumberField('Ref Decision Wins', refWins,
-                        (val) => setState(() => refWins = val)),
-                const SizedBox(height: 16),
-                const Text('Losses by Type',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-                _buildNumberField('Submission Losses', submissionLosses,
-                        (val) => setState(() => submissionLosses = val)),
-                _buildNumberField('Point Losses', pointLosses,
-                        (val) => setState(() => pointLosses = val)),
-                _buildNumberField('Ref Decision Losses', refLosses,
-                        (val) => setState(() => refLosses = val)),
-                _buildNumberField('Draws', draws, (val) => setState(() => draws = val),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: selectedRank == null
-                  ? null
-                  : () {
-                this.setState(() {
-                  _userData.competitionStats.add(
-                    CompetitionStats(
-                      compDate: _selectedDate,
-                      compName: _competitionController.text,
-                      format: selectedFormat!,
-                      rank: selectedRank!,
-                      submissionWins: submissionWins,
-                      submissionLosses: submissionLosses,
-                      pointWins: pointWins,
-                      pointLosses: pointLosses,
-                      refDecisionWins: refWins,
-                      refDecisionLosses: refLosses,
-                      draws: draws,
-                    ),
-                  );
-                });
-                Navigator.pop(context);
-              },
-              child: const Text('Add'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showAvatarOptions() {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.image),
-              title: const Text('Upload Photo'),
-              onTap: () {
-                Navigator.pop(context);
-                _pickAvatarPhoto();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.palette),
-              title: const Text('Change Color'),
-              onTap: () {
-                Navigator.pop(context);
-                _showColorPicker();
-              },
-            ),
-            if (_userData.photoUrl != null)
-              ListTile(
-                leading: const Icon(Icons.delete),
-                title: const Text('Remove Photo'),
-                onTap: () {
-                  Navigator.pop(context);
-                  setState(() {
-                    _userData = UserModel(
-                      uid: _userData.uid,
-                      email: _userData.email,
-                      name: _userData.name,
-                      role: _userData.role,
-                      createdAt: _userData.createdAt,
-                      beltRankHistory: _userData.beltRankHistory,
-                      goals: _userData.goals,
-                      competitionStats: _userData.competitionStats,
-                      photoUrl: null,
-                      avatarColor: _userData.avatarColor,
-                      currentBelt: _userData.currentBelt,
-                    );
+            ElevatedButton(
+              onPressed: () async {
+                if (controller.text.isEmpty) {
+                  setDialogState(() {
+                    error = 'Email cannot be empty';
                   });
-                },
-              ),
+                  return;
+                }
+
+                Navigator.pop(context);
+                await _saveEmail(controller.text);
+              },
+              child: const Text('Save'),
+            ),
           ],
         ),
       ),
     );
   }
 
-  void _showColorPicker() {
-    final colors = [
-      '#2196F3', // Blue
-      '#F44336', // Red
-      '#4CAF50', // Green
-      '#FF9800', // Orange
-      '#9C27B0', // Purple
-      '#00BCD4', // Cyan
-      '#FFC107', // Amber
-      '#E91E63', // Pink
-    ];
+  Future<void> _saveEmail(String newEmail) async {
+    setState(() => _isLoading = true);
+
+    String? currentBelt;
+    if (_userData.beltRankHistory.isNotEmpty) {
+      List<BeltRank> sorted = List.from(_userData.beltRankHistory);
+      sorted.sort((a, b) => b.promotionDate.compareTo(a.promotionDate));
+      currentBelt = sorted.first.rank;
+    }
+
+    String? error = await _authService.updateUserProfile(
+      uid: _currentUser.uid,
+      name: _userData.name,
+      goals: _userData.goals,
+      beltRankHistory: _userData.beltRankHistory,
+      competitionStats: _userData.competitionStats,
+      photoUrl: _userData.photoUrl,
+      avatarColor: _userData.avatarColor,
+      currentBelt: currentBelt,
+    );
+
+    setState(() => _isLoading = false);
+
+    if (error == null) {
+      // Update Firebase Auth email
+      try {
+        await _currentUser.verifyBeforeUpdateEmail(newEmail);
+        await _loadUserData();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Email updated! Check for verification link.')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error updating email: $e')),
+          );
+        }
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $error')),
+        );
+      }
+    }
+  }
+
+  // ============ Edit Goals Dialog ============
+  void _showEditGoalsDialog() {
+    final controller = TextEditingController(text: _userData.goals);
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Choose Avatar Color'),
-        content: GridView.count(
-          crossAxisCount: 4,
-          shrinkWrap: true,
-          children: colors.map((color) {
-            return GestureDetector(
-              onTap: () {
-                setState(() {
-                  _userData = UserModel(
-                    uid: _userData.uid,
-                    email: _userData.email,
-                    name: _userData.name,
-                    role: _userData.role,
-                    createdAt: _userData.createdAt,
-                    beltRankHistory: _userData.beltRankHistory,
-                    goals: _userData.goals,
-                    competitionStats: _userData.competitionStats,
-                    photoUrl: _userData.photoUrl,
-                    avatarColor: color,
-                    currentBelt: _userData.currentBelt,
-                  );
-                });
-                Navigator.pop(context);
-              },
-              child: Container(
-                margin: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Color(int.parse(color.replaceFirst('#', '0xff'))),
-                  shape: BoxShape.circle,
-                  border: _userData.avatarColor == color
-                      ? Border.all(color: Colors.white, width: 3)
-                      : null,
+        title: const Text('Edit Goals'),
+        content: TextField(
+          controller: controller,
+          maxLines: 4,
+          decoration: InputDecoration(
+            hintText: 'Enter your goals',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _saveGoals(controller.text);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _saveGoals(String newGoals) async {
+    setState(() => _isLoading = true);
+
+    String? currentBelt;
+    if (_userData.beltRankHistory.isNotEmpty) {
+      List<BeltRank> sorted = List.from(_userData.beltRankHistory);
+      sorted.sort((a, b) => b.promotionDate.compareTo(a.promotionDate));
+      currentBelt = sorted.first.rank;
+    }
+
+    String? error = await _authService.updateUserProfile(
+      uid: _currentUser.uid,
+      name: _userData.name,
+      goals: ValidationService.sanitizeContent(newGoals),
+      beltRankHistory: _userData.beltRankHistory,
+      competitionStats: _userData.competitionStats,
+      photoUrl: _userData.photoUrl,
+      avatarColor: _userData.avatarColor,
+      currentBelt: currentBelt,
+    );
+
+    setState(() => _isLoading = false);
+
+    if (error == null) {
+      await _loadUserData();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Goals updated!')),
+        );
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $error')),
+        );
+      }
+    }
+  }
+
+  // ============ Edit Belt Rank Dialog ============
+  void _showEditBeltDialog(int beltIndex) {
+    if (beltIndex < 0 || beltIndex >= _userData.beltRankHistory.length) {
+      return;
+    }
+
+    final belt = _userData.beltRankHistory[beltIndex];
+    final rankController = TextEditingController(text: belt.rank);
+    DateTime selectedDate = belt.promotionDate;
+    final notesController = TextEditingController(text: belt.notes ?? '');
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Edit Belt Rank'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Belt Level Dropdown
+                DropdownButtonFormField<String>(
+                  value: rankController.text,
+                  items: ['White', 'Blue', 'Purple', 'Brown', 'Black']
+                      .map((belt) => DropdownMenuItem(
+                    value: belt,
+                    child: Text(belt),
+                  ))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      rankController.text = value;
+                    }
+                  },
+                  decoration: const InputDecoration(
+                    labelText: 'Belt Level',
+                    border: OutlineInputBorder(),
+                  ),
                 ),
-              ),
-            );
-          }).toList(),
+                const SizedBox(height: 16),
+                // Promotion Date Picker
+                ListTile(
+                  title: const Text('Promotion Date'),
+                  subtitle: Text(
+                    DateFormat('MMM d, yyyy').format(selectedDate),
+                  ),
+                  trailing: const Icon(Icons.calendar_today),
+                  onTap: () async {
+                    final pickedDate = await showDatePicker(
+                      context: context,
+                      initialDate: selectedDate,
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime.now(),
+                    );
+                    if (pickedDate != null) {
+                      setDialogState(() {
+                        selectedDate = pickedDate;
+                      });
+                    }
+                  },
+                ),
+                const SizedBox(height: 16),
+                // Notes Text Field
+                TextField(
+                  controller: notesController,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: 'Notes (optional)',
+                    border: OutlineInputBorder(),
+                    hintText: 'Add any notes about this promotion...',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(context);
+                await _saveBeltRank(
+                  beltIndex,
+                  rankController.text,
+                  selectedDate,
+                  notesController.text,
+                );
+              },
+              child: const Text('Save'),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildDateField(String label) {
-    return Row(
-      children: [
-        Expanded(
-          flex: 1,
-          child: Text(label),
-        ),
-        Expanded(
-          flex: 2,
-          child: GestureDetector(
-            onTap: _selectDate,
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '${_selectedDate.month}/${_selectedDate.day}/${_selectedDate.year}',
-                    style: TextStyle(fontSize: 16),
+  Future<void> _saveBeltRank(
+      int beltIndex,
+      String newRank,
+      DateTime newPromotionDate,
+      String notes,
+      ) async {
+    setState(() => _isLoading = true);
+
+    String? error = await _authService.updateBeltRank(
+      _currentUser.uid,
+      beltIndex,
+      newRank,
+      newPromotionDate,
+      notes,
+    );
+
+    setState(() => _isLoading = false);
+
+    if (error == null) {
+      await _loadUserData();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Belt rank updated!')),
+        );
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error)),
+        );
+      }
+    }
+  }
+
+  // ============ Edit Competition Stats Dialog ============
+  void _showEditCompStatsDialog(int statsIndex) {
+    if (statsIndex < 0 || statsIndex >= _userData.competitionStats.length) {
+      return;
+    }
+
+    final stat = _userData.competitionStats[statsIndex];
+    final compNameController = TextEditingController(text: stat.compName);
+    final formatController = TextEditingController(text: stat.format);
+    int submissionWins = stat.submissionWins;
+    int submissionLosses = stat.submissionLosses;
+    int pointWins = stat.pointWins;
+    int pointLosses = stat.pointLosses;
+    int refDecisionWins = stat.refDecisionWins;
+    int refDecisionLosses = stat.refDecisionLosses;
+    int draws = stat.draws;
+    DateTime compDate = stat.compDate;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Edit Competition Stats'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: compNameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Competition Name',
+                    border: OutlineInputBorder(),
                   ),
-                  Icon(Icons.calendar_today),
-                ],
-              )
-            )
-          )
-        )
-      ],
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: formatController,
+                  decoration: const InputDecoration(
+                    labelText: 'Format (Gi/No-Gi)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _buildNumberField('Submission Wins', submissionWins, (val) {
+                  setDialogState(() => submissionWins = val);
+                }),
+                _buildNumberField('Submission Losses', submissionLosses, (val) {
+                  setDialogState(() => submissionLosses = val);
+                }),
+                _buildNumberField('Point Wins', pointWins, (val) {
+                  setDialogState(() => pointWins = val);
+                }),
+                _buildNumberField('Point Losses', pointLosses, (val) {
+                  setDialogState(() => pointLosses = val);
+                }),
+                _buildNumberField('Ref Decision Wins', refDecisionWins, (val) {
+                  setDialogState(() => refDecisionWins = val);
+                }),
+                _buildNumberField('Ref Decision Losses', refDecisionLosses,
+                        (val) {
+                      setDialogState(() => refDecisionLosses = val);
+                    }),
+                _buildNumberField('Draws', draws, (val) {
+                  setDialogState(() => draws = val);
+                }),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(context);
+                await _saveCompStats(
+                  statsIndex,
+                  compDate,
+                  compNameController.text,
+                  formatController.text,
+                  submissionWins,
+                  submissionLosses,
+                  pointWins,
+                  pointLosses,
+                  refDecisionWins,
+                  refDecisionLosses,
+                  draws,
+                  stat.rank,
+                );
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _buildTextField(String label) {
-    return Row(
-      children: [
-        Expanded(
-          flex: 1,
-          child: Text(label),
+  Future<void> _saveCompStats(
+      int statsIndex,
+      DateTime compDate,
+      String compName,
+      String format,
+      int submissionWins,
+      int submissionLosses,
+      int pointWins,
+      int pointLosses,
+      int refDecisionWins,
+      int refDecisionLosses,
+      int draws,
+      String rank,
+      ) async {
+    setState(() => _isLoading = true);
+
+    // Create updated stats list
+    List<CompetitionStats> updatedStats = List.from(_userData.competitionStats);
+    updatedStats[statsIndex] = CompetitionStats(
+      compDate: compDate,
+      compName: compName,
+      format: format,
+      submissionWins: submissionWins,
+      submissionLosses: submissionLosses,
+      pointWins: pointWins,
+      pointLosses: pointLosses,
+      refDecisionWins: refDecisionWins,
+      refDecisionLosses: refDecisionLosses,
+      draws: draws,
+      rank: rank,
+    );
+
+    String? currentBelt;
+    if (_userData.beltRankHistory.isNotEmpty) {
+      List<BeltRank> sorted = List.from(_userData.beltRankHistory);
+      sorted.sort((a, b) => b.promotionDate.compareTo(a.promotionDate));
+      currentBelt = sorted.first.rank;
+    }
+
+    String? error = await _authService.updateUserProfile(
+      uid: _currentUser.uid,
+      name: _userData.name,
+      goals: _userData.goals,
+      beltRankHistory: _userData.beltRankHistory,
+      competitionStats: updatedStats,
+      photoUrl: _userData.photoUrl,
+      avatarColor: _userData.avatarColor,
+      currentBelt: currentBelt,
+    );
+
+    setState(() => _isLoading = false);
+
+    if (error == null) {
+      await _loadUserData();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Competition stats updated!')),
+        );
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $error')),
+        );
+      }
+    }
+  }
+
+  // ============ Build Widgets ============
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: true,
+      child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: AppColors.dark,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => Navigator.pop(context),
+          ),
+          title: const Text('Profile'),
         ),
-        Expanded(
-          flex: 2,
-          child: TextField(
-            controller: _competitionController,
-            decoration: InputDecoration(
-              hintText: 'Enter $label',
-              border: OutlineInputBorder(),
-              contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+        body: _userData.uid.isEmpty // Add this check
+            ? const Center(child: CircularProgressIndicator())
+            : SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Error Message
+              if (_errorMessage != null)
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    _errorMessage!,
+                    style: TextStyle(color: Colors.red.shade800),
+                  ),
+                ),
+              const SizedBox(height: 20),
+
+              // Profile Photo Section
+              Center(
+                child: GestureDetector(
+                  onTap: _pickAvatarPhoto,
+                  child: CircleAvatar(
+                    radius: 60,
+                    backgroundColor: Color(int.parse(
+                      _userData.avatarColor!.replaceFirst('#', '0xff'),
+                    )),
+                    backgroundImage: _userData.photoUrl != null
+                        ? NetworkImage(_userData.photoUrl!)
+                        : null,
+                    child: _userData.photoUrl == null
+                        ? const Icon(Icons.camera_alt,
+                        size: 40, color: Colors.white)
+                        : null,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Center(
+                child: GestureDetector(
+                  onTap: _showAvatarColorPicker,
+                  child: const Text(
+                    'Tap avatar to change photo, tap text to change avatar color',
+                    textAlign: TextAlign.center,
+                    style:
+                    TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Name Section
+              _buildEditableField(
+                label: 'Name',
+                value: _userData.name,
+                onTap: _showEditNameDialog,
+              ),
+              const SizedBox(height: 16),
+
+              // Email Section (editable)
+              _buildEditableField(
+                label: 'Email',
+                value: _userData.email,
+                onTap: _showEditEmailDialog,
+              ),
+              const SizedBox(height: 16),
+
+              // Goals Section
+              _buildEditableField(
+                label: 'Goals',
+                value: _userData.goals.isEmpty ? '(No goals set)' : _userData.goals,
+                onTap: _showEditGoalsDialog,
+                isMultiline: true,
+              ),
+              const SizedBox(height: 24),
+
+              // Belt Rank History Section
+              const Text(
+                'Belt Rank History',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              if (_userData.beltRankHistory.isEmpty)
+                const Text('No belt ranks recorded')
+              else
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: _userData.beltRankHistory.length,
+                  itemBuilder: (context, index) {
+                    final belt = _userData.beltRankHistory[index];
+                    return GestureDetector(
+                      onTap: () => _showEditBeltDialog(index),
+                      child: Card(
+                        margin: const EdgeInsets.symmetric(vertical: 8),
+                        child: ListTile(
+                          title: Text(
+                            belt.rank,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          subtitle: Text(
+                            'Promoted: ${DateFormat('MMM d, yyyy').format(belt.promotionDate)}',
+                          ),
+                          trailing: const Icon(Icons.edit),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              const SizedBox(height: 24),
+
+              // Competition Stats Section
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Competition Stats',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.add),
+                    onPressed: _showAddCompStatsDialog,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              if (_userData.competitionStats.isEmpty)
+                const Text('No competition stats recorded')
+              else
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: _userData.competitionStats.length,
+                  itemBuilder: (context, index) {
+                    final stat = _userData.competitionStats[index];
+                    return GestureDetector(
+                      onTap: () => _showEditCompStatsDialog(index),
+                      child: Card(
+                        margin: const EdgeInsets.symmetric(vertical: 8),
+                        child: ListTile(
+                          title: Text(
+                            stat.compName,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          subtitle: Column(
+                            crossAxisAlignment:
+                            CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${stat.format} • ${stat.rank}',
+                              ),
+                              Text(
+                                'W: ${stat.submissionWins + stat.pointWins + stat.refDecisionWins} | L: ${stat.submissionLosses + stat.pointLosses + stat.refDecisionLosses} | D: ${stat.draws}',
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                            ],
+                          ),
+                          trailing: const Icon(Icons.edit),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              const SizedBox(height: 24),
+
+              // Privacy Policy
+              TextButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                      const PrivacyPolicyScreen(),
+                    ),
+                  );
+                },
+                child: const Text('Privacy Policy'),
+              ),
+              const SizedBox(height: 8),
+
+              // Delete Account
+              TextButton(
+                onPressed: _showDeleteAccountDialog,
+                child: const Text(
+                  'Delete Account',
+                  style: TextStyle(color: Colors.red),
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEditableField({
+    required String label,
+    required String value,
+    required VoidCallback onTap,
+    bool isMultiline = false,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            color: Colors.grey,
+          ),
+        ),
+        const SizedBox(height: 8),
+        GestureDetector(
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: value.isEmpty || value == '(No goals set)'
+                          ? Colors.grey
+                          : Colors.white,
+                    ),
+                    maxLines: isMultiline ? 3 : 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Icon(Icons.edit, size: 18, color: Colors.white),
+              ],
             ),
           ),
         ),
@@ -1101,6 +986,285 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       ],
     );
+  }
+
+  void _showAvatarColorPicker() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Choose Avatar Color'),
+        content: SingleChildScrollView(
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              '#2196F3',
+              '#FF5722',
+              '#4CAF50',
+              '#9C27B0',
+              '#FF9800',
+              '#00BCD4',
+              '#E91E63',
+              '#795548',
+            ]
+                .map(
+                  (color) => GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _userData = UserModel(
+                      uid: _userData.uid,
+                      email: _userData.email,
+                      name: _userData.name,
+                      role: _userData.role,
+                      createdAt: _userData.createdAt,
+                      beltRankHistory: _userData.beltRankHistory,
+                      goals: _userData.goals,
+                      competitionStats: _userData.competitionStats,
+                      photoUrl: _userData.photoUrl,
+                      avatarColor: color,
+                      currentBelt: _userData.currentBelt,
+                    );
+                  });
+                  Navigator.pop(context);
+                  _saveAvatarColor(color);
+                },
+                child: Container(
+                  margin: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Color(int.parse(color.replaceFirst('#', '0xff'))),
+                    shape: BoxShape.circle,
+                    border: _userData.avatarColor == color
+                        ? Border.all(color: Colors.white, width: 3)
+                        : null,
+                  ),
+                  width: 50,
+                  height: 50,
+                ),
+              ),
+            )
+                .toList(),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showAddCompStatsDialog() {
+    final compNameController = TextEditingController();
+    final formatController = TextEditingController();
+    DateTime selectedDate = DateTime.now();
+    int submissionWins = 0;
+    int submissionLosses = 0;
+    int pointWins = 0;
+    int pointLosses = 0;
+    int refDecisionWins = 0;
+    int refDecisionLosses = 0;
+    int draws = 0;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Add Competition'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: compNameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Competition Name',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: formatController,
+                  decoration: const InputDecoration(
+                    labelText: 'Format (Gi/No-Gi)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Date Picker
+                ListTile(
+                  title: const Text('Competition Date'),
+                  subtitle: Text(
+                    DateFormat('MMM d, yyyy').format(selectedDate),
+                  ),
+                  trailing: const Icon(Icons.calendar_today),
+                  onTap: () async {
+                    final pickedDate = await showDatePicker(
+                      context: context,
+                      initialDate: selectedDate,
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime.now(),
+                    );
+                    if (pickedDate != null) {
+                      setDialogState(() {
+                        selectedDate = pickedDate;
+                      });
+                    }
+                  },
+                ),
+                const SizedBox(height: 16),
+                _buildNumberField('Submission Wins', submissionWins, (val) {
+                  setDialogState(() => submissionWins = val);
+                }),
+                _buildNumberField('Submission Losses', submissionLosses, (val) {
+                  setDialogState(() => submissionLosses = val);
+                }),
+                _buildNumberField('Point Wins', pointWins, (val) {
+                  setDialogState(() => pointWins = val);
+                }),
+                _buildNumberField('Point Losses', pointLosses, (val) {
+                  setDialogState(() => pointLosses = val);
+                }),
+                _buildNumberField('Ref Decision Wins', refDecisionWins, (val) {
+                  setDialogState(() => refDecisionWins = val);
+                }),
+                _buildNumberField('Ref Decision Losses', refDecisionLosses, (val) {
+                  setDialogState(() => refDecisionLosses = val);
+                }),
+                _buildNumberField('Draws', draws, (val) {
+                  setDialogState(() => draws = val);
+                }),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (compNameController.text.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Competition name required')),
+                  );
+                  return;
+                }
+                Navigator.pop(context);
+                await _addCompStats(
+                  compNameController.text,
+                  formatController.text,
+                  selectedDate,
+                  submissionWins,
+                  submissionLosses,
+                  pointWins,
+                  pointLosses,
+                  refDecisionWins,
+                  refDecisionLosses,
+                  draws,
+                );
+              },
+              child: const Text('Add'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _addCompStats(
+      String compName,
+      String format,
+      DateTime compDate,
+      int submissionWins,
+      int submissionLosses,
+      int pointWins,
+      int pointLosses,
+      int refDecisionWins,
+      int refDecisionLosses,
+      int draws,
+      ) async {
+    setState(() => _isLoading = true);
+
+    // Create new stats list with the new entry
+    List<CompetitionStats> updatedStats = List.from(_userData.competitionStats);
+
+    // Get current belt rank
+    String currentRank = _userData.currentBelt ?? 'White';
+
+    updatedStats.add(CompetitionStats(
+      compName: compName,
+      format: format,
+      compDate: compDate,
+      submissionWins: submissionWins,
+      submissionLosses: submissionLosses,
+      pointWins: pointWins,
+      pointLosses: pointLosses,
+      refDecisionWins: refDecisionWins,
+      refDecisionLosses: refDecisionLosses,
+      draws: draws,
+      rank: currentRank,
+    ));
+
+    String? currentBelt;
+    if (_userData.beltRankHistory.isNotEmpty) {
+      List<BeltRank> sorted = List.from(_userData.beltRankHistory);
+      sorted.sort((a, b) => b.promotionDate.compareTo(a.promotionDate));
+      currentBelt = sorted.first.rank;
+    }
+
+    String? error = await _authService.updateUserProfile(
+      uid: _currentUser.uid,
+      name: _userData.name,
+      goals: _userData.goals,
+      beltRankHistory: _userData.beltRankHistory,
+      competitionStats: updatedStats,
+      photoUrl: _userData.photoUrl,
+      avatarColor: _userData.avatarColor,
+      currentBelt: currentBelt,
+    );
+
+    setState(() => _isLoading = false);
+
+    if (error == null) {
+      await _loadUserData();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Competition added!')),
+        );
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $error')),
+        );
+      }
+    }
+  }
+
+  Future<void> _saveAvatarColor(String color) async {
+    setState(() => _isLoading = true);
+
+    String? currentBelt;
+    if (_userData.beltRankHistory.isNotEmpty) {
+      List<BeltRank> sorted = List.from(_userData.beltRankHistory);
+      sorted.sort((a, b) => b.promotionDate.compareTo(a.promotionDate));
+      currentBelt = sorted.first.rank;
+    }
+
+    String? error = await _authService.updateUserProfile(
+      uid: _currentUser.uid,
+      name: _userData.name,
+      goals: _userData.goals,
+      beltRankHistory: _userData.beltRankHistory,
+      competitionStats: _userData.competitionStats,
+      photoUrl: _userData.photoUrl,
+      avatarColor: color,
+      currentBelt: currentBelt,
+    );
+
+    setState(() => _isLoading = false);
+
+    if (error != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $error')),
+      );
+    }
   }
 
   void _showDeleteAccountDialog() {
@@ -1130,48 +1294,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Future<void> _saveAndExit() async {
-    // Check if profile data has changed
-    bool hasChanges = _nameController.text != _userData.name ||
-        _goalsController.text != _userData.goals;
-
-    if (!hasChanges) {
-      // No changes, just exit
-      Navigator.pop(context);
-      return;
-    }
-
-    // Show dialog if there are changes
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Unsaved Changes'),
-        content: const Text(
-          'It seems like your profile info has changed. Would you like to save before exiting this page?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context); // Close dialog
-              Navigator.pop(context); // Exit profile screen
-            },
-            child: const Text('Discard'),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(context); // Close dialog
-              await _saveProfile();
-              if (mounted) {
-                Navigator.pop(context); // Exit after saving
-              }
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<void> _deleteAccount() async {
     setState(() => _isLoading = true);
 
@@ -1184,7 +1306,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Account deleted successfully')),
         );
-        // Go back to login
         Navigator.of(context).pushNamedAndRemoveUntil(
           '/login',
               (route) => false,
@@ -1196,20 +1317,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           SnackBar(content: Text('Error: $error')),
         );
       }
-    }
-  }
-
-  Future<void> _selectDate() async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-    );
-    if (picked != null && picked != _selectedDate) {
-      setState(() {
-        _selectedDate = picked;
-      });
     }
   }
 }

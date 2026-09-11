@@ -224,4 +224,38 @@ class AuthService {
       return e.toString();
     }
   }
+
+  Future<String?> updateBeltRank(
+      String uid,
+      int beltIndex,
+      String newRank,
+      DateTime newPromotionDate,
+      String notes,
+      ) async {
+    try {
+      // Fetch current belt history
+      final userDoc = await _firestore.collection('users').doc(uid).get();
+      final List<dynamic> beltRankHistory = userDoc['beltRankHistory'] ?? [];
+
+      // Update the specific belt entry
+      if (beltIndex >= 0 && beltIndex < beltRankHistory.length) {
+        beltRankHistory[beltIndex] = {
+          'rank': newRank,
+          'promotionDate': newPromotionDate,
+          'notes': notes,
+        };
+
+        // Write back to Firestore
+        await _firestore.collection('users').doc(uid).update({
+          'beltRankHistory': beltRankHistory,
+        });
+
+        return null; // No error
+      } else {
+        return 'Invalid belt index';
+      }
+    } catch (e) {
+      return 'Error updating belt rank: $e';
+    }
+  }
 }
