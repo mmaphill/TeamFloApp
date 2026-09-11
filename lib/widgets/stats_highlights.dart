@@ -34,7 +34,7 @@ class _StatsHighlightsWidgetState extends State<StatsHighlightsWidget> {
     final techniques = analyticsService.aggregateTechniques(journalEntries);
     final competitionStats = analyticsService.parseCompetitionStats(userProfile);
     final overallWinRate = analyticsService.calculateOverallWinRate(competitionStats);
-    final totalCompetitions = analyticsService.getTotalCompetitions(competitionStats);
+    final totalMatches = analyticsService.getTotalMatches(competitionStats);
 
     return {
       'classesThisMonth': classesThisMonth,
@@ -45,7 +45,7 @@ class _StatsHighlightsWidgetState extends State<StatsHighlightsWidget> {
       ),
       'techniques': techniques,
       'overallWinRate': overallWinRate,
-      'totalCompetitions': totalCompetitions,
+      'totalMatches': totalMatches,
     };
   }
 
@@ -79,7 +79,7 @@ class _StatsHighlightsWidgetState extends State<StatsHighlightsWidget> {
         final submissions = stats['submissions'] as ({int totalSubmissions, int submissionAttempts, int timesSubmitted});
         final techniques = stats['techniques'] as Map<String, int>;
         final overallWinRate = stats['overallWinRate'] as double;
-        final totalCompetitions = stats['totalCompetitions'] as int;
+        final totalMatches = stats['totalMatches'] as int;
 
         return Padding(
           padding: const EdgeInsets.all(16.0),
@@ -116,13 +116,13 @@ class _StatsHighlightsWidgetState extends State<StatsHighlightsWidget> {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  if (totalCompetitions > 0)
+                  if (totalMatches > 0)
                     Expanded(
                       child: _buildSummaryCard(
                         context,
                         'Win Rate',
                         '${(overallWinRate * 100).toStringAsFixed(0)}%',
-                        '$totalCompetitions comps',
+                        '$totalMatches matches',
                       ),
                     )
                   else

@@ -29,6 +29,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   late UserModel _userData;
   late UserModel _originalUserData;
+  late DateTime _selectedDate;
   bool _isEditing = false;
   bool _isSaving = false;
   bool _isLoading = false;
@@ -41,12 +42,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
   late TextEditingController _goalsController;
   late ImagePicker _picker;
   late StorageService _storageService;
+  late TextEditingController _competitionController;
 
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController();
     _goalsController = TextEditingController();
+    _competitionController = TextEditingController();
+    _selectedDate = DateTime.now();
     _picker = ImagePicker();
     _storageService = StorageService();
     _nameError = null;
@@ -68,6 +72,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void dispose() {
     _nameController.dispose();
     _goalsController.dispose();
+    _competitionController.dispose();
     super.dispose();
   }
 
@@ -817,6 +822,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     int pointLosses = 0;
     int refWins = 0;
     int refLosses = 0;
+    int draws = 0;
 
     showDialog(
       context: context,
@@ -827,6 +833,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                _buildDateField('Competition Date'),
+                _buildTextField('Competition Name'),
                 DropdownButtonFormField<String>(
                   value: selectedFormat,
                   decoration: const InputDecoration(labelText: 'Format'),
@@ -871,6 +879,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         (val) => setState(() => pointLosses = val)),
                 _buildNumberField('Ref Decision Losses', refLosses,
                         (val) => setState(() => refLosses = val)),
+                _buildNumberField('Draws', draws, (val) => setState(() => draws = val),
+                ),
               ],
             ),
           ),
@@ -886,6 +896,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 this.setState(() {
                   _userData.competitionStats.add(
                     CompetitionStats(
+                      compDate: _selectedDate,
+                      compName: _competitionController.text,
                       format: selectedFormat!,
                       rank: selectedRank!,
                       submissionWins: submissionWins,
@@ -894,6 +906,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       pointLosses: pointLosses,
                       refDecisionWins: refWins,
                       refDecisionLosses: refLosses,
+                      draws: draws,
                     ),
                   );
                 });
@@ -1016,6 +1029,62 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  Widget _buildDateField(String label) {
+    return Row(
+      children: [
+        Expanded(
+          flex: 1,
+          child: Text(label),
+        ),
+        Expanded(
+          flex: 2,
+          child: GestureDetector(
+            onTap: _selectDate,
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '${_selectedDate.month}/${_selectedDate.day}/${_selectedDate.year}',
+                    style: TextStyle(fontSize: 16),
+                  ),
+                  Icon(Icons.calendar_today),
+                ],
+              )
+            )
+          )
+        )
+      ],
+    );
+  }
+
+  Widget _buildTextField(String label) {
+    return Row(
+      children: [
+        Expanded(
+          flex: 1,
+          child: Text(label),
+        ),
+        Expanded(
+          flex: 2,
+          child: TextField(
+            controller: _competitionController,
+            decoration: InputDecoration(
+              hintText: 'Enter $label',
+              border: OutlineInputBorder(),
+              contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildNumberField(
       String label, int value, Function(int) onChanged) {
     return Row(
@@ -1127,6 +1196,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
           SnackBar(content: Text('Error: $error')),
         );
       }
+    }
+  }
+
+  Future<void> _selectDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+    if (picked != null && picked != _selectedDate) {
+      setState(() {
+        _selectedDate = picked;
+      });
     }
   }
 }

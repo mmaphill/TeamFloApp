@@ -39,7 +39,7 @@ class _StatsScreenState extends State<StatsScreen> {
 
     final competitionStats = analyticsService.parseCompetitionStats(userProfile);
     final overallWinRate = analyticsService.calculateOverallWinRate(competitionStats);
-    final totalCompetitions = analyticsService.getTotalCompetitions(competitionStats);
+    final totalMatches = analyticsService.getTotalMatches(competitionStats);
     final winBreakdown = analyticsService.getWinBreakdown(competitionStats);
     final lossBreakdown = analyticsService.getLossBreakdown(competitionStats);
     final statsByFormat = analyticsService.getStatsByFormat(competitionStats);
@@ -59,7 +59,7 @@ class _StatsScreenState extends State<StatsScreen> {
       'metrics': metrics,
       'competitionStats': competitionStats,
       'overallWinRate': overallWinRate,
-      'totalCompetitions': totalCompetitions,
+      'totalMatches': totalMatches,
       'winBreakdown': winBreakdown,
       'lossBreakdown': lossBreakdown,
       'statsByFormat': statsByFormat,
@@ -96,7 +96,7 @@ class _StatsScreenState extends State<StatsScreen> {
           final attendanceTrend = stats['attendanceTrend'] as List<dynamic>;
           final metrics = stats['metrics'];
           final overallWinRate = stats['overallWinRate'] as double;
-          final totalCompetitions = stats['totalCompetitions'] as int;
+          final totalMatches = stats['totalMatches'] as int;
           final winBreakdown = stats['winBreakdown'];
           final lossBreakdown = stats['lossBreakdown'];
           final statsByFormat = stats['statsByFormat'] as Map<String, ({int wins, int losses})>;
@@ -128,11 +128,11 @@ class _StatsScreenState extends State<StatsScreen> {
                       '${submissions.submissionAttempts} attempted',
                     ),
                     const SizedBox(height: 12),
-                    if (totalCompetitions > 0)
+                    if (totalMatches > 0)
                       _buildSummaryCard(
                         'Win Rate',
                         '${(overallWinRate * 100).toStringAsFixed(0)}%',
-                        '($totalCompetitions competitions)',
+                        '($totalMatches matches)',
                       ),
                     const SizedBox(height: 32),
 
@@ -165,7 +165,7 @@ class _StatsScreenState extends State<StatsScreen> {
                     const SizedBox(height: 32),
 
                     // Competition Analytics
-                    if (totalCompetitions > 0) ...[
+                    if (totalMatches > 0) ...[
                       Text(
                         'Competition Analytics',
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(

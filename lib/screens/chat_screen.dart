@@ -17,6 +17,7 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final ChatService _chatService = ChatService();
   final User _currentUser = FirebaseAuth.instance.currentUser!;
+  final Map<String, Map<String, dynamic>> _userProfileCache = {};
 
   late UserModel _userData;
   String? _userRole;
@@ -36,6 +37,17 @@ class _ChatScreenState extends State<ChatScreen> {
         _userRole = data['role'];
       });
     }
+  }
+
+  // Fetch user profile with caching
+  Future<Map<String, dynamic>> _getUserProfile(String userId) async {
+    if (_userProfileCache.containsKey(userId)) {
+      return _userProfileCache[userId]!;
+    }
+
+    final profile = await _chatService.getUserProfile(userId);
+    _userProfileCache[userId] = profile;
+    return profile;
   }
 
   @override
@@ -86,41 +98,82 @@ class _ChatScreenState extends State<ChatScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Post Header (Author name + timestamp)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        post.userName,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
+            // Post Header (Author name + avatar + timestamp)
+            FutureBuilder<Map<String, dynamic>>(
+              future: _getUserProfile(post.userId),
+              builder: (context, snapshot) {
+                final profile = snapshot.data ?? {'name': post.userName, 'photoUrl': null};
+
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Avatar + Name + Timestamp
+                    Expanded(
+                      child: Row(
+                        children: [
+                          // Avatar
+                          CircleAvatar(
+                            radius: 24,
+                            backgroundImage: (profile['photoUrl'] != null &&
+                                profile['photoUrl'].isNotEmpty)
+                                ? NetworkImage(profile['photoUrl'])
+                                : null,
+                            backgroundColor: profile['photoUrl'] == null ||
+                                profile['photoUrl'].isEmpty
+                                ? Colors.grey[400]
+                                : null,
+                            child: (profile['photoUrl'] == null ||
+                                profile['photoUrl'].isEmpty)
+                                ? Text(
+                              post.userName.isNotEmpty
+                                  ? post.userName[0].toUpperCase()
+                                  : '?',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            )
+                                : null,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  profile['name'] ?? post.userName,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                Text(
+                                  _formatTime(post.createdAt),
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
-                      Text(
-                        _formatTime(post.createdAt),
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey,
-                        ),
+                    ),
+                    // Delete menu
+                    if (post.userId == _currentUser.uid || _userRole == 'admin')
+                      PopupMenuButton(
+                        itemBuilder: (context) => [
+                          PopupMenuItem(
+                            child: const Text('Delete'),
+                            onTap: () => _deletePost(post.postId),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                ),
-                if (post.userId == _currentUser.uid || _userRole == 'admin')
-                  PopupMenuButton(
-                    itemBuilder: (context) => [
-                      PopupMenuItem(
-                        child: const Text('Delete'),
-                        onTap: () => _deletePost(post.postId),
-                      ),
-                    ],
-                  ),
-              ],
+                  ],
+                );
+              },
             ),
             const SizedBox(height: 12),
 
@@ -212,28 +265,9 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _showLikersPopup(List<String> likedBy, BuildContext context) {
-    final RenderBox renderBox = context.findRenderObject() as RenderBox;
-    final Offset position = renderBox.localToGlobal(Offset.zero);
-
     showDialog(
       context: context,
-      barrierColor: Colors.transparent,
-      builder: (context) => Stack(
-        children: [
-          GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: Container(color: Colors.transparent),
-          ),
-          Positioned(
-            left: position.dx + 50,
-            top: position.dy + 100,
-            child: LikersPopup(
-              likedBy: likedBy,
-              position: position,
-            ),
-          ),
-        ],
-      ),
+      builder: (context) => LikersPopup(likedBy: likedBy),
     );
   }
 

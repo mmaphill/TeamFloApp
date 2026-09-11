@@ -8,13 +8,13 @@ import 'likers_popup.dart';
 class CommentsBottomSheet extends StatefulWidget {
   final String postId;
   final String currentUserId;
-  final PostModel? post;  // ADD THIS
+  final PostModel? post;
 
   const CommentsBottomSheet({
     super.key,
     required this.postId,
     required this.currentUserId,
-    this.post,  // ADD THIS
+    this.post,
   });
 
   @override
@@ -25,6 +25,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
   final ChatService _chatService = ChatService();
   final AuthService _authService = AuthService();
   final _commentController = TextEditingController();
+  final Map<String, Map<String, dynamic>> _userProfileCache = {};
 
   bool _isLoading = false;
   String? _userName;
@@ -52,6 +53,17 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
         _userRole = data['role'];
       });
     }
+  }
+
+  // User profile cache
+  Future<Map<String, dynamic>> _getUserProfile(String userId) async {
+    if (_userProfileCache.containsKey(userId)) {
+      return _userProfileCache[userId]!;
+    }
+
+    final profile = await _chatService.getUserProfile(userId);
+    _userProfileCache[userId] = profile;
+    return profile;
   }
 
   Future<void> _postComment() async {
@@ -193,58 +205,92 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
     bool isLikedByCurrentUser = (comment['likedBy'] as List?)?.contains(widget.currentUserId) ?? false;
     int likeCount = (comment['likedBy'] as List?)?.length ?? 0;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Comment Header
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _getUserProfile(comment['userId']),
+      builder: (context, snapshot) {
+        final profile = snapshot.data ?? {'name': comment['userName'], 'photoUrl': null};
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                comment['userName'],
-                style: const TextStyle(fontWeight: FontWeight.bold),
+              // Comment Header with Avatar
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Row(
+                      children: [
+                        // Avatar
+                        CircleAvatar(
+                          radius: 18,
+                          backgroundImage: (profile['photoUrl'] != null &&
+                              profile['photoUrl'].isNotEmpty)
+                              ? NetworkImage(profile['photoUrl'])
+                              : null,
+                          backgroundColor: profile['photoUrl'] == null ||
+                              profile['photoUrl'].isEmpty
+                              ? Colors.grey[400]
+                              : null,
+                          child: (profile['photoUrl'] == null ||
+                              profile['photoUrl'].isEmpty)
+                              ? Text(
+                            comment['userName'].isNotEmpty
+                                ? comment['userName'][0].toUpperCase()
+                                : '?',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          )
+                              : null,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            profile['name'] ?? comment['userName'],
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (isOwnComment || isAdmin)
+                    IconButton(
+                      icon: const Icon(Icons.delete, size: 18),
+                      onPressed: () async {
+                        final result = await _chatService.deleteComment(
+                          widget.postId,
+                          comment['commentId'],
+                          widget.currentUserId,
+                        );
+
+                        if (result == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Comment deleted')),
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Error: $result')),
+                          );
+                        }
+                      },
+                    ),
+                ],
               ),
-              if (isOwnComment || isAdmin)
-                IconButton(
-                  icon: const Icon(Icons.delete, size: 18),
-                  onPressed: () async {
-                    final result = await _chatService.deleteComment(
-                      widget.postId,
-                      comment['commentId'],
-                      widget.currentUserId,
-                    );
 
-                    if (result == null) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Comment deleted')),
-                      );
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Error: $result')),
-                      );
-                    }
-                  },
-                ),
-            ],
-          ),
+              // Comment Content
+              Padding(
+                padding: const EdgeInsets.only(left: 26), // Align with avatar
+                child: Text(comment['content']),
+              ),
+              const SizedBox(height: 8),
 
-          // Comment Content
-          Text(comment['content']),
-          const SizedBox(height: 8),
-
-          // Like Button
-          Row(
-            children: [
               // Like Button with Long Press
-              GestureDetector(
-                onLongPress: () {
-                  if (likeCount > 0) {
-                    final likedBy = (comment['likedBy'] as List<dynamic>? ?? []).cast<String>();
-                    _showLikersPopup(likedBy, context);
-                  }
-                },
+              Padding(
+                padding: const EdgeInsets.only(left: 26), // Align with avatar
                 child: Row(
                   children: [
                     IconButton(
@@ -270,7 +316,8 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                     GestureDetector(
                       onLongPress: () {
                         if (likeCount > 0) {
-                          _showLikersPopup(comment['likedBy'] ?? [], context);
+                          final likedBy = (comment['likedBy'] as List<dynamic>? ?? []).cast<String>();
+                          _showLikersPopup(likedBy, context);
                         }
                       },
                       child: Text(
@@ -283,29 +330,15 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
               ),
             ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
   void _showLikersPopup(List<String> likedBy, BuildContext context) {
     showDialog(
       context: context,
-      barrierColor: Colors.transparent,
-      builder: (context) => Stack(
-        children: [
-          GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: Container(color: Colors.transparent),
-          ),
-          Center(
-            child: LikersPopup(
-              likedBy: likedBy,
-              position: Offset.zero,
-            ),
-          ),
-        ],
-      ),
+      builder: (context) => LikersPopup(likedBy: likedBy),
     );
   }
 }

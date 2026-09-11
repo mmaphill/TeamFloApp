@@ -38,6 +38,23 @@ class ChatService {
     }
   }
 
+  // Get user profile data (name, photoUrl)
+  Future<Map<String, dynamic>> getUserProfile(String userId) async {
+    try {
+      final docSnapshot = await _firestore.collection('users').doc(userId).get();
+      if (docSnapshot.exists && docSnapshot.data() != null) {
+        return {
+          'name': docSnapshot['name'] ?? 'Unknown User',
+          'photoUrl': docSnapshot['photoUrl'],
+        };
+      }
+      return {'name': 'Unknown User', 'photoUrl': null};
+    } catch (e) {
+      print('Error fetching user profile: $e');
+      return {'name': 'Unknown User', 'photoUrl': null};
+    }
+  }
+
   // Get user name by ID
   Future<String> getUserName(String userId) async {
     try {

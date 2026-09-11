@@ -193,7 +193,7 @@ class AnalyticsService {
   }
 
   // Get total competition count
-  int getTotalCompetitions(List<Map<String, dynamic>> competitionStats) {
+  int getTotalMatches(List<Map<String, dynamic>> competitionStats) {
     int total = 0;
     for (final stats in competitionStats) {
       final submissionWins = stats['submissionWins'] as int? ?? 0;
