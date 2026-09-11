@@ -4,6 +4,7 @@ import '../models/user_model.dart';
 import '../services/auth_service.dart';
 import '../services/chat_service.dart';
 import '../models/post_model.dart';
+import '../widgets/fullscreen_image_viewer.dart';
 import '../widgets/video_player_widget.dart';
 import '../widgets/video_player_modal.dart';
 import '../widgets/video_preview.dart';
@@ -198,13 +199,31 @@ class _ChatScreenState extends State<ChatScreen> {
                     return Container(
                       margin: const EdgeInsets.only(right: 8),
                       child: type == 'image'
-                          ? Image.network(url, fit: BoxFit.cover)
-                          : VideoPreview(
-                        videoUrl: url,
+                          ? GestureDetector(
                         onTap: () {
                           showDialog(
                             context: context,
-                            builder: (context) => VideoPlayerModal(videoUrl: url),
+                            builder: (context) => FullscreenImageViewer(
+                              imageUrls: post.mediaUrls
+                                  .asMap()
+                                  .entries
+                                  .where((e) => post.mediaTypes[e.key] == 'image')
+                                  .map((e) => e.value)
+                                  .toList(),
+                              initialIndex: index,
+                            ),
+                          );
+                        },
+                        child: Image.network(url, fit: BoxFit.cover),
+                      )
+                          : VideoPreview(
+                        videoUrl: url,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => VideoPlayerModal(videoUrl: url),
+                            ),
                           );
                         },
                       ),
