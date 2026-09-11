@@ -4,6 +4,9 @@ import '../models/user_model.dart';
 import '../services/auth_service.dart';
 import '../services/chat_service.dart';
 import '../models/post_model.dart';
+import '../widgets/video_player_widget.dart';
+import '../widgets/video_player_modal.dart';
+import '../widgets/video_preview.dart';
 import 'comments_bottom_sheet.dart';
 import 'likers_popup.dart';
 
@@ -196,11 +199,14 @@ class _ChatScreenState extends State<ChatScreen> {
                       margin: const EdgeInsets.only(right: 8),
                       child: type == 'image'
                           ? Image.network(url, fit: BoxFit.cover)
-                          : Container(
-                        color: Colors.black26,
-                        child: const Center(
-                          child: Icon(Icons.play_circle_outline),
-                        ),
+                          : VideoPreview(
+                        videoUrl: url,
+                        onTap: () {
+                          showDialog(
+                            context: context,
+                            builder: (context) => VideoPlayerModal(videoUrl: url),
+                          );
+                        },
                       ),
                     );
                   },
@@ -261,6 +267,13 @@ class _ChatScreenState extends State<ChatScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildVideoPlayer(String videoUrl) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: VideoPlayerWidget(videoUrl: videoUrl),
     );
   }
 
