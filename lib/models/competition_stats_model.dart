@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class CompetitionStats {
   final DateTime compDate;
   final String compName;
@@ -43,7 +45,9 @@ class CompetitionStats {
     }
     
     return CompetitionStats(
-      compDate: map['compDate'] ?? parsedDate,
+      compDate: (map['compDate'] is Timestamp)
+          ? (map['compDate'] as Timestamp).toDate()
+          : map['compDate'] as DateTime,
       compName: map['compName'] ?? 'Unknown',
       format: map['format'] ?? 'Gi',
       rank: map['rank'] ?? '',

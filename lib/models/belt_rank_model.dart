@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class BeltRank {
   final String rank;
   final DateTime promotionDate;
@@ -12,7 +14,10 @@ class BeltRank {
   factory BeltRank.fromMap(Map<String, dynamic> map) {
     return BeltRank(
       rank: map['rank'] ?? '',
-      promotionDate: (map['promotionDate'] as dynamic)?.toDate() ?? DateTime.now(),
+      promotionDate: (map['promotionDate'] is Timestamp)
+          ? (map['promotionDate'] as Timestamp).toDate()
+          : map['promotionDate'] as DateTime,
+      notes: map['notes'],
     );
   }
 

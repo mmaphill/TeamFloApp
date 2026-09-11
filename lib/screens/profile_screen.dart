@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
@@ -605,7 +606,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Navigator.pop(context);
                 await _saveCompStats(
                   statsIndex,
-                  compDate,
+                  (stat.compDate is DateTime) ? stat.compDate : (stat.compDate as Timestamp).toDate(),
                   compNameController.text,
                   formatController.text,
                   submissionWins,
