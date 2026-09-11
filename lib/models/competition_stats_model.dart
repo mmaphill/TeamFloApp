@@ -5,6 +5,7 @@ class CompetitionStats {
   final String compName;
   final String format; // 'Gi' or 'No Gi'
   final String rank; // For Gi: belt rank, For No Gi: Beginner, Intermediate, Advanced
+  final String place; // overall competition placement
   final int submissionWins;
   final int pointWins;
   final int refDecisionWins;
@@ -18,6 +19,7 @@ class CompetitionStats {
     required this.compName,
     required this.format,
     required this.rank,
+    this.place = '',
     this.submissionWins = 0,
     this.pointWins = 0,
     this.refDecisionWins = 0,
@@ -51,6 +53,7 @@ class CompetitionStats {
       compName: map['compName'] ?? 'Unknown',
       format: map['format'] ?? 'Gi',
       rank: map['rank'] ?? '',
+      place: map['place'] ?? '',
       submissionWins: map['submissionWins'] ?? 0,
       pointWins: map['pointWins'] ?? 0,
       refDecisionWins: map['refDecisionWins'] ?? 0,
@@ -67,6 +70,7 @@ class CompetitionStats {
       'compName': compName,
       'format': format,
       'rank': rank,
+      'place': place,
       'submissionWins': submissionWins,
       'pointWins': pointWins,
       'refDecisionWins': refDecisionWins,
@@ -77,6 +81,7 @@ class CompetitionStats {
     };
   }
 
+  // set up something for team points based on competitions
   int get totalWins => submissionWins + pointWins + refDecisionWins;
   int get totalLosses => submissionLosses + pointLosses + refDecisionLosses;
 }

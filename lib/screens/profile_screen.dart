@@ -536,7 +536,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     final stat = _userData.competitionStats[statsIndex];
     final compNameController = TextEditingController(text: stat.compName);
-    final formatController = TextEditingController(text: stat.format);
+    String format = stat.format ?? 'Gi';
+    String rank = stat.rank ?? (format == 'Gi' ? 'White' : 'Beginner');
     int submissionWins = stat.submissionWins;
     int submissionLosses = stat.submissionLosses;
     int pointWins = stat.pointWins;
@@ -544,7 +545,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     int refDecisionWins = stat.refDecisionWins;
     int refDecisionLosses = stat.refDecisionLosses;
     int draws = stat.draws;
-    DateTime compDate = stat.compDate;
+    DateTime selectedDate = stat.compDate;
 
     showDialog(
       context: context,
@@ -563,12 +564,63 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
-                  controller: formatController,
+                // Format dropdown
+                DropdownButtonFormField<String>(
+                  value: format,
                   decoration: const InputDecoration(
-                    labelText: 'Format (Gi/No-Gi)',
+                    labelText: 'Format',
                     border: OutlineInputBorder(),
                   ),
+                  items: const [
+                    DropdownMenuItem(value: 'Gi', child: Text('Gi')),
+                    DropdownMenuItem(value: 'No-Gi', child: Text('No-Gi')),
+                  ],
+                  onChanged: (value) {
+                    setDialogState(() {
+                      format = value ?? 'Gi';
+                      // Reset rank to valid option for new format
+                      rank = format == 'Gi' ? 'White' : 'Beginner';
+                    });
+                  },
+                ),
+                const SizedBox(height: 12),
+                // Rank dropdown (conditional)
+                DropdownButtonFormField<String>(
+                  value: rank,
+                  decoration: const InputDecoration(
+                    labelText: 'Rank',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: (format == 'Gi'
+                      ? ['White', 'Blue', 'Purple', 'Brown', 'Black']
+                      : ['Beginner', 'Intermediate', 'Advanced'])
+                      .map((r) => DropdownMenuItem(value: r, child: Text(r)))
+                      .toList(),
+                  onChanged: (value) {
+                    setDialogState(() => rank = value ?? rank);
+                  },
+                ),
+                const SizedBox(height: 16),
+                // Date Picker
+                ListTile(
+                  title: const Text('Competition Date'),
+                  subtitle: Text(
+                    DateFormat('MMM d, yyyy').format(selectedDate),
+                  ),
+                  trailing: const Icon(Icons.calendar_today),
+                  onTap: () async {
+                    final pickedDate = await showDatePicker(
+                      context: context,
+                      initialDate: selectedDate,
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime.now(),
+                    );
+                    if (pickedDate != null) {
+                      setDialogState(() {
+                        selectedDate = pickedDate;
+                      });
+                    }
+                  },
                 ),
                 const SizedBox(height: 16),
                 _buildNumberField('Submission Wins', submissionWins, (val) {
@@ -586,10 +638,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 _buildNumberField('Ref Decision Wins', refDecisionWins, (val) {
                   setDialogState(() => refDecisionWins = val);
                 }),
-                _buildNumberField('Ref Decision Losses', refDecisionLosses,
-                        (val) {
-                      setDialogState(() => refDecisionLosses = val);
-                    }),
+                _buildNumberField('Ref Decision Losses', refDecisionLosses, (val) {
+                  setDialogState(() => refDecisionLosses = val);
+                }),
                 _buildNumberField('Draws', draws, (val) {
                   setDialogState(() => draws = val);
                 }),
@@ -603,12 +654,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             ElevatedButton(
               onPressed: () async {
+                if (compNameController.text.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Competition name required')),
+                  );
+                  return;
+                }
                 Navigator.pop(context);
-                await _saveCompStats(
+                await _updateCompStats(
                   statsIndex,
-                  (stat.compDate is DateTime) ? stat.compDate : (stat.compDate as Timestamp).toDate(),
                   compNameController.text,
-                  formatController.text,
+                  format,
+                  rank,
+                  selectedDate,
                   submissionWins,
                   submissionLosses,
                   pointWins,
@@ -616,7 +674,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   refDecisionWins,
                   refDecisionLosses,
                   draws,
-                  stat.rank,
                 );
               },
               child: const Text('Save'),
@@ -625,6 +682,73 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _updateCompStats(
+      int statsIndex,
+      String compName,
+      String format,
+      String rank,
+      DateTime compDate,
+      int submissionWins,
+      int submissionLosses,
+      int pointWins,
+      int pointLosses,
+      int refDecisionWins,
+      int refDecisionLosses,
+      int draws,
+      ) async {
+    setState(() => _isLoading = true);
+
+    List<CompetitionStats> updatedStats = List.from(_userData.competitionStats);
+    updatedStats[statsIndex] = CompetitionStats(
+      compName: compName,
+      format: format,
+      rank: rank,
+      compDate: compDate,
+      submissionWins: submissionWins,
+      submissionLosses: submissionLosses,
+      pointWins: pointWins,
+      pointLosses: pointLosses,
+      refDecisionWins: refDecisionWins,
+      refDecisionLosses: refDecisionLosses,
+      draws: draws,
+    );
+
+    String? currentBelt;
+    if (_userData.beltRankHistory.isNotEmpty) {
+      List<BeltRank> sorted = List.from(_userData.beltRankHistory);
+      sorted.sort((a, b) => b.promotionDate.compareTo(a.promotionDate));
+      currentBelt = sorted.first.rank;
+    }
+
+    String? error = await _authService.updateUserProfile(
+      uid: _currentUser.uid,
+      name: _userData.name,
+      goals: _userData.goals,
+      beltRankHistory: _userData.beltRankHistory,
+      competitionStats: updatedStats,
+      photoUrl: _userData.photoUrl,
+      avatarColor: _userData.avatarColor,
+      currentBelt: currentBelt,
+    );
+
+    setState(() => _isLoading = false);
+
+    if (error == null) {
+      await _loadUserData();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Competition updated!')),
+        );
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $error')),
+        );
+      }
+    }
   }
 
   Future<void> _saveCompStats(
@@ -821,7 +945,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           subtitle: Text(
                             'Promoted: ${DateFormat('MMM d, yyyy').format(belt.promotionDate)}',
                           ),
-                          trailing: const Icon(Icons.edit),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            onPressed: () => _deleteBeltRank(index),
+                          ),
                         ),
                       ),
                     );
@@ -880,7 +1007,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ),
                             ],
                           ),
-                          trailing: const Icon(Icons.edit),
+                          trailing: PopupMenuButton(
+                            itemBuilder: (context) => [
+                              PopupMenuItem(
+                                child: const Text('Edit'),
+                                onTap: () => _showEditCompStatsDialog(index),
+                              ),
+                              PopupMenuItem(
+                                child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                                onTap: () => _deleteCompStats(index),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     );
@@ -1052,8 +1190,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   void _showAddCompStatsDialog() {
     final compNameController = TextEditingController();
-    final formatController = TextEditingController();
     DateTime selectedDate = DateTime.now();
+    String format = 'Gi';
+    String? rank = 'White';
+    String? place = 'N/A';
     int submissionWins = 0;
     int submissionLosses = 0;
     int pointWins = 0;
@@ -1079,14 +1219,60 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
-                  controller: formatController,
+                // Format dropdown
+                DropdownButtonFormField<String>(
+                  value: format,
                   decoration: const InputDecoration(
-                    labelText: 'Format (Gi/No-Gi)',
+                    labelText: 'Format',
                     border: OutlineInputBorder(),
                   ),
+                  items: const [
+                    DropdownMenuItem(value: 'Gi', child: Text('Gi')),
+                    DropdownMenuItem(value: 'No-Gi', child: Text('No-Gi')),
+                  ],
+                  onChanged: (value) {
+                    setDialogState(() {
+                      format = value ?? 'Gi';
+                      rank = null; // Reset rank when format changes
+                    });
+                  },
                 ),
                 const SizedBox(height: 12),
+                // Rank dropdown (changes based on format)
+                DropdownButtonFormField<String>(
+                  value: rank,
+                  decoration: const InputDecoration(
+                    labelText: 'Rank',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: (format == 'Gi'
+                      ? ['White', 'Blue', 'Purple', 'Brown', 'Black']
+                      : ['Beginner', 'Intermediate', 'Advanced'])
+                      .map((r) => DropdownMenuItem(value: r, child: Text(r)))
+                      .toList(),
+                  onChanged: (value) {
+                    setDialogState(() => rank = value);
+                  },
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  value: place,
+                  decoration: const InputDecoration(
+                    labelText: 'Place',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: '1st', child: Text('1st')),
+                    DropdownMenuItem(value: '2nd', child: Text('2nd')),
+                    DropdownMenuItem(value: '3rd', child: Text('3rd')),
+                    DropdownMenuItem(value: 'N/A', child: Text('N/A')),
+                  ],
+                  onChanged: (value) {
+                    setDialogState(() {
+                      place = value ?? '';
+                    });
+                  }
+                ),
                 // Date Picker
                 ListTile(
                   title: const Text('Competition Date'),
@@ -1149,7 +1335,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Navigator.pop(context);
                 await _addCompStats(
                   compNameController.text,
-                  formatController.text,
+                  format,
+                  rank!,
+                  place!,
                   selectedDate,
                   submissionWins,
                   submissionLosses,
@@ -1171,6 +1359,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _addCompStats(
       String compName,
       String format,
+      String rank,
+      String place,
       DateTime compDate,
       int submissionWins,
       int submissionLosses,
@@ -1191,6 +1381,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     updatedStats.add(CompetitionStats(
       compName: compName,
       format: format,
+      rank: rank,
+      place: place,
       compDate: compDate,
       submissionWins: submissionWins,
       submissionLosses: submissionLosses,
@@ -1199,7 +1391,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       refDecisionWins: refDecisionWins,
       refDecisionLosses: refDecisionLosses,
       draws: draws,
-      rank: currentRank,
     ));
 
     String? currentBelt;
@@ -1265,6 +1456,139 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $error')),
       );
+    }
+  }
+
+  // Delete a competition stat
+  Future<void> _deleteCompStats(int statsIndex) async {
+    // Confirm deletion
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Competition?'),
+        content: Text(
+          'Delete "${_userData.competitionStats[statsIndex].compName}"?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _isLoading = true);
+
+    List<CompetitionStats> updatedStats = List.from(_userData.competitionStats);
+    updatedStats.removeAt(statsIndex);
+
+    String? currentBelt;
+    if (_userData.beltRankHistory.isNotEmpty) {
+      List<BeltRank> sorted = List.from(_userData.beltRankHistory);
+      sorted.sort((a, b) => b.promotionDate.compareTo(a.promotionDate));
+      currentBelt = sorted.first.rank;
+    }
+
+    String? error = await _authService.updateUserProfile(
+      uid: _currentUser.uid,
+      name: _userData.name,
+      goals: _userData.goals,
+      beltRankHistory: _userData.beltRankHistory,
+      competitionStats: updatedStats,
+      photoUrl: _userData.photoUrl,
+      avatarColor: _userData.avatarColor,
+      currentBelt: currentBelt,
+    );
+
+    setState(() => _isLoading = false);
+
+    if (error == null) {
+      await _loadUserData();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Competition deleted')),
+        );
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $error')),
+        );
+      }
+    }
+  }
+
+// Delete a belt rank
+  Future<void> _deleteBeltRank(int rankIndex) async {
+    // Confirm deletion
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Belt Rank?'),
+        content: Text(
+          'Delete "${_userData.beltRankHistory[rankIndex].rank}" promotion?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _isLoading = true);
+
+    List<BeltRank> updatedRanks = List.from(_userData.beltRankHistory);
+    updatedRanks.removeAt(rankIndex);
+
+    // Get the new current belt (most recent after deletion)
+    String? currentBelt;
+    if (updatedRanks.isNotEmpty) {
+      List<BeltRank> sorted = List.from(updatedRanks);
+      sorted.sort((a, b) => b.promotionDate.compareTo(a.promotionDate));
+      currentBelt = sorted.first.rank;
+    }
+
+    String? error = await _authService.updateUserProfile(
+      uid: _currentUser.uid,
+      name: _userData.name,
+      goals: _userData.goals,
+      beltRankHistory: updatedRanks,
+      competitionStats: _userData.competitionStats,
+      photoUrl: _userData.photoUrl,
+      avatarColor: _userData.avatarColor,
+      currentBelt: currentBelt,
+    );
+
+    setState(() => _isLoading = false);
+
+    if (error == null) {
+      await _loadUserData();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Belt rank deleted')),
+        );
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $error')),
+        );
+      }
     }
   }
 
