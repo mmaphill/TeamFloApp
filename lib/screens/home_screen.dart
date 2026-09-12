@@ -23,6 +23,8 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    
+    _goalsController = TextEditingController();
 
     _userData = UserModel(
       uid: '',
@@ -33,6 +35,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     _loadUserData();
+  }
+  
+  @override
+  void dispose() {
+    _goalsController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadUserData() async {
