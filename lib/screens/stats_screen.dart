@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../services/analytics_service.dart';
@@ -11,10 +12,31 @@ class StatsScreen extends StatefulWidget {
 
 class _StatsScreenState extends State<StatsScreen> {
   late Future<Map<String, dynamic>> statsFuture;
+  late Future<List<String>> summaryPreferenceFuture;
+  List<String> selectedSummaries = ['Classes', 'Submissions', 'Submission Success Rate'];
+  bool _preferencesLoaded = false;
+
+  final availableSummaries = [
+    'Classes',
+    'Submissions',
+    'Submission Success Rate',
+    'Win Rate', // for competitors only
+    // any other ideas will be added to the list here
+  ];
 
   @override
   void initState() {
     super.initState();
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid != null) {
+      summaryPreferenceFuture = AnalyticsService().getSummaryPreference(uid);
+      summaryPreferenceFuture.then((prefs) {
+        setState(() {
+          selectedSummaries = prefs;
+          _preferencesLoaded = true;
+        });
+      });
+    }
     statsFuture = _loadStats();
   }
 
@@ -43,6 +65,7 @@ class _StatsScreenState extends State<StatsScreen> {
     final lossBreakdown = analyticsService.getLossBreakdown(competitionStats);
     final statsByFormat = analyticsService.getStatsByFormat(competitionStats);
     final statsByRank = analyticsService.getStatsByRank(competitionStats);
+    final submissionSuccessRate = analyticsService.calculateSubmissionSuccessRate(submissions);
 
     return {
       'journalEntries': journalEntries,
@@ -63,8 +86,34 @@ class _StatsScreenState extends State<StatsScreen> {
       'lossBreakdown': lossBreakdown,
       'statsByFormat': statsByFormat,
       'statsByRank': statsByRank,
+      'submissionSuccessRate': submissionSuccessRate,
     };
   }
+
+  Future<void> _toggleSummarySelection(String summary) async {
+    setState(() {
+      if (selectedSummaries.contains(summary)) {
+        if (selectedSummaries.length > 1) {
+          selectedSummaries.remove(summary);
+        }
+      } else {
+        if (selectedSummaries.length < 4) {
+          selectedSummaries.add(summary);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Max 3 summaries allowed')),
+          );
+          return;
+        }
+      }
+    });
+
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid != null) {
+      await AnalyticsService().saveSummaryPreference(uid, selectedSummaries);
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -73,6 +122,31 @@ class _StatsScreenState extends State<StatsScreen> {
         title: const Text('Your Stats'),
         centerTitle: true,
         elevation: 0,
+        actions: [
+          FutureBuilder<List<String>>(
+            future: summaryPreferenceFuture,
+            builder: (context, snapshot) {
+              if (snapshot.hasData) {
+                selectedSummaries = snapshot.data!;
+              }
+              return PopupMenuButton<String>(
+                icon: const Icon(Icons.tune),
+                onSelected: (value) {
+                  _toggleSummarySelection(value);
+                },
+                itemBuilder: (BuildContext context) {
+                  return availableSummaries.map((summary) {
+                    return CheckedPopupMenuItem<String>(
+                      value: summary,
+                      checked: selectedSummaries.contains(summary),
+                      child: Text(summary),
+                    );
+                  }).toList();
+                },
+              );
+            }
+          ),
+        ],
       ),
       body: FutureBuilder<Map<String, dynamic>>(
         future: statsFuture,
@@ -100,6 +174,7 @@ class _StatsScreenState extends State<StatsScreen> {
           final lossBreakdown = stats['lossBreakdown'];
           final statsByFormat = stats['statsByFormat'] as Map<String, ({int wins, int losses})>;
           final statsByRank = stats['statsByRank'] as Map<String, ({int wins, int losses})>;
+          final submissionSuccessRate = stats['submissionSuccessRate'];
 
           return RefreshIndicator(
             onRefresh: () async {
@@ -112,28 +187,38 @@ class _StatsScreenState extends State<StatsScreen> {
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Header summary cards
-                    _buildSummaryCard(
-                      'Classes',
-                      '$classesThisMonth',
-                      'this month',
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        if (selectedSummaries.contains('Classes'))
+                        // Header summary cards
+                          _buildSummaryCard(
+                            'Classes',
+                            '$classesThisMonth',
+                            'this month',
+                          ),
+                        if (selectedSummaries.contains('Submissions'))
+                          _buildSummaryCard(
+                            'Submissions',
+                            '${submissions.totalSubmissions}',
+                            '${submissions.submissionAttempts} attempted',
+                          ),
+                        if (selectedSummaries.contains('Submission Success Rate'))
+                          _buildSummaryCard(
+                              'Sub Success Rate',
+                              '${(submissionSuccessRate * 100).toStringAsFixed(0)} %',
+                              '${(submissions.submissionAttempts - submissions.totalSubmissions)} missed subs',
+                          ),
+                        if (selectedSummaries.contains('Win Rate') && totalMatches > 0)
+                          _buildSummaryCard(
+                            'Win Rate',
+                            '${(overallWinRate * 100).toStringAsFixed(0)}%',
+                            '($totalMatches matches)',
+                          ),
+                      ],
                     ),
-                    const SizedBox(height: 12),
-                    _buildSummaryCard(
-                      'Submissions',
-                      '${submissions.totalSubmissions}',
-                      '${submissions.submissionAttempts} attempted',
-                    ),
-                    const SizedBox(height: 12),
-                    if (totalMatches > 0)
-                      _buildSummaryCard(
-                        'Win Rate',
-                        '${(overallWinRate * 100).toStringAsFixed(0)}%',
-                        '($totalMatches matches)',
-                      ),
-                    const SizedBox(height: 32),
+                    const SizedBox(height:32),
 
                     // Training Analytics
                     Text(

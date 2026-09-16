@@ -312,6 +312,13 @@ class AnalyticsService {
     return rankStats;
   }
 
+  double calculateSubmissionSuccessRate(
+    ({int totalSubmissions, int submissionAttempts, int timesSubmitted}) submissions,
+  ){
+    if (submissions.submissionAttempts == 0) return 0.0;
+    return submissions.totalSubmissions / submissions.submissionAttempts;
+  }
+
   // Format percentage for display
   String formatPercentage(double value) {
     return '${(value * 100).toStringAsFixed(0)}%';
@@ -320,5 +327,28 @@ class AnalyticsService {
   // Format number for display
   String formatNumber(int value) {
     return value.toString();
+  }
+
+  // Save user's preferred summary stats
+  Future<void> saveSummaryPreference(String uid, List<String> selectedStats) async {
+    try {
+      await _firestore.collection('users').doc(uid).update({
+        'summaryPreference': selectedStats,
+      });
+    } catch (e) {
+      print('Error saving summary preference: $e');
+    }
+  }
+
+  // Get user's preferred summary stats (default to all three)
+  Future<List<String>> getSummaryPreference(String uid) async {
+    try {
+      final snapshot = await _firestore.collection('users').doc(uid).get();
+      final preference = snapshot.data()?['summaryPreference'] as List?;
+      return preference?.cast<String>() ?? ['Classes', 'Submissions', 'SubmissionSuccessRate'];
+    } catch (e) {
+      print('Error fetching summary preference: $e');
+      return ['Classes', 'Submissions', 'Submission Success Rate'];
+    }
   }
 }

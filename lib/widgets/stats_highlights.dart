@@ -18,7 +18,53 @@ class _StatsHighlightsWidgetState extends State<StatsHighlightsWidget> {
     statsFuture = _loadStats();
   }
 
+  // Future<Map<String, dynamic>> _loadStats() async {
+  //   final analyticsService = AnalyticsService();
+  //   final uid = FirebaseAuth.instance.currentUser?.uid;
+  //
+  //   if (uid == null) {
+  //     throw Exception('User not authenticated');
+  //   }
+  //
+  //   final journalEntries = await analyticsService.getJournalEntries(uid);
+  //   final userProfile = await analyticsService.getUserProfile(uid);
+  //
+  //   final classesThisMonth = analyticsService.getClassesThisMonth(journalEntries);
+  //   final submissions = analyticsService.aggregateSubmissions(journalEntries);
+  //   final techniques = analyticsService.aggregateTechniques(journalEntries);
+  //   final competitionStats = analyticsService.parseCompetitionStats(userProfile);
+  //   final overallWinRate = analyticsService.calculateOverallWinRate(competitionStats);
+  //   final totalMatches = analyticsService.getTotalMatches(competitionStats);
+  //
+  //   return {
+  //     'classesThisMonth': classesThisMonth,
+  //     'submissions': (
+  //       totalSubmissions: submissions.totalSubmissions,
+  //       submissionAttempts: submissions.submissionAttempts,
+  //       timesSubmitted: submissions.timesSubmitted,
+  //     ),
+  //     'techniques': techniques,
+  //     'overallWinRate': overallWinRate,
+  //     'totalMatches': totalMatches,
+  //   };
+  // }
+
   Future<Map<String, dynamic>> _loadStats() async {
+    try {
+      return await _loadStatsInternal().timeout(
+        Duration(seconds: 3),
+        onTimeout: () {
+          print('⏱️ Stats loading timed out after 3 seconds');
+          return _emptyStats();
+        },
+      );
+    } catch (e) {
+      print('❌ Error loading stats: $e');
+      return _emptyStats();
+    }
+  }
+
+  Future<Map<String, dynamic>> _loadStatsInternal() async {
     final analyticsService = AnalyticsService();
     final uid = FirebaseAuth.instance.currentUser?.uid;
 
@@ -39,13 +85,27 @@ class _StatsHighlightsWidgetState extends State<StatsHighlightsWidget> {
     return {
       'classesThisMonth': classesThisMonth,
       'submissions': (
-        totalSubmissions: submissions.totalSubmissions,
-        submissionAttempts: submissions.submissionAttempts,
-        timesSubmitted: submissions.timesSubmitted,
+      totalSubmissions: submissions.totalSubmissions,
+      submissionAttempts: submissions.submissionAttempts,
+      timesSubmitted: submissions.timesSubmitted,
       ),
       'techniques': techniques,
       'overallWinRate': overallWinRate,
       'totalMatches': totalMatches,
+    };
+  }
+
+  Map<String, dynamic> _emptyStats() {
+    return {
+      'classesThisMonth': 0,
+      'submissions': (
+      totalSubmissions: 0,
+      submissionAttempts: 0,
+      timesSubmitted: 0,
+      ),
+      'techniques': <String, int>{},
+      'overallWinRate': 0.0,
+      'totalMatches': 0,
     };
   }
 
