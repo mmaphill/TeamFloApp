@@ -33,9 +33,9 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
   final List<Widget> _screens = [
     const HomeScreen(),
     const ChatScreen(),
-    // const CalendarScreen(),
-    // const ScheduleScreen(),
-    // const StatsScreen(),
+    const CalendarScreen(),
+    const ScheduleScreen(),
+    const StatsScreen(),
   ];
 
   final List<String> _titles = [
@@ -81,6 +81,12 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
     return StreamBuilder<Map<String, dynamic>?>(
       stream: _getUserDataStream(),  // ← Real-time stream
       builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error})'));
+        }
         if (snapshot.hasData && snapshot.data != null) {
           _userData = UserModel.fromMap(snapshot.data!);
         }
@@ -221,7 +227,17 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
         .collection('users')
         .doc(_currentUser.uid)
         .snapshots()
-        .map((doc) => doc.data());
+        .timeout(
+          Duration(seconds: 5),
+          onTimeout: (sink) {
+            sink.close();
+          },
+        )
+        .map((doc) => doc.data())
+        .handleError((error, stackTrace) {
+          print('Error fetching user data: $error');
+          return null;
+        });
   }
 
   void _openProfileScreen() {
