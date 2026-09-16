@@ -6,11 +6,11 @@ class BeltRankBadge extends StatelessWidget {
   final double height;
 
   const BeltRankBadge({
-    Key? key,
+    super.key,
     required this.beltRank,
     this.width = 40,
     this.height = 40,
-  }) : super(key: key);
+  });
 
   String _getBeltImagePath(String? belt) {
     switch (belt?.toLowerCase()) {

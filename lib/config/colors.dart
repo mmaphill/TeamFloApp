@@ -1,18 +1,39 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  // Logo Colors
-  static const Color primary = Color (0xFFEA2327);
-  static const Color dark = Color(0xFF0A0000);
-  static const Color light = Color(0xFFFCF7FA);
-
-  // Derived Colors
-  static const Color surface = Color(0xFF1E1E1E); // Dark surface
-  static const Color surfaceVariant = Color(0xFF2C2C2C); // Slightly lighter dark
-  static const Color onSurface = light; // Light text on dark
-  static const Color error = primary;
+  // Logo Colors (used in both modes)
+  static const Color primary = Color(0xFFEA2327);
   static const Color success = Color(0xFF66BB6A);
-  static const Color background = dark;
+
+  // Dark Mode
+  static const Color darkBg = Color(0xFF0A0000);
+  static const Color darkSurface = Color(0xFF1E1E1E);
+  static const Color darkSurfaceVariant = Color(0xFF2C2C2C);
+  static const Color darkText = Color(0xFFFCF7FA);
+
+  // Light Mode
+  static const Color lightBg = Color(0xFFFCF7FA);
+  static const Color lightSurface = Color(0xFFF5F0F5);
+  static const Color lightSurfaceVariant = Color(0xFFEDE8ED);
+  static const Color lightText = Color(0xFF0A0000);
+
+  // Deprecated (kept for reference during migration)
+  @deprecated
+  static const Color dark = darkBg;
+  @deprecated
+  static const Color light = darkText;
+  @deprecated
+  static const Color surface = darkSurface;
+  @deprecated
+  static const Color surfaceVariant = darkSurfaceVariant;
+  @deprecated
+  static const Color onSurface = darkText;
+  @deprecated
+  static const Color background = darkBg;
+  @deprecated
   static const Color onPrimary = Colors.white;
-  static const Color onDark = light;
+  @deprecated
+  static const Color onDark = darkText;
+  @deprecated
+  static const Color error = primary;
 }
