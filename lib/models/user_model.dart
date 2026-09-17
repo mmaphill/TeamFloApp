@@ -15,6 +15,7 @@ class UserModel {
   final PhotoCropData? photoCropData;
   final String avatarColor;
   final String? currentBelt;
+  final String? themeMode;
 
   UserModel({
     required this.uid,
@@ -29,6 +30,7 @@ class UserModel {
     this.photoCropData,
     this.avatarColor = '#2196F3',
     this.currentBelt,
+    this.themeMode,
   });
 
   factory UserModel.fromMap(Map<String, dynamic> map) {
@@ -49,6 +51,7 @@ class UserModel {
       photoCropData: map['photoCropData'] != null ? PhotoCropData.fromMap(map['photoCropData'] as Map<String, dynamic>) : null,
       avatarColor: map['avatarColor'] ?? '#2196F3',
       currentBelt: map['currentBelt'],
+      themeMode: map['themeMode'],
     );
   }
 
@@ -66,6 +69,7 @@ class UserModel {
       'photoCropData': photoCropData?.toMap(),
       'avatarColor': avatarColor,
       'currentBelt': currentBelt,
+      'themeMode': themeMode,
     };
   }
 }

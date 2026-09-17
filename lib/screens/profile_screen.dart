@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
@@ -14,7 +13,8 @@ import '../config/colors.dart';
 import '../services/storage_service.dart';
 import '../services/validation_service.dart';
 import 'crop_photo_screen.dart';
-import 'edit_belt_screen.dart';
+import '../config/theme_provider.dart';
+import 'package:provider/provider.dart';
 
 class ProfileScreen extends StatefulWidget {
   static final GlobalKey<_ProfileScreenState> profileKey = GlobalKey<_ProfileScreenState>();
@@ -1178,6 +1178,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               const SizedBox(height: 24),
 
+              // Theme Toggle
+              const SizedBox(height: 12),
+              Consumer<ThemeProvider>(
+                builder: (context, themeProvider, child) {
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).cardColor,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              themeProvider.isDarkMode ? Icons.dark_mode : Icons.light_mode,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              themeProvider.isDarkMode ? 'Dark Mode' : 'Light Mode',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w500,
+                                fontSize: 14,
+                                color: Theme.of(context).textTheme.bodyMedium?.color,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Switch(
+                          value: themeProvider.isDarkMode,
+                          onChanged: (value) {
+                            themeProvider.setThemeMode(value ? ThemeMode.dark : ThemeMode.light);
+                          },
+                          activeColor: Theme.of(context).colorScheme.primary,
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
+
               // Privacy Policy
               TextButton(
                 onPressed: () {
@@ -1742,6 +1786,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         );
       }
     }
+
   }
 
   void _showDeleteAccountDialog() {
