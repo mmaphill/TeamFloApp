@@ -396,6 +396,149 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  // ============ Add Belt Rank Dialog ============
+  void _showAddBeltDialog() {
+    final rankController = TextEditingController();
+    DateTime selectedDate = DateTime.now();
+    final notesController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Add Belt Rank'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Belt Level Dropdown
+                DropdownButtonFormField<String>(
+                  value: rankController.text.isEmpty ? 'White' : rankController.text,
+                  items: ['White', 'Blue', 'Purple', 'Brown', 'Black']
+                      .map((belt) => DropdownMenuItem(
+                    value: belt,
+                    child: Text(belt),
+                  ))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      rankController.text = value;
+                    }
+                  },
+                  decoration: const InputDecoration(
+                    labelText: 'Belt Level',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Promotion Date Picker
+                ListTile(
+                  title: const Text('Promotion Date'),
+                  subtitle: Text(
+                    DateFormat('MMM d, yyyy').format(selectedDate),
+                  ),
+                  trailing: const Icon(Icons.calendar_today),
+                  onTap: () async {
+                    final pickedDate = await showDatePicker(
+                      context: context,
+                      initialDate: selectedDate,
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime.now(),
+                    );
+                    if (pickedDate != null) {
+                      setDialogState(() {
+                        selectedDate = pickedDate;
+                      });
+                    }
+                  },
+                ),
+                const SizedBox(height: 16),
+                // Notes Text Field
+                TextField(
+                  controller: notesController,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: 'Notes (optional)',
+                    border: OutlineInputBorder(),
+                    hintText: 'Add any notes about this promotion...',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(context);
+                await _addBeltRank(
+                  rankController.text,
+                  selectedDate,
+                  notesController.text,
+                );
+              },
+              child: const Text('Add'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _addBeltRank(
+      String newRank,
+      DateTime promotionDate,
+      String notes,
+      ) async {
+    setState(() => _isLoading = true);
+
+    // Create new belt entry
+    List<BeltRank> updatedBelts = List.from(_userData.beltRankHistory);
+    updatedBelts.add(BeltRank(
+      rank: newRank,
+      promotionDate: promotionDate,
+      notes: notes.isEmpty ? null : notes,
+    ));
+
+    String? currentBelt;
+    if (updatedBelts.isNotEmpty) {
+      List<BeltRank> sorted = List.from(updatedBelts);
+      sorted.sort((a, b) => b.promotionDate.compareTo(a.promotionDate));
+      currentBelt = sorted.first.rank;
+    }
+
+    String? error = await _authService.updateUserProfile(
+      uid: _currentUser.uid,
+      name: _userData.name,
+      goals: _userData.goals,
+      beltRankHistory: updatedBelts,
+      competitionStats: _userData.competitionStats,
+      photoUrl: _userData.photoUrl,
+      avatarColor: _userData.avatarColor,
+      currentBelt: currentBelt,
+    );
+
+    setState(() => _isLoading = false);
+
+    if (error == null) {
+      await _loadUserData();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Belt rank added!')),
+        );
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $error')),
+        );
+      }
+    }
+  }
+
   // ============ Edit Belt Rank Dialog ============
   void _showEditBeltDialog(int beltIndex) {
     if (beltIndex < 0 || beltIndex >= _userData.beltRankHistory.length) {
@@ -914,12 +1057,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 24),
 
               // Belt Rank History Section
-              const Text(
-                'Belt Rank History',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Belt Rank History',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.add),
+                    onPressed: _showAddBeltDialog,
+                  ),
+                ],
               ),
               const SizedBox(height: 12),
               if (_userData.beltRankHistory.isEmpty)
