@@ -49,7 +49,7 @@ class CompetitionStats {
     return CompetitionStats(
       compDate: (map['compDate'] is Timestamp)
           ? (map['compDate'] as Timestamp).toDate()
-          : map['compDate'] as DateTime,
+          : parsedDate,  // ← Use the safely-parsed date instead
       compName: map['compName'] ?? 'Unknown',
       format: map['format'] ?? 'Gi',
       rank: map['rank'] ?? '',
