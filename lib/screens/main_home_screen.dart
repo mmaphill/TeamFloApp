@@ -28,8 +28,6 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
   int _selectedIndex = 0;
   UserModel? _userData;
 
-  late UserModel _originalUserData;
-
   final List<Widget> _screens = [
     const HomeScreen(),
     const ChatScreen(),
