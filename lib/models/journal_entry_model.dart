@@ -15,7 +15,8 @@ class JournalEntry {
 
   // Training data
   final String? position; // Closed Guard, Open Guard, etc.
-  final String? technique; // Pass, Sweep, Submit
+  final String? types; // Pass, Sweep, Submit
+  final Map<String, List<String>> techniques; // User entered field
   final int submissions; // Number of submissions
   final int submissionAttempts; // Total number of submissions attempted
   final int timesSubmitted; // Number of times submitted
@@ -36,7 +37,8 @@ class JournalEntry {
     this.water = 0,
     this.food = 0,
     this.position,
-    this.technique,
+    this.types,
+    this.techniques = const {},
     this.submissions = 0,
     this.submissionAttempts = 0,
     this.timesSubmitted = 0,
@@ -57,7 +59,8 @@ class JournalEntry {
       water: map['water'] ?? 0,
       food: map['food'] ?? 0,
       position: map['position'],
-      technique: map['technique'],
+      types: map['types'],
+      techniques: _parseTechniques(map['techniques']),
       submissions: map['submissions'] ?? 0,
       submissionAttempts: map['submissionAttempts'] ?? 0,
       timesSubmitted: map['timesSubmitted'] ?? 0,
@@ -78,7 +81,8 @@ class JournalEntry {
       'water': water,
       'food': food,
       'position': position,
-      'technique': technique,
+      'types': types,
+      'techniques': techniques.isEmpty ? null : techniques,
       'submissions': submissions,
       'submissionAttempts': submissionAttempts,
       'timesSubmitted': timesSubmitted,
@@ -86,5 +90,19 @@ class JournalEntry {
       'createdAt': createdAt,
       'updatedAt': updatedAt ?? DateTime.now(),
     };
+  }
+
+  static Map<String, List<String>> _parseTechniques(dynamic data) {
+    if (data == null) return {};
+    if (data is! Map) return {};
+
+    return Map<String, List<String>>.from(
+      (data as Map<String, dynamic>).map(
+            (key, value) => MapEntry(
+          key,
+          List<String>.from(value as List? ?? []),
+        ),
+      ),
+    );
   }
 }

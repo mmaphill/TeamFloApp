@@ -52,9 +52,11 @@ class _StatsScreenState extends State<StatsScreen> {
     final userProfile = await analyticsService.getUserProfile(uid);
 
     final classesThisMonth = analyticsService.getClassesThisMonth(journalEntries);
-    final techniques = analyticsService.aggregateTechniques(journalEntries);
+    final types = analyticsService.aggregateTypes(journalEntries);
     final submissions = analyticsService.aggregateSubmissions(journalEntries);
     final positions = analyticsService.getPositionFrequency(journalEntries);
+    final techniques = analyticsService.aggregateTechniques(journalEntries);
+    final topTechniques = analyticsService.getTopTechniques(journalEntries, limit: 5);
     final attendanceTrend = analyticsService.getAttendanceTrend(journalEntries);
     final metrics = analyticsService.getAverageMetrics(journalEntries);
 
@@ -70,13 +72,20 @@ class _StatsScreenState extends State<StatsScreen> {
     return {
       'journalEntries': journalEntries,
       'classesThisMonth': classesThisMonth,
-      'techniques': techniques,
+      'types': types,
       'submissions': (
         totalSubmissions: submissions.totalSubmissions,
         submissionAttempts: submissions.submissionAttempts,
         timesSubmitted: submissions.timesSubmitted,
       ),
       'positions': positions,
+      'techniques': (
+        techniquesByType: techniques.techniquesByType,
+        techniqueFrequency: techniques.techniqueFrequency,
+        mostUsedTechnique: techniques.mostUsedTechnique,
+        techniqueDiversity: techniques.techniqueDiversity,
+      ),
+      'topTechniques': topTechniques.isNotEmpty ? topTechniques : [],
       'attendanceTrend': attendanceTrend,
       'metrics': metrics,
       'competitionStats': competitionStats,
@@ -163,9 +172,17 @@ class _StatsScreenState extends State<StatsScreen> {
 
           final stats = snapshot.data!;
           final classesThisMonth = stats['classesThisMonth'] as int;
-          final techniques = stats['techniques'] as Map<String, int>;
+          final types = stats['types'] as Map<String, int>;
           final submissions = stats['submissions'] as ({int totalSubmissions, int submissionAttempts, int timesSubmitted});
           final positions = stats['positions'] as Map<String, int>;
+          final techniques = stats['techniques'] as ({
+            Map<String, Map<String, int>> techniquesByType,
+            Map<String, int> techniqueFrequency,
+            String? mostUsedTechnique,
+            double techniqueDiversity,
+          });
+          final topTechniquesRaw = (stats['topTechniques'] as List) ?? [];
+          final topTechniques = topTechniquesRaw.cast<Map<String, dynamic>>();
           final attendanceTrend = stats['attendanceTrend'] as List<dynamic>;
           final metrics = stats['metrics'];
           final overallWinRate = stats['overallWinRate'] as double;
@@ -234,14 +251,24 @@ class _StatsScreenState extends State<StatsScreen> {
                       _buildAttendanceChart(attendanceTrend),
                     const SizedBox(height: 24),
 
-                    // Technique breakdown
-                    if (techniques.isNotEmpty)
-                      _buildTechniqueBreakdown(techniques),
-                    const SizedBox(height: 24),
-
                     // Top positions
                     if (positions.isNotEmpty)
                       _buildTopPositions(positions),
+                    const SizedBox(height: 24),
+
+                    // Type breakdown
+                    if (types.isNotEmpty)
+                      _buildTypeBreakdown(types),
+                    const SizedBox(height: 24),
+
+                    // Top techniques
+                    if (topTechniques.isNotEmpty)
+                      _buildTopTechniques(topTechniques, techniques.mostUsedTechnique),
+                    const SizedBox(height: 24),
+
+                    // Techniques by type
+                    if (techniques.techniquesByType.isNotEmpty)
+                      _buildTechniquesByType(techniques.techniquesByType),
                     const SizedBox(height: 24),
 
                     // Average metrics
@@ -384,18 +411,18 @@ class _StatsScreenState extends State<StatsScreen> {
     );
   }
 
-  Widget _buildTechniqueBreakdown(Map<String, int> techniques) {
-    final total = techniques.values.fold<int>(0, (sum, v) => sum + v);
+  Widget _buildTypeBreakdown(Map<String, int> types) {
+    final total = types.values.fold<int>(0, (sum, v) => sum + v);
     if (total == 0) return const SizedBox.shrink();
 
     // Sort by count descending
-    final sorted = techniques.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+    final sorted = types.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Techniques Logged',
+          'Types Logged',
           style: Theme.of(context).textTheme.labelMedium?.copyWith(
             fontWeight: FontWeight.w600,
           ),
@@ -734,6 +761,78 @@ class _StatsScreenState extends State<StatsScreen> {
                   ],
                 ),
               ),
+            ),
+          );
+        }).toList(),
+      ],
+    );
+  }
+
+  Widget _buildTopTechniques(List<Map<String, dynamic>> topTechniques, String? mostUsed) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Top Techniques',
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: topTechniques.map((t) {
+            final technique = t['technique'] as String;
+            final count = t['count'] as int;
+            final isMostUsed = technique == mostUsed;
+            return Chip(
+              label: Text('$technique ($count)'),
+              backgroundColor: isMostUsed
+                  ? Theme.of(context).primaryColor.withOpacity(0.2)
+                  : Theme.of(context).dividerColor,
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTechniquesByType(Map<String, Map<String, int>> techniquesByType) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Techniques by Type',
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 12),
+        ...techniquesByType.entries.map((entry) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  entry.key,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: entry.value.entries.map((technique) {
+                    return Chip(
+                      label: Text('${technique.key} (${technique.value})'),
+                      labelPadding: const EdgeInsets.symmetric(horizontal: 4),
+                    );
+                  }).toList(),
+                ),
+              ],
             ),
           );
         }).toList(),

@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:team_flo_app/services/analytics_service.dart';
 import 'package:team_flo_app/widgets/submission_counter_widget.dart';
 import 'dart:io';
 import '../models/belt_rank_model.dart';
@@ -33,6 +34,7 @@ class JournalEntryScreen extends StatefulWidget {
 
 class _JournalEntryScreenState extends State<JournalEntryScreen> {
   final AuthService _authService = AuthService();
+  final AnalyticsService _analyticsService = AnalyticsService();
   final User _currentUser = FirebaseAuth.instance.currentUser!;
   final JournalService _journalService = JournalService();
   final ScheduleService _scheduleService = ScheduleService();
@@ -41,11 +43,13 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
 
   late JournalEntry _entry;
   late UserModel _userData;
+  late List<String> _allTechniques = [];
   File? _selectedPhoto;
   bool _isLoading = true;
   String? _notesError;
   String? _contentError;
 
+  late TextEditingController _techniqueController;
   late TextEditingController _submissionsController;
   late TextEditingController _submissionAttemptsController;
   late TextEditingController _timesSubmittedController;
@@ -69,11 +73,14 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
     'North-South',
   ];
 
-  final List<String> techniques = ['Pass', 'Escape', 'Retention', 'Sweep', 'Submission',];
+  final List<String> types = ['Pass', 'Escape', 'Retention', 'Sweep', 'Submission',];
+
+  Map<String, List<String>> _techniques = {}; // {'Pass': ['Knee Slice'], etc}
 
   @override
   void initState() {
     super.initState();
+    _techniqueController = TextEditingController();
     _submissionsController = TextEditingController();
     _submissionAttemptsController = TextEditingController();
     _timesSubmittedController = TextEditingController();
@@ -90,8 +97,8 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
     );
 
     _loadUserData();
-
     _loadEntry();
+    _loadGymTechniques();
   }
 
   Future<void> _loadUserData() async {
@@ -132,6 +139,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
     setState(() {
       if (existing != null) {
         _entry = existing;
+        _techniqueController.text = existing.techniques.toString();
         _submissionsController.text = existing.submissions.toString();
         _submissionAttemptsController.text = existing.submissionAttempts.toString();
         _timesSubmittedController.text = existing.timesSubmitted.toString();
@@ -143,6 +151,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
           date: widget.date,
           createdAt: DateTime.now(),
         );
+        _techniqueController.text = '';
         _submissionsController.text = '0';
         _submissionAttemptsController.text = '0';
         _timesSubmittedController.text = '0';
@@ -180,7 +189,8 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
       water: _entry.water,
       food: _entry.food,
       position: _entry.position,
-      technique: _entry.technique,
+      types: _entry.types,
+      techniques: _techniques,  // ← ADD THIS LINE
       submissions: _entry.submissions,
       submissionAttempts: _entry.submissionAttempts,
       timesSubmitted: _entry.timesSubmitted,
@@ -201,9 +211,43 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
     }
   }
 
-  // Future<void> _updateEntry() async {
-  //
-  // }
+  void _addTechnique(String typeSelected, String techniqueName) {
+    if (techniqueName.isEmpty) return;
+
+    final normalized = techniqueName.trim().toLowerCase();
+
+    setState(() {
+      if (!_techniques.containsKey(typeSelected)) {
+        _techniques[typeSelected] = [];
+      }
+      if (!_techniques[typeSelected]!.contains(normalized)) {
+        _techniques[typeSelected]!.add(normalized);
+      }
+      _techniqueController.clear();
+    });
+  }
+
+  void _removeTechnique(String typeSelected, String techniqueName) {
+    setState(() {
+      _techniques[typeSelected]?.remove(techniqueName);
+      if (_techniques[typeSelected]?.isEmpty ?? false) {
+        _techniques.remove(typeSelected);
+      }
+    });
+  }
+
+  Future<void> _loadGymTechniques() async {
+    try {
+      final techniques = await _analyticsService.getAllTechniquesFromGym();
+      print('Loaded ${techniques.length} gym techniques');
+      print('Techniques: $techniques');
+      setState(() {
+        _allTechniques = techniques;
+      });
+    } catch (e) {
+      print('Error loading gym techniques: $e');
+    }
+  }
 
   @override
   void dispose() {
@@ -211,6 +255,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
     _submissionAttemptsController.dispose();
     _timesSubmittedController.dispose();
     _notesController.dispose();
+    _techniqueController.dispose();
     super.dispose();
   }
 
@@ -319,7 +364,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
                 water: _entry.water,
                 food: _entry.food,
                 position: _entry.position,
-                technique: _entry.technique,
+                types: _entry.types,
                 submissions: _entry.submissions,
                 timesSubmitted: _entry.timesSubmitted,
                 generalNotes: _entry.generalNotes,
@@ -340,7 +385,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
                 water: _entry.water,
                 food: _entry.food,
                 position: _entry.position,
-                technique: _entry.technique,
+                types: _entry.types,
                 submissions: _entry.submissions,
                 timesSubmitted: _entry.timesSubmitted,
                 generalNotes: _entry.generalNotes,
@@ -361,7 +406,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
                 water: val,
                 food: _entry.food,
                 position: _entry.position,
-                technique: _entry.technique,
+                types: _entry.types,
                 submissions: _entry.submissions,
                 timesSubmitted: _entry.timesSubmitted,
                 generalNotes: _entry.generalNotes,
@@ -382,7 +427,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
                 water: _entry.water,
                 food: val,
                 position: _entry.position,
-                technique: _entry.technique,
+                types: _entry.types,
                 submissions: _entry.submissions,
                 timesSubmitted: _entry.timesSubmitted,
                 generalNotes: _entry.generalNotes,
@@ -420,7 +465,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
                   water: _entry.water,
                   food: _entry.food,
                   position: val,
-                  technique: _entry.technique,
+                  types: _entry.types,
                   submissions: _entry.submissions,
                   timesSubmitted: _entry.timesSubmitted,
                   generalNotes: _entry.generalNotes,
@@ -430,16 +475,16 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
             ),
             const SizedBox(height: 12),
 
-            // Technique dropdown
-            const Text('Technique', style: TextStyle(fontWeight: FontWeight.bold)),
+            // Type dropdown
+            const Text('Type', style: TextStyle(fontWeight: FontWeight.bold)),
             DropdownButtonFormField<String>(
-              initialValue: _entry.technique,
+              initialValue: _entry.types,
               decoration: InputDecoration(
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              items: techniques
+              items: types
                   .map((t) => DropdownMenuItem(value: t, child: Text(t)))
                   .toList(),
               onChanged: (val) {
@@ -454,7 +499,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
                   water: _entry.water,
                   food: _entry.food,
                   position: _entry.position,
-                  technique: val,
+                  types: val,
                   submissions: _entry.submissions,
                   timesSubmitted: _entry.timesSubmitted,
                   generalNotes: _entry.generalNotes,
@@ -463,6 +508,70 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
               },
             ),
             const SizedBox(height: 12),
+
+            // Technique input with autocomplete
+            const Text('Add Techniques', style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: Autocomplete<String>(
+                    optionsBuilder: (TextEditingValue textEditingValue) {
+                      return _analyticsService.suggestTechniques(
+                        _allTechniques,
+                        textEditingValue.text,
+                      );
+                    },
+                    onSelected: (String selection) {
+                      _addTechnique(_entry.types!, selection);
+                    },
+                    fieldViewBuilder: (context, textEditingController, focusNode, onFieldSubmitted) {
+                      _techniqueController = textEditingController;
+                      return TextField(
+                        controller: textEditingController,
+                        focusNode: focusNode,
+                        decoration: InputDecoration(
+                          hintText: 'e.g., Armbar, Knee Slice',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: _entry.types != null
+                      ? () => _addTechnique(_entry.types!, _techniqueController.text)
+                      : null,
+                  child: const Text('Add'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Display techniques by type
+            if (_techniques.isNotEmpty)
+              ..._techniques.entries.map((entry) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(entry.key, style: Theme.of(context).textTheme.labelSmall),
+                      const SizedBox(height: 4),
+                      Wrap(
+                        spacing: 8,
+                        children: entry.value.map((technique) {
+                          return Chip(
+                            label: Text(technique),
+                            onDeleted: () => _removeTechnique(entry.key, technique),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
 
             // Submission Counter Widget
             SubmissionCounterWidget(
@@ -481,7 +590,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
                   water: _entry.water,
                   food: _entry.food,
                   position: _entry.position,
-                  technique: _entry.technique,
+                  types: _entry.types,
                   submissions: successful,
                   submissionAttempts: submissionAttempts,
                   timesSubmitted: timesSubmitted,
@@ -490,68 +599,6 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
                 ));
               },
             ),
-
-            // Legacy Submissions count - comment out if you don't want this.
-            // const Text('Submissions', style: TextStyle(fontWeight: FontWeight.bold)),
-            // TextField(
-            //   controller: _submissionsController,
-            //   keyboardType: TextInputType.number,
-            //   decoration: InputDecoration(
-            //     border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-            //     hintText: 'Number of submissions',
-            //   ),
-            //   onChanged: (val) {
-            //     setState(() => _entry = JournalEntry(
-            //       entryId: _entry.entryId,
-            //       userId: _entry.userId,
-            //       date: _entry.date,
-            //       photoUrl: _entry.photoUrl,
-            //       classesAttended: _entry.classesAttended,
-            //       energy: _entry.energy,
-            //       sleep: _entry.sleep,
-            //       water: _entry.water,
-            //       food: _entry.food,
-            //       position: _entry.position,
-            //       technique: _entry.technique,
-            //       submissions: int.tryParse(val) ?? 0,
-            //       timesSubmitted: _entry.timesSubmitted,
-            //       generalNotes: _entry.generalNotes,
-            //       createdAt: _entry.createdAt,
-            //     ));
-            //   },
-            // ),
-            // const SizedBox(height: 12),
-
-            // Times submitted count - Legacy function, comment out if you don't want
-            // const Text('Times Submitted', style: TextStyle(fontWeight: FontWeight.bold)),
-            // TextField(
-            //   controller: _timesSubmittedController,
-            //   keyboardType: TextInputType.number,
-            //   decoration: InputDecoration(
-            //     border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-            //     hintText: 'Number of times submitted',
-            //   ),
-            //   onChanged: (val) {
-            //     setState(() => _entry = JournalEntry(
-            //       entryId: _entry.entryId,
-            //       userId: _entry.userId,
-            //       date: _entry.date,
-            //       photoUrl: _entry.photoUrl,
-            //       classesAttended: _entry.classesAttended,
-            //       energy: _entry.energy,
-            //       sleep: _entry.sleep,
-            //       water: _entry.water,
-            //       food: _entry.food,
-            //       position: _entry.position,
-            //       technique: _entry.technique,
-            //       submissions: _entry.submissions,
-            //       timesSubmitted: int.tryParse(val) ?? 0,
-            //       generalNotes: _entry.generalNotes,
-            //       createdAt: _entry.createdAt,
-            //     ));
-            //   },
-            // ),
-            // const SizedBox(height: 12),
 
             // General notes
             const Text('General Notes', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -578,7 +625,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
                     water: _entry.water,
                     food: _entry.food,
                     position: _entry.position,
-                    technique: _entry.technique,
+                    types: _entry.types,
                     submissions: _entry.submissions,
                     timesSubmitted: _entry.timesSubmitted,
                     generalNotes: val,
@@ -674,7 +721,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
                     water: _entry.water,
                     food: _entry.food,
                     position: _entry.position,
-                    technique: _entry.technique,
+                    types: _entry.types,
                     submissions: _entry.submissions,
                     timesSubmitted: _entry.timesSubmitted,
                     generalNotes: _entry.generalNotes,

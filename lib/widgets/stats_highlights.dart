@@ -18,48 +18,17 @@ class _StatsHighlightsWidgetState extends State<StatsHighlightsWidget> {
     statsFuture = _loadStats();
   }
 
-  // Future<Map<String, dynamic>> _loadStats() async {
-  //   final analyticsService = AnalyticsService();
-  //   final uid = FirebaseAuth.instance.currentUser?.uid;
-  //
-  //   if (uid == null) {
-  //     throw Exception('User not authenticated');
-  //   }
-  //
-  //   final journalEntries = await analyticsService.getJournalEntries(uid);
-  //   final userProfile = await analyticsService.getUserProfile(uid);
-  //
-  //   final classesThisMonth = analyticsService.getClassesThisMonth(journalEntries);
-  //   final submissions = analyticsService.aggregateSubmissions(journalEntries);
-  //   final techniques = analyticsService.aggregateTechniques(journalEntries);
-  //   final competitionStats = analyticsService.parseCompetitionStats(userProfile);
-  //   final overallWinRate = analyticsService.calculateOverallWinRate(competitionStats);
-  //   final totalMatches = analyticsService.getTotalMatches(competitionStats);
-  //
-  //   return {
-  //     'classesThisMonth': classesThisMonth,
-  //     'submissions': (
-  //       totalSubmissions: submissions.totalSubmissions,
-  //       submissionAttempts: submissions.submissionAttempts,
-  //       timesSubmitted: submissions.timesSubmitted,
-  //     ),
-  //     'techniques': techniques,
-  //     'overallWinRate': overallWinRate,
-  //     'totalMatches': totalMatches,
-  //   };
-  // }
-
   Future<Map<String, dynamic>> _loadStats() async {
     try {
       return await _loadStatsInternal().timeout(
         Duration(seconds: 3),
         onTimeout: () {
-          print('⏱️ Stats loading timed out after 3 seconds');
+          print('⏱Stats loading timed out after 3 seconds');
           return _emptyStats();
         },
       );
     } catch (e) {
-      print('❌ Error loading stats: $e');
+      print('Error loading stats: $e');
       return _emptyStats();
     }
   }
@@ -74,10 +43,10 @@ class _StatsHighlightsWidgetState extends State<StatsHighlightsWidget> {
 
     final journalEntries = await analyticsService.getJournalEntries(uid);
     final userProfile = await analyticsService.getUserProfile(uid);
-
+    final positions = await analyticsService.getPositionFrequency(journalEntries);
     final classesThisMonth = analyticsService.getClassesThisMonth(journalEntries);
     final submissions = analyticsService.aggregateSubmissions(journalEntries);
-    final techniques = analyticsService.aggregateTechniques(journalEntries);
+    final types = analyticsService.aggregateTypes(journalEntries);
     final competitionStats = analyticsService.parseCompetitionStats(userProfile);
     final overallWinRate = analyticsService.calculateOverallWinRate(competitionStats);
     final totalMatches = analyticsService.getTotalMatches(competitionStats);
@@ -89,7 +58,8 @@ class _StatsHighlightsWidgetState extends State<StatsHighlightsWidget> {
       submissionAttempts: submissions.submissionAttempts,
       timesSubmitted: submissions.timesSubmitted,
       ),
-      'techniques': techniques,
+      'types': types,
+      'positions': positions,
       'overallWinRate': overallWinRate,
       'totalMatches': totalMatches,
     };
@@ -103,7 +73,8 @@ class _StatsHighlightsWidgetState extends State<StatsHighlightsWidget> {
       submissionAttempts: 0,
       timesSubmitted: 0,
       ),
-      'techniques': <String, int>{},
+      'types': <String, int>{},
+      'positions': <String, int>{},
       'overallWinRate': 0.0,
       'totalMatches': 0,
     };
@@ -137,7 +108,8 @@ class _StatsHighlightsWidgetState extends State<StatsHighlightsWidget> {
         final stats = snapshot.data!;
         final classesThisMonth = stats['classesThisMonth'] as int;
         final submissions = stats['submissions'] as ({int totalSubmissions, int submissionAttempts, int timesSubmitted});
-        final techniques = stats['techniques'] as Map<String, int>;
+        final types = stats['types'] as Map<String, int>;
+        final positions = stats['positions'] as Map<String, int>;
         final overallWinRate = stats['overallWinRate'] as double;
         final totalMatches = stats['totalMatches'] as int;
 
@@ -190,25 +162,18 @@ class _StatsHighlightsWidgetState extends State<StatsHighlightsWidget> {
                       child: _buildSummaryCard(
                         context,
                         'Logged',
-                        '${techniques.values.fold<int>(0, (sum, v) => sum + v)}',
-                        'techniques',
+                        '${types.values.fold<int>(0, (sum, v) => sum + v)}',
+                        'types',
                       ),
                     ),
                 ],
               ),
               const SizedBox(height: 24),
 
-              // Technique Breakdown
-              if (techniques.isNotEmpty) ...[
-                Text(
-                  'Technique Breakdown',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                _buildTechniqueBreakdown(context, techniques),
-              ],
+              // Top positions
+              if (positions.isNotEmpty)
+                _buildTopPositions(positions),
+              const SizedBox(height: 24),
             ],
           ),
         );
@@ -257,61 +222,32 @@ class _StatsHighlightsWidgetState extends State<StatsHighlightsWidget> {
     );
   }
 
-  Widget _buildTechniqueBreakdown(
-      BuildContext context,
-      Map<String, int> techniques,
-      ) {
-    final total = techniques.values.fold<int>(0, (sum, v) => sum + v);
-    if (total == 0) return SizedBox.shrink();
-
-    // Sort by count descending
-    final sorted = techniques.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+  Widget _buildTopPositions(Map<String, int> positions) {
+    // Get top 5 positions
+    final sorted = positions.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+    final top5 = sorted.take(5).toList();
 
     return Column(
-      children: sorted.map((entry) {
-        final label = entry.key;
-        final count = entry.value;
-        final percentage = total > 0 ? (count / total) : 0.0;
-
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 8.0),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 70,
-                child: Text(
-                  label,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ),
-              Expanded(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: percentage,
-                    minHeight: 20,
-                    backgroundColor: Theme.of(context).dividerColor,
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      Theme.of(context).primaryColor,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              SizedBox(
-                width: 30,
-                child: Text(
-                  '$count',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.right,
-                ),
-              ),
-            ],
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Top Positions',
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+            fontWeight: FontWeight.w600,
           ),
-        );
-      }).toList(),
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: top5.map((entry) {
+            return Chip(
+              label: Text('${entry.key} (${entry.value})'),
+              backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
+            );
+          }).toList(),
+        ),
+      ],
     );
   }
 }

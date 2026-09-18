@@ -42,9 +42,9 @@ class AnalyticsService {
         .length;
   }
 
-  // Aggregate all technique counts across entries
-  Map<String, int> aggregateTechniques(List<Map<String, dynamic>> entries) {
-    final techniques = {
+  // Aggregate all type counts across entries
+  Map<String, int> aggregateTypes(List<Map<String, dynamic>> entries) {
+    final types = {
       'Pass': 0,
       'Escape': 0,
       'Retention': 0,
@@ -53,13 +53,13 @@ class AnalyticsService {
     };
 
     for (final entry in entries) {
-      final technique = entry['technique'] as String?;
-      if (technique != null && techniques.containsKey(technique)) {
-        techniques[technique] = (techniques[technique] ?? 0) + 1;
+      final type = entry['type'] as String?;
+      if (type != null && types.containsKey(type)) {
+        types[type] = (types[type] ?? 0) + 1;
       }
     }
 
-    return techniques;
+    return types;
   }
 
   // Aggregate submission counts (total submitted + times submitted)
@@ -350,5 +350,149 @@ class AnalyticsService {
       print('Error fetching summary preference: $e');
       return ['Classes', 'Submissions', 'Submission Success Rate'];
     }
+  }
+
+  // Aggregate techniques by type with metrics
+  ({
+    Map<String, Map<String, int>> techniquesByType,
+    Map<String, int> techniqueFrequency,
+    String? mostUsedTechnique,
+    double techniqueDiversity,
+  }) aggregateTechniques(List<Map<String, dynamic>> entries) {
+
+    final techniquesByType = <String, Map<String, int>>{};
+    final techniqueFrequency = <String, int>{};
+
+    for (final entry in entries) {
+      final techniques = entry['techniques'] as Map<String, dynamic>? ?? {};
+
+      for (final typeEntry in techniques.entries) {
+        final type = typeEntry.key as String;
+        final techniqueList = (typeEntry.value as List?)?.cast<String>() ?? [];
+
+        if (!techniquesByType.containsKey(type)) {
+          techniquesByType[type] = {};
+        }
+
+        for (final technique in techniqueList) {
+          techniquesByType[type]![technique] = (techniquesByType[type]![technique] ?? 0) + 1;
+
+          techniqueFrequency[technique] = (techniqueFrequency[technique] ?? 0) + 1;
+        }
+      }
+    }
+
+    // Get most used technique
+    String? mostUsed;
+    int maxCount = 0;
+    techniqueFrequency.forEach((technique, count) {
+      if (count > maxCount) {
+        maxCount = count;
+        mostUsed = technique;
+      }
+    });
+
+    // Calculate diversity (unique techniques / total entries with techniques)
+    final uniqueCount = techniqueFrequency.length;
+    final totalTechniquesLogged = techniqueFrequency.values.fold<int>(0, (sum, v) => sum + v);
+    final diversity = totalTechniquesLogged > 0 ? uniqueCount / totalTechniquesLogged : 0.0;
+
+    return (
+    techniquesByType: techniquesByType,
+    techniqueFrequency: techniqueFrequency,
+    mostUsedTechnique: mostUsed,
+    techniqueDiversity: diversity,
+    );
+  }
+
+  // Get techniques for a specific type
+  Map<String, int> getTechniquesByType(
+      List<Map<String, dynamic>> entries,
+      String typeFilter,
+      ) {
+    final aggregated = aggregateTechniques(entries);
+    return aggregated.techniquesByType[typeFilter] ?? {};
+  }
+
+  // Get top N techniques
+  List<Map<String, dynamic>> getTopTechniques(
+      List<Map<String, dynamic>> entries, {
+        int limit = 5,
+      }) {
+    final aggregated = aggregateTechniques(entries);
+    final sorted = aggregated.techniqueFrequency.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    return sorted.take(limit).map((e) => {
+      'technique': e.key,
+      'count': e.value,
+    }).toList();
+  }
+
+  // Get all unique techniques from the entire gym
+  Future<List<String>> getAllTechniquesFromGym() async {
+    try {
+      final snapshot = await _firestore
+          .collectionGroup('journal')
+          .get();
+
+      final all = <String>{};
+      for (final doc in snapshot.docs) {
+        try {
+          // Safely access techniques field with null check
+          final techniques = doc.data()['techniques'] as Map<String, dynamic>? ?? {};
+
+          for (final techniqueList in techniques.values) {
+            final list = (techniqueList as List?)?.cast<String>() ?? [];
+            all.addAll(list);
+          }
+        } catch (e) {
+          // Skip documents that don't have techniques or have parsing errors
+          print('Skipping entry: $e');
+          continue;
+        }
+      }
+
+      return all.toList()..sort();
+    } catch (e) {
+      print('Error fetching gym techniques: $e');
+      return [];
+    }
+  }
+
+// Suggest techniques from gym-wide data
+  List<String> suggestTechniques(List<String> allTechniques, String input) {
+    if (input.isEmpty) return [];
+
+    final normalized = input.toLowerCase();
+
+    return allTechniques.where((tech) {
+      final techNorm = tech.toLowerCase();
+      return techNorm.startsWith(normalized) ||
+          _levenshteinDistance(techNorm, normalized) <= 2;
+    }).toList();
+  }
+
+  int _levenshteinDistance(String s1, String s2) {
+    if (s1.isEmpty) return s2.length;
+    if (s2.isEmpty) return s1.length;
+
+    final matrix = List.generate(s1.length + 1, (i) => List.generate(s2.length + 1, (j) => 0));
+
+    for (int i = 0; i <= s1.length; i++) matrix[i][0] = i;
+    for (int j = 0; j <= s2.length; j++) matrix[0][j] = j;
+
+    for (int i = 1; i <= s1.length; i++) {
+      for (int j = 1; j <= s2.length; j++) {
+        final cost = s1[i - 1] == s2[j - 1] ? 0 : 1;
+        matrix[i][j] = [
+          matrix[i - 1][j] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j - 1] + cost,
+        ].reduce((a, b) => a < b ? a : b);
+      }
+    }
+
+    return matrix[s1.length][s2.length];
   }
 }
