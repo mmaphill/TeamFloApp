@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:team_flo_app/widgets/instagram_feed_widget.dart';
 import '../models/belt_rank_model.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
@@ -91,6 +92,8 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             const SizedBox(height: 20),
+
+            InstagramFeedWidget(),
 
             // Stats widget
             const StatsHighlightsWidget(),
