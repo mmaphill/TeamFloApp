@@ -168,6 +168,13 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
     }
   }
 
+  Future<void> _takePhoto() async {
+    final XFile? image = await _picker.pickImage(source: ImageSource.camera);
+    if (image != null) {
+      setState(() => _selectedPhoto = File(image.path));
+    }
+  }
+
   Future<void> _saveEntry() async {
     setState(() => _isLoading = true);
 
@@ -323,7 +330,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
                 child: Center(
                   child: IconButton(
                     icon: const Icon(Icons.add_a_photo),
-                    onPressed: _pickPhoto,
+                    onPressed: _takePhoto,
                   ),
                 ),
               ),
