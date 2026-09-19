@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../services/analytics_service.dart';
@@ -14,7 +13,6 @@ class _StatsScreenState extends State<StatsScreen> {
   late Future<Map<String, dynamic>> statsFuture;
   late Future<List<String>> summaryPreferenceFuture;
   List<String> selectedSummaries = ['Classes', 'Submissions', 'Submission Success Rate'];
-  bool _preferencesLoaded = false;
 
   final availableSummaries = [
     'Classes',
@@ -33,7 +31,6 @@ class _StatsScreenState extends State<StatsScreen> {
       summaryPreferenceFuture.then((prefs) {
         setState(() {
           selectedSummaries = prefs;
-          _preferencesLoaded = true;
         });
       });
     }
@@ -171,6 +168,7 @@ class _StatsScreenState extends State<StatsScreen> {
           }
 
           final stats = snapshot.data!;
+          // journals
           final classesThisMonth = stats['classesThisMonth'] as int;
           final types = stats['types'] as Map<String, int>;
           final submissions = stats['submissions'] as ({int totalSubmissions, int submissionAttempts, int timesSubmitted});
@@ -181,17 +179,18 @@ class _StatsScreenState extends State<StatsScreen> {
             String? mostUsedTechnique,
             double techniqueDiversity,
           });
-          final topTechniquesRaw = (stats['topTechniques'] as List) ?? [];
+          final topTechniquesRaw = (stats['topTechniques'] as List);
           final topTechniques = topTechniquesRaw.cast<Map<String, dynamic>>();
           final attendanceTrend = stats['attendanceTrend'] as List<dynamic>;
           final metrics = stats['metrics'];
+          final submissionSuccessRate = stats['submissionSuccessRate'];
+          // competitions
           final overallWinRate = stats['overallWinRate'] as double;
           final totalMatches = stats['totalMatches'] as int;
           final winBreakdown = stats['winBreakdown'];
           final lossBreakdown = stats['lossBreakdown'];
           final statsByFormat = stats['statsByFormat'] as Map<String, ({int wins, int losses})>;
           final statsByRank = stats['statsByRank'] as Map<String, ({int wins, int losses})>;
-          final submissionSuccessRate = stats['submissionSuccessRate'];
 
           return RefreshIndicator(
             onRefresh: () async {
@@ -205,6 +204,13 @@ class _StatsScreenState extends State<StatsScreen> {
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
                   children: [
+                    // Training Stats Summaries
+                    Text(
+                      'Class Stats',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
@@ -227,15 +233,45 @@ class _StatsScreenState extends State<StatsScreen> {
                               '${(submissionSuccessRate * 100).toStringAsFixed(0)} %',
                               '${(submissions.submissionAttempts - submissions.totalSubmissions)} missed subs',
                           ),
-                        if (selectedSummaries.contains('Win Rate') && totalMatches > 0)
+                        if (selectedSummaries.contains('Win Rate'))
                           _buildSummaryCard(
                             'Win Rate',
                             '${(overallWinRate * 100).toStringAsFixed(0)}%',
-                            '($totalMatches matches)',
+                            '$totalMatches matches',
                           ),
                       ],
                     ),
                     const SizedBox(height:32),
+
+                    // Competition Stats Summaries
+                    Text(
+                      'Competition Stats',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _buildSummaryCard(
+                          'Competitions',
+                          '$totalMatches',
+                          'total matches',
+                        ),
+                        _buildSummaryCard(
+                          'Submissions',
+                          '${winBreakdown.submissions}',
+                          'in comp',
+                        ),
+                        _buildSummaryCard(
+                          'Point Wins',
+                          '${winBreakdown.points}',
+                          'in comps',
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 32),
 
                     // Training Analytics
                     Text(
@@ -348,7 +384,7 @@ class _StatsScreenState extends State<StatsScreen> {
             Text(
               subtitle,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.6),
+                color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.6),
               ),
             ),
           ],
@@ -495,7 +531,7 @@ class _StatsScreenState extends State<StatsScreen> {
           children: top5.map((entry) {
             return Chip(
               label: Text('${entry.key} (${entry.value})'),
-              backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
+              backgroundColor: Theme.of(context).primaryColor.withValues(alpha: 0.1),
             );
           }).toList(),
         ),
@@ -609,9 +645,9 @@ class _StatsScreenState extends State<StatsScreen> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: color.withOpacity(0.3)),
+            border: Border.all(color: color.withValues(alpha: 0.3)),
           ),
           child: Column(
             children: [
@@ -789,7 +825,7 @@ class _StatsScreenState extends State<StatsScreen> {
             return Chip(
               label: Text('$technique ($count)'),
               backgroundColor: isMostUsed
-                  ? Theme.of(context).primaryColor.withOpacity(0.2)
+                  ? Theme.of(context).primaryColor.withValues(alpha: 0.2)
                   : Theme.of(context).dividerColor,
             );
           }).toList(),
@@ -822,15 +858,18 @@ class _StatsScreenState extends State<StatsScreen> {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: entry.value.entries.map((technique) {
-                    return Chip(
-                      label: Text('${technique.key} (${technique.value})'),
-                      labelPadding: const EdgeInsets.symmetric(horizontal: 4),
-                    );
-                  }).toList(),
+                SizedBox(
+                  width: double.infinity,  // ← Full available width
+                  child: Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: entry.value.entries.map((technique) {
+                      return Chip(
+                        label: Text('${technique.key} (${technique.value})'),
+                        labelPadding: const EdgeInsets.symmetric(horizontal: 4),
+                      );
+                    }).toList(),
+                  ),
                 ),
               ],
             ),
