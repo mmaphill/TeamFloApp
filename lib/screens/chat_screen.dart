@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/user_model.dart';
+import '../models/mention_model.dart';
 import '../services/auth_service.dart';
 import '../services/chat_service.dart';
 import '../models/post_model.dart';
+import '../config/colors.dart';
 import '../widgets/fullscreen_image_viewer.dart';
 import '../widgets/video_player_widget.dart';
 import '../widgets/video_player_modal.dart';
 import '../widgets/video_preview.dart';
+import '../config/mention_text_renderer.dart';
 import 'comments_bottom_sheet.dart';
 import 'likers_popup.dart';
 
@@ -52,6 +55,11 @@ class _ChatScreenState extends State<ChatScreen> {
     final profile = await _chatService.getUserProfile(userId);
     _userProfileCache[userId] = profile;
     return profile;
+  }
+
+  // Helper to convert post mentions data to Mention objects
+  List<Mention> _parseMentionsFromPost(PostModel post) {
+    return post.mentions ?? [];
   }
 
   @override
@@ -181,8 +189,11 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
             const SizedBox(height: 12),
 
-            // Post Content
-            Text(post.content),
+            // Post Content with styled mentions
+            MentionTextRenderer.buildMentionText(
+              post.content,
+              _parseMentionsFromPost(post),
+            ),
             const SizedBox(height: 12),
 
             // Media Display
@@ -248,7 +259,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       IconButton(
                         icon: Icon(
                           isLikedByCurrentUser ? Icons.favorite : Icons.favorite_border,
-                          color: isLikedByCurrentUser ? const Color(0xFFEA2327) : Colors.grey,
+                          color: isLikedByCurrentUser ? AppColors.primary : Colors.grey,
                         ),
                         onPressed: () => _chatService.likePost(post.postId, _currentUser.uid),
                       ),
@@ -263,17 +274,6 @@ class _ChatScreenState extends State<ChatScreen> {
                     ],
                   ),
                 ),
-
-                // Dislike Button
-                // IconButton(
-                //   icon: Icon(
-                //     isThumbsDown ? Icons.thumb_down : Icons.thumb_down_outlined,
-                //     color: isThumbsDown ? const Color(0xFFEA2327) : Colors.grey,
-                //   ),
-                //   onPressed: () => _chatService.thumbDown(post.postId, _currentUser.uid),
-                // )
-                // Text('${post.DownBy.length}')
-                // const SizedBox(width: 16),
 
                 // Comment Button
                 IconButton(

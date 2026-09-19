@@ -1,3 +1,5 @@
+import 'mention_model.dart';
+
 class PostModel {
   final String postId;
   final String userId;
@@ -8,8 +10,9 @@ class PostModel {
   final int commentCount;
   final List<String> mediaUrls;
   final List<String> mediaTypes;
+  final List<Mention>? mentions;
 
-  PostModel ({
+  PostModel({
     required this.postId,
     required this.userId,
     required this.userName,
@@ -19,9 +22,23 @@ class PostModel {
     this.commentCount = 0,
     this.mediaUrls = const [],
     this.mediaTypes = const [],
+    this.mentions,
   });
 
   factory PostModel.fromMap(Map<String, dynamic> map, String postId) {
+    // Parse mentions if they exist
+    List<Mention>? mentions;
+    if (map['mentions'] != null && (map['mentions'] as List).isNotEmpty) {
+      try {
+        mentions = (map['mentions'] as List<dynamic>)
+            .map((m) => Mention.fromMap(m as Map<String, dynamic>))
+            .toList();
+      } catch (e) {
+        print('Error parsing mentions: $e');
+        mentions = null;
+      }
+    }
+
     return PostModel(
       postId: postId,
       userId: map['userId'] ?? '',
@@ -32,6 +49,7 @@ class PostModel {
       commentCount: map['commentCount'] ?? 0,
       mediaUrls: List<String>.from(map['mediaUrls'] ?? []),
       mediaTypes: List<String>.from(map['mediaTypes'] ?? []),
+      mentions: mentions,
     );
   }
 
@@ -45,6 +63,7 @@ class PostModel {
       'commentCount': commentCount,
       'mediaUrls': mediaUrls,
       'mediaTypes': mediaTypes,
+      'mentions': mentions?.map((m) => m.toMap()).toList() ?? [],
     };
   }
 }

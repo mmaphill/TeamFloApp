@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:team_flo_app/services/auth_service.dart';
 import '../models/post_model.dart';
+import '../models/mention_model.dart';
 
 class ChatService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -13,12 +14,14 @@ class ChatService {
     required String content,
     List<String> mediaUrls = const [],
     List<String> mediaTypes = const [],
+    List<Mention> mentions =const [],
   }) async {
     try {
       print('🔥 createPost called with:');
       print('  content: $content');
       print('  mediaUrls: ${mediaUrls.length} items → $mediaUrls');
       print('  mediaTypes: ${mediaTypes.length} items → $mediaTypes');
+      print('  mentions: ${mentions.length} items');
 
       await _firestore.collection('posts').add({
         'userId': userId,
@@ -29,6 +32,7 @@ class ChatService {
         'createdAt': DateTime.now(),
         'likedBy': [],
         'commentCount': 0,
+        'mentions': mentions.map((m) => m.toMap()).toList(),
       });
       print('✓ Post created successfully');
       return null; // Success
@@ -141,6 +145,7 @@ class ChatService {
     required String userId,
     required String userName,
     required String content,
+    List<Mention> mentions = const [],
   }) async {
     try {
       await _firestore
@@ -153,6 +158,7 @@ class ChatService {
         'content': content,
         'createdAt': DateTime.now(),
         'likedBy': [],
+        'mentions': mentions.map((m) => m.toMap()).toList(),
       });
 
       // Increase comment count

@@ -1,14 +1,10 @@
-import 'dart:ffi';
-
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:image_picker/image_picker.dart';
-import 'dart:io';
-import '../config/colors.dart';
 import '../services/chat_service.dart';
 import '../services/auth_service.dart';
-import '../services/storage_service.dart';
-import '../services/validation_service.dart';
+import '../widgets/mention_autocomplete_widget.dart';
+import '../models/mention_model.dart';
+import '../config/colors.dart';
 
 class CreatePostScreen extends StatefulWidget {
   const CreatePostScreen({super.key});
@@ -18,125 +14,105 @@ class CreatePostScreen extends StatefulWidget {
 }
 
 class _CreatePostScreenState extends State<CreatePostScreen> {
+  final TextEditingController _postController = TextEditingController();
   final ChatService _chatService = ChatService();
   final AuthService _authService = AuthService();
-  final StorageService _storageService = StorageService();
-  final ImagePicker _picker = ImagePicker();
-  final _contentController = TextEditingController();
-
   bool _isLoading = false;
-  String? _errorMessage;
-  String? _contentError;
-  late User _currentUser;
-  String? _userName;
-  List<File> _selectedMedia = [];
-  List<String> _mediaTypes = [];
+  final List<Mention> _mentions = [];
+  String? _currentUserName;
 
   @override
   void initState() {
     super.initState();
-    _currentUser = FirebaseAuth.instance.currentUser!;
-    _loadUserName();
-    _contentError = null;
+    _loadCurrentUserName();
+  }
+
+  Future<void> _loadCurrentUserName() async {
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId != null) {
+      final data = await _authService.getUserData(userId);
+      if (data != null) {
+        setState(() => _currentUserName = data['name'] ?? 'Anonymous');
+      }
+    }
   }
 
   @override
   void dispose() {
-    _contentController.dispose();
+    _postController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadUserName() async {
-    final data = await _authService.getUserData(_currentUser.uid);
-    if (data != null) {
-      setState(() => _userName = data['name'] ?? 'Anonymous');
+  void _onMentionSelected(String userId, String userName) {
+    // Find the mention in the text and store it
+    final text = _postController.text;
+    final mentionText = '@$userName';
+
+    // Find where the mention is in the text
+    int startIndex = text.lastIndexOf(mentionText);
+    if (startIndex != -1) {
+      int endIndex = startIndex + mentionText.length;
+
+      final mention = Mention(
+        userId: userId,
+        userName: userName,
+        startIndex: startIndex,
+        endIndex: endIndex,
+      );
+
+      // Avoid duplicates
+      final exists = _mentions.any(
+            (m) => m.userId == userId && m.startIndex == startIndex,
+      );
+
+      if (!exists) {
+        setState(() {
+          _mentions.add(mention);
+        });
+      }
     }
   }
 
-  Future<void> _pickImage() async {
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-    if (image != null) {
-      setState(() {
-        _selectedMedia.add(File(image.path));
-        _mediaTypes.add('image');
-      });
-    }
-  }
-
-  Future<void> _pickVideo() async {
-    final XFile? video = await _picker.pickVideo(source: ImageSource. gallery);
-    if (video != null) {
-      setState(() {
-        _selectedMedia.add(File(video.path));
-        _mediaTypes.add('video');
-      });
-    }
-  }
-
-  void _removeMedia(int index) {
-    setState(() {
-      _selectedMedia.removeAt(index);
-      _mediaTypes.removeAt(index);
-    });
-  }
-
-  Future<void> _createPost() async {
-    if (_contentController.text.isEmpty) {
-      setState(() => _errorMessage = 'Post cannot be empty');
+  Future<void> _submitPost() async {
+    final postContent = _postController.text.trim();
+    if (postContent.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Post cannot be empty')),
+      );
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    List<String> mediaUrls = [];
-    List<String> uploadedMediaTypes = [];
-
-    for (int i = 0; i < _selectedMedia.length; i++) {
-      String? url;
-      print('Starting upload for media $i: ${_mediaTypes[i]}');
-
-      if (_mediaTypes[i] == 'image') {
-        url = await _storageService.uploadImage(_selectedMedia[i], _currentUser.uid);
-      } else {
-        url = await _storageService.uploadVideo(_selectedMedia[i], _currentUser.uid);
-      }
-
-      print('Upload result for media $i: $url');
-
-      if (url != null) {
-        mediaUrls.add(url);
-        uploadedMediaTypes.add(_mediaTypes[i]);
-        print('Added URL: $url');
-      } else {
-        print('Upload failed - URL is null for media $i');
-      }
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('User not logged in')),
+      );
+      return;
     }
 
-    print('Final mediaUrl count: ${mediaUrls.length}');
-    print('Final mediaTypes count: ${uploadedMediaTypes.length}');
+    setState(() => _isLoading = true);
 
-    String? error = await _chatService.createPost(
-      userId: _currentUser.uid,
-      userName: _userName ?? 'Anonymous',
-      content: ValidationService.sanitizeContent(_contentController.text),
-      mediaUrls: mediaUrls,
-      mediaTypes: uploadedMediaTypes,
-    );
+    try {
+      await _chatService.createPost(
+        userId: currentUser.uid,
+        userName: _currentUserName ?? 'Anonymous',
+        content: postContent,
+        mentions: _mentions,
+      );
 
-    setState(() => _isLoading = false);
+      if (!mounted) return;
+      Navigator.pop(context);
 
-    if (error == null) {
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Post created successfully!')),
-        );
-      }
-    } else {
-      setState(() => _errorMessage = error);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Post created!')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    } finally {
+      setState(() => _isLoading = false);
     }
   }
 
@@ -144,143 +120,102 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: const Text('Create Post'),
-        backgroundColor: AppColors.dark,
+        elevation: 0,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            // Error Message
-            if (_errorMessage != null)
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.red.shade100,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  _errorMessage!,
-                  style: TextStyle(color: Colors.red.shade700),
-                ),
-              ),
-            if (_errorMessage != null) const SizedBox(height: 16),
-
-            // Post Content TextField
-            Expanded(
-              child: TextField(
-                controller: _contentController,
-                textCapitalization: TextCapitalization.sentences,
-                maxLines: null,
-                expands: true,
-                textAlignVertical: TextAlignVertical.top,
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              // Text input with mention dropdown
+              TextField(
+                controller: _postController,
+                maxLines: 8,
+                minLines: 6,
                 decoration: InputDecoration(
-                  hintText: 'Share your thoughts with the community...',
+                  hintText: 'What\'s on your mind? (@mention teammates)',
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(
+                      color: AppColors.primary,
+                    ),
                   ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(
+                      color: AppColors.primary,
+                      width: 2,
+                    ),
+                  ),
+                  contentPadding: const EdgeInsets.all(12),
                 ),
-                onChanged: (value) {
-                  setState(() {
-                    _contentError = ValidationService.validateContent(value);
-                  });
-                },
               ),
-            ),
-            const SizedBox(height: 16),
+              const SizedBox(height: 12),
 
-            // Selected Media Preview
-            if (_selectedMedia.isNotEmpty)
+              // Mention autocomplete (dropdown only, no list)
+              MentionAutocomplete(
+                textController: _postController,
+                onMentionSelected: _onMentionSelected,
+              ),
+
+              const SizedBox(height: 16),
+
+              // Image/Video buttons
+              Row(
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () {},
+                    icon: const Icon(Icons.image),
+                    label: const Text('Image'),
+                  ),
+                  const SizedBox(width: 8),
+                  OutlinedButton.icon(
+                    onPressed: () {},
+                    icon: const Icon(Icons.videocam),
+                    label: const Text('Video'),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 16),
+
+              // Post button
               SizedBox(
-                height: 100,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: _selectedMedia.length,
-                  itemBuilder: (context, index) {
-                    return Stack(
-                      children: [
-                        Container(
-                          margin: const EdgeInsets.only(right: 8),
-                          width: 100,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
-                            image: _mediaTypes[index] == 'image'
-                                ? DecorationImage(
-                              image: FileImage(_selectedMedia[index]),
-                              fit: BoxFit.cover,
-                            )
-                                : null,
-                            color: _mediaTypes[index] == 'video'
-                                ? Colors.black26
-                                : null,
-                          ),
-                          child: _mediaTypes[index] == 'video'
-                              ? const Center(
-                            child: Icon(Icons.play_circle_outline),
-                          )
-                              : null,
-                        ),
-                        Positioned(
-                          top: 0,
-                          right: 8,
-                          child: IconButton(
-                            icon: const Icon(Icons.close,
-                                color: Colors.white),
-                            onPressed: () => _removeMedia(index),
-                          ),
-                        ),
-                      ],
-                    );
-                  },
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  onPressed: _isLoading ? null : _submitPost,
+                  child: _isLoading
+                      ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        Colors.white,
+                      ),
+                    ),
+                  )
+                      : const Text(
+                    'Post',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
               ),
-            if (_selectedMedia.isNotEmpty) const SizedBox(height: 12),
-
-            // Media Buttons
-            Row(
-              children: [
-                ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF3A3A3A),
-                    foregroundColor: AppColors.light,
-                  ),
-                  icon: const Icon(Icons.image),
-                  label: const Text('Image'),
-                  onPressed: _pickImage,
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF3A3A3A),
-                    foregroundColor: AppColors.light,
-                  ),
-                  icon: const Icon(Icons.videocam),
-                  label: const Text('Video'),
-                  onPressed: _pickVideo,
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Post Button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _createPost,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF3A3A3A),
-                  foregroundColor: AppColors.light,
-                ),
-                child: _isLoading
-                    ? const SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-                    : const Text('Post'),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

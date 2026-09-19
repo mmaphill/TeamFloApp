@@ -17,6 +17,9 @@ class AppColors {
   static const Color lightSurfaceVariant = Color(0xFFEDE8ED);
   static const Color lightText = Color(0xFF0A0000);
 
+  // Tagging others
+  static const Color mention = Color(0xFF42A5F5);
+
   // Deprecated (kept for reference during migration)
   @deprecated
   static const Color dark = darkBg;

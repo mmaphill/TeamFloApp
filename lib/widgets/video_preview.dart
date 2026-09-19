@@ -14,8 +14,10 @@ class VideoPreview extends StatefulWidget {
   State<VideoPreview> createState() => _VideoPreviewState();
 }
 
-class _VideoPreviewState extends State<VideoPreview> {
+class _VideoPreviewState extends State<VideoPreview> with SingleTickerProviderStateMixin {
   late VideoPlayerController _controller;
+  late AnimationController _fadeController;
+  late Animation<double> _fadeAnimation;
   late Future<void> _initializeVideoPlayerFuture;
 
   @override
@@ -23,6 +25,22 @@ class _VideoPreviewState extends State<VideoPreview> {
     super.initState();
     _controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl));
     _initializeVideoPlayerFuture = _controller.initialize();
+
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+
+    _fadeAnimation = Tween<double>(begin: 1.0, end: 0.0).animate(
+      CurvedAnimation(parent: _fadeController, curve: Curves.easeOut),
+    );
+
+    // Start fade after 1.5 seconds
+    Future.delayed(const Duration(milliseconds: 1500), () {
+      if (mounted) {
+        _fadeController.forward();
+      }
+    });
   }
 
   @override

@@ -1,20 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/post_model.dart';
+import '../models/mention_model.dart';
 import '../services/chat_service.dart';
 import '../services/auth_service.dart';
-import '../services/validation_service.dart';
-import 'likers_popup.dart';
+import '../config/colors.dart';
+import '../widgets/mention_autocomplete_widget.dart';
+import '../config/mention_text_renderer.dart';
 
 class CommentsBottomSheet extends StatefulWidget {
   final String postId;
   final String currentUserId;
-  final PostModel? post;
+  final PostModel post;
 
   const CommentsBottomSheet({
     super.key,
     required this.postId,
     required this.currentUserId,
-    this.post,
+    required this.post,
   });
 
   @override
@@ -24,19 +27,111 @@ class CommentsBottomSheet extends StatefulWidget {
 class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
   final ChatService _chatService = ChatService();
   final AuthService _authService = AuthService();
-  final _commentController = TextEditingController();
-  final Map<String, Map<String, dynamic>> _userProfileCache = {};
+  final TextEditingController _commentController = TextEditingController();
 
-  bool _isLoading = false;
-  String? _userName;
-  String? _contentError;
-  String? _userRole;
+  String? _currentUserName;
+  bool _isSubmitting = false;
+
+  final List<Mention> _mentions = [];
+  bool _showMentionSuggestions = false;
 
   @override
   void initState() {
     super.initState();
-    _loadUserName();
-    _contentError = null;
+    _loadCurrentUserName();
+  }
+
+  Future<void> _loadCurrentUserName() async {
+    final data = await _authService.getUserData(widget.currentUserId);
+    if (data != null) {
+      setState(() => _currentUserName = data['name'] ?? 'Anonymous');
+    }
+  }
+
+  // Helper to convert comment mentions data to Mention objects
+  List<Mention> _parseMentionsFromComment(Map<String, dynamic> comment) {
+    try {
+      final mentionsData = comment['mentions'] as List<dynamic>?;
+      if (mentionsData == null || mentionsData.isEmpty) {
+        return [];
+      }
+
+      return mentionsData
+          .cast<Map<String, dynamic>>()
+          .map((m) => Mention.fromMap(m))
+          .toList();
+    } catch (e) {
+      print('Error parsing comment mentions: $e');
+      return [];
+    }
+  }
+
+  void _onMentionSelected(String userId, String userName) {
+    final text = _commentController.text;
+    final mentionText = '@$userName';
+
+    // Find where the mention is in the text
+    int startIndex = text.lastIndexOf(mentionText);
+    if (startIndex != -1) {
+      int endIndex = startIndex + mentionText.length;
+
+      final mention = Mention(
+        userId: userId,
+        userName: userName,
+        startIndex: startIndex,
+        endIndex: endIndex,
+      );
+
+      // Avoid duplicates
+      final exists = _mentions.any(
+            (m) => m.userId == userId && m.startIndex == startIndex,
+      );
+
+      if (!exists) {
+        setState(() {
+          _mentions.add(mention);
+        });
+      }
+
+      print('✓ Mention added to comment: @$userName ($userId)');
+    }
+  }
+
+  Future<void> _submitComment() async {
+    if (_commentController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Comment cannot be empty')),
+      );
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+
+    final error = await _chatService.addComment(
+      postId: widget.postId,
+      userId: widget.currentUserId,
+      userName: _currentUserName ?? 'Anonymous',
+      content: _commentController.text,
+      mentions: _mentions,
+    );
+
+    setState(() => _isSubmitting = false);
+
+    if (error == null) {
+      _commentController.clear();
+      _mentions.clear();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Comment posted!')),
+        );
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $error')),
+        );
+      }
+    }
   }
 
   @override
@@ -45,285 +140,145 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
     super.dispose();
   }
 
-  Future<void> _loadUserName() async {
-    final data = await _authService.getUserData(widget.currentUserId);
-    if (data != null) {
-      setState(() {
-        _userName = data['name'] ?? 'Anonymous';
-        _userRole = data['role'];
-      });
-    }
-  }
-
-  // User profile cache
-  Future<Map<String, dynamic>> _getUserProfile(String userId) async {
-    if (_userProfileCache.containsKey(userId)) {
-      return _userProfileCache[userId]!;
-    }
-
-    final profile = await _chatService.getUserProfile(userId);
-    _userProfileCache[userId] = profile;
-    return profile;
-  }
-
-  Future<void> _postComment() async {
-    if (_commentController.text.isEmpty) return;
-
-    setState(() => _isLoading = true);
-
-    await _chatService.addComment(
-      postId: widget.postId,
-      userId: widget.currentUserId,
-      userName: _userName ?? 'Anonymous',
-      content: ValidationService.sanitizeContent(_commentController.text),
-    );
-
-    _commentController.clear();
-    setState(() => _isLoading = false);
-  }
-
   @override
   Widget build(BuildContext context) {
     return DraggableScrollableSheet(
       expand: false,
-      initialChildSize: 0.8,
-      minChildSize: 0.5,
-      builder: (context, scrollController) => Column(
-        children: [
-          // Post Preview (if available)
-          if (widget.post != null)
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(color: Colors.grey[300]!),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.post!.userName,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    widget.post!.content,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 13),
-                  ),
-                ],
-              ),
-            ),
-
-          // Comments Header
-          Container(
-            padding: const EdgeInsets.all(16),
-            child: const Text(
-              'Comments',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
+      builder: (context, scrollController) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.black87,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
           ),
-          const Divider(),
-
-          // Comments List
-          Expanded(
-            child: StreamBuilder<List<Map<String, dynamic>>>(
-              stream: _chatService.getCommentStream(widget.postId),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return const Center(child: Text('No comments yet'));
-                }
-
-                List<Map<String, dynamic>> comments = snapshot.data!;
-                return ListView.builder(
-                  controller: scrollController,
-                  itemCount: comments.length,
-                  itemBuilder: (context, index) {
-                    Map<String, dynamic> comment = comments[index];
-                    return _buildCommentTile(comment);
-                  },
-                );
-              },
-            ),
-          ),
-
-          // Comment Input
-          Container(
-            padding: EdgeInsets.only(
-              left: 12,
-              right: 12,
-              bottom: MediaQuery.of(context).viewInsets.bottom + 12,
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _commentController,
-                    textCapitalization: TextCapitalization.sentences,
-                    decoration: InputDecoration(
-                      hintText: 'Add a comment...',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                    ),
-                    onChanged: (value) {
-                      setState(() {
-                        _contentError = ValidationService.validateContent(value);
-                      });
-                    },
-                  ),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: const Icon(Icons.send),
-                  onPressed: (_isLoading || _contentError != null) ? null : _postComment,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCommentTile(Map<String, dynamic> comment) {
-    bool isOwnComment = comment['userId'] == widget.currentUserId;
-    bool isAdmin = _userRole == 'admin';
-    bool isLikedByCurrentUser = (comment['likedBy'] as List?)?.contains(widget.currentUserId) ?? false;
-    int likeCount = (comment['likedBy'] as List?)?.length ?? 0;
-
-    return FutureBuilder<Map<String, dynamic>>(
-      future: _getUserProfile(comment['userId']),
-      builder: (context, snapshot) {
-        final profile = snapshot.data ?? {'name': comment['userName'], 'photoUrl': null};
-
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Comment Header with Avatar
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Row(
+              // Header
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: const BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(color: Colors.grey, width: 0.5),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Comments',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Comments List
+              Expanded(
+                child: StreamBuilder<List<Map<String, dynamic>>>(
+                  stream: _chatService.getCommentStream(widget.postId),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+
+                    if (snapshot.hasError) {
+                      return Center(child: Text('Error: ${snapshot.error}'));
+                    }
+
+                    final comments = snapshot.data ?? [];
+
+                    if (comments.isEmpty) {
+                      return const Center(
+                        child: Text(
+                          'No comments yet',
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                      );
+                    }
+
+                    return ListView.builder(
+                      controller: scrollController,
+                      itemCount: comments.length,
+                      itemBuilder: (context, index) {
+                        final comment = comments[index];
+                        return _buildCommentTile(comment);
+                      },
+                    );
+                  },
+                ),
+              ),
+
+              // Comment Input Section
+              Container(
+                decoration: const BoxDecoration(
+                  border: Border(
+                    top: BorderSide(color: Colors.grey, width: 0.5),
+                  ),
+                ),
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Comment input field
+                    Row(
                       children: [
-                        // Avatar
-                        CircleAvatar(
-                          radius: 18,
-                          backgroundImage: (profile['photoUrl'] != null &&
-                              profile['photoUrl'].isNotEmpty)
-                              ? NetworkImage(profile['photoUrl'])
-                              : null,
-                          backgroundColor: profile['photoUrl'] == null ||
-                              profile['photoUrl'].isEmpty
-                              ? Colors.grey[400]
-                              : null,
-                          child: (profile['photoUrl'] == null ||
-                              profile['photoUrl'].isEmpty)
-                              ? Text(
-                            comment['userName'].isNotEmpty
-                                ? comment['userName'][0].toUpperCase()
-                                : '?',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                        Expanded(
+                          child: TextField(
+                            controller: _commentController,
+                            style: const TextStyle(color: Colors.white),
+                            decoration: InputDecoration(
+                              hintText: 'Add a comment... (@ to mention)',
+                              hintStyle: const TextStyle(color: Colors.grey),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: const BorderSide(color: Colors.grey),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
                             ),
-                          )
-                              : null,
+                            maxLines: null,
+                            minLines: 1,
+                          ),
                         ),
                         const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            profile['name'] ?? comment['userName'],
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
+                        IconButton(
+                          icon: _isSubmitting
+                              ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.blue,
+                              ),
+                            ),
+                          )
+                              : const Icon(Icons.send, color: Colors.blue),
+                          onPressed: _isSubmitting ? null : _submitComment,
                         ),
                       ],
                     ),
-                  ),
-                  if (isOwnComment || isAdmin)
-                    IconButton(
-                      icon: const Icon(Icons.delete, size: 18),
-                      onPressed: () async {
-                        final result = await _chatService.deleteComment(
-                          widget.postId,
-                          comment['commentId'],
-                          widget.currentUserId,
-                        );
 
-                        if (result == null) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Comment deleted')),
-                          );
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Error: $result')),
-                          );
-                        }
+                    const SizedBox(height: 8),
+
+                    // Mention autocomplete dropdown
+                    MentionAutocomplete(
+                      textController: _commentController,
+                      onMentionSelected: _onMentionSelected,
+                      onShowSuggestions: (visible) {
+                        setState(() {
+                          _showMentionSuggestions = visible;
+                        });
                       },
-                    ),
-                ],
-              ),
-
-              // Comment Content
-              Padding(
-                padding: const EdgeInsets.only(left: 26), // Align with avatar
-                child: Text(comment['content']),
-              ),
-              const SizedBox(height: 8),
-
-              // Like Button with Long Press
-              Padding(
-                padding: const EdgeInsets.only(left: 26), // Align with avatar
-                child: Row(
-                  children: [
-                    IconButton(
-                      icon: Icon(
-                        isLikedByCurrentUser ? Icons.favorite : Icons.favorite_border,
-                        color: isLikedByCurrentUser ? const Color(0xFFEA2327) : Colors.grey,
-                        size: 18,
-                      ),
-                      onPressed: () async {
-                        final result = await _chatService.likeComment(
-                          widget.postId,
-                          comment['commentId'],
-                          widget.currentUserId,
-                        );
-
-                        if (result != null) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Error: $result')),
-                          );
-                        }
-                      },
-                    ),
-                    GestureDetector(
-                      onLongPress: () {
-                        if (likeCount > 0) {
-                          final likedBy = (comment['likedBy'] as List<dynamic>? ?? []).cast<String>();
-                          _showLikersPopup(likedBy, context);
-                        }
-                      },
-                      child: Text(
-                        likeCount > 0 ? likeCount.toString() : '',
-                        style: const TextStyle(fontSize: 12, color: Colors.grey),
-                      ),
                     ),
                   ],
                 ),
@@ -335,10 +290,75 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
     );
   }
 
-  void _showLikersPopup(List<String> likedBy, BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => LikersPopup(likedBy: likedBy),
+  Widget _buildCommentTile(Map<String, dynamic> comment) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 20,
+                backgroundColor: Colors.grey[600],
+                child: Text(
+                  (comment['userName'] as String).isNotEmpty
+                      ? (comment['userName'] as String)[0].toUpperCase()
+                      : '?',
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      comment['userName'] ?? 'Anonymous',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    Text(
+                      _formatTime(
+                        (comment['createdAt'] as dynamic)?.toDate() ??
+                            DateTime.now(),
+                      ),
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.only(left: 56.0),
+            child: MentionTextRenderer.buildMentionText(
+              comment['content'] ?? '',
+              _parseMentionsFromComment(comment),
+              baseStyle: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+              ),
+              mentionStyle: const TextStyle(
+                color: AppColors.mention,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
+  }
+
+  String _formatTime(DateTime date) {
+    final diff = DateTime.now().difference(date);
+    if (diff.inMinutes < 1) return 'just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    return '${diff.inDays}d ago';
   }
 }
