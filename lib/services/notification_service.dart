@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
@@ -100,9 +102,18 @@ class NotificationService {
   }
 
   Future<void> _saveTokenToFirestore(String token) async {
-    // Store token in user's Firestore document for later targeting
-    // This allows you to send notifications to specific users
-    // Implementation depends on your user structure
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) {
+      print('User not authenticated, skipping token save');
+      return;
+    }
+
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .update({'fcmToken': token}).catchError((error) {
+      print('Error saving token: $error');
+    });
   }
 
   void listenForTokenRefresh() {

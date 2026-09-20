@@ -16,6 +16,8 @@ class UserModel {
   final String avatarColor;
   final String? currentBelt;
   final String? themeMode;
+  final bool notificationsEnabled;
+  final String? fcmToken;
 
   UserModel({
     required this.uid,
@@ -31,6 +33,8 @@ class UserModel {
     this.avatarColor = '#2196F3',
     this.currentBelt,
     this.themeMode,
+    this.notificationsEnabled = false,
+    this.fcmToken,
   });
 
   factory UserModel.fromMap(Map<String, dynamic> map) {
@@ -52,6 +56,8 @@ class UserModel {
       avatarColor: map['avatarColor'] ?? '#2196F3',
       currentBelt: map['currentBelt'],
       themeMode: map['themeMode'],
+      notificationsEnabled: map['notificationsEnabled'] ?? false,
+      fcmToken: map['fcmToken'],
     );
   }
 
@@ -70,6 +76,8 @@ class UserModel {
       'avatarColor': avatarColor,
       'currentBelt': currentBelt,
       'themeMode': themeMode,
+      'notificationsEnabled': notificationsEnabled,
+      'fcmToken': fcmToken,
     };
   }
 }

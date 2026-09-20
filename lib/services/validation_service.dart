@@ -61,6 +61,16 @@ class ValidationService {
     return null;
   }
 
+  // Validate Numerical Input
+  static int validatePositiveNumber(int num) {
+    if (num < 0) {
+      print ("Value can't be less than 0. Returned 0");
+      return 0;
+    }
+
+    return num;
+  }
+
   // Sanitize text input (for posts, comments, journal)
   static String sanitizeContent(String content) {
     // Trim whitespace

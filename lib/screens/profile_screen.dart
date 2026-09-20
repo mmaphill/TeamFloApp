@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
@@ -99,6 +100,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 avatarColor: _userData.avatarColor,
                 currentBelt: _userData.currentBelt,
                 photoCropData: PhotoCropData(),
+                notificationsEnabled: _userData.notificationsEnabled,
+                fcmToken: _userData.fcmToken,
               );
             }
             _isLoading = false;
@@ -134,6 +137,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           photoUrl: user.photoUrl,
           avatarColor: user.avatarColor,
           currentBelt: currentBelt,
+          notificationsEnabled: user.notificationsEnabled,
+          fcmToken: user.fcmToken,
         );
         print('DEBUG: Loaded name="${_userData.name}", goals="${_userData.goals}"');
       });
@@ -1219,6 +1224,55 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   );
                 },
+              ),
+              const SizedBox(height: 12),
+
+              // Notifications Toggle
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).cardColor,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.notifications_active,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          'Notifications',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w500,
+                            fontSize: 14,
+                            color: Theme.of(context).textTheme.bodyMedium?.color,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Switch(
+                      value: _userData.notificationsEnabled,
+                      onChanged: (value) async {
+                        setState(() => _isLoading = true);
+
+                        await FirebaseFirestore.instance
+                            .collection('users')
+                            .doc(_currentUser.uid)
+                            .update({'notificationsEnabled': value});
+
+                        await _loadUserData();
+
+                        setState(() => _isLoading = false);
+                      },
+                      activeColor: Theme.of(context).colorScheme.primary,
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 12),
 

@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:team_flo_app/screens/privacy_policy_screen.dart';
+import 'package:team_flo_app/services/notification_service.dart';
 import 'config/theme_provider.dart';
 import 'firebase_options.dart';
 import 'screens/login_screen.dart';
@@ -16,6 +17,11 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Initialize notifications
+  await NotificationService().initialize();
+  NotificationService().listenForTokenRefresh();
+
   runApp(const TeamFloApp());
 }
 
@@ -32,14 +38,14 @@ class _TeamFloAppState extends State<TeamFloApp> {
   @override
   void initState() {
     super.initState();
-    // NEW: Initialize theme provider and load saved preference
+    // Initialize theme provider and load saved preference
     _themeProvider = ThemeProvider();
     _themeProvider.loadSavedTheme();
   }
 
   @override
   Widget build(BuildContext context) {
-    // NEW: Wrap app with Provider to make ThemeProvider available app-wide
+    // Wrap app with Provider to make ThemeProvider available app-wide
     return MultiProvider(
       providers: [
         ChangeNotifierProvider.value(value: _themeProvider),
