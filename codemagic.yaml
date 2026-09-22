@@ -1,17 +1,9 @@
 workflows:
   teamflo-ios:
     name: TeamFloApp iOS Build
-    environment:
-      ios:
-        XCODE_WORKSPACE: ios/Runner.xcworkspace
-        XCODE_SCHEME: Runner
-      vars:
-        BUNDLE_ID: "com.teamflobjj.app"
-    triggering:
-      events:
-        - push
     scripts:
-      - name: Build
-        script: flutter build ipa --release
+      - name: Build Flutter App
+        script: |
+          flutter build ipa --release
     artifacts:
-      - build/ios/ipa/*.ipa
+      - build/ios/ipa/**/*.ipa
