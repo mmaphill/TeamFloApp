@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../models/user_model.dart';
 import '../models/mention_model.dart';
 import '../services/auth_service.dart';
 import '../services/chat_service.dart';
 import '../models/post_model.dart';
 import '../config/colors.dart';
 import '../widgets/fullscreen_image_viewer.dart';
-import '../widgets/video_player_widget.dart';
 import '../widgets/video_player_modal.dart';
 import '../widgets/video_preview.dart';
 import '../config/mention_text_renderer.dart';
@@ -15,7 +13,9 @@ import 'comments_bottom_sheet.dart';
 import 'likers_popup.dart';
 
 class ChatScreen extends StatefulWidget {
-  const ChatScreen({super.key});
+  final String? postId;
+
+  const ChatScreen({super.key, this.postId,});
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -25,14 +25,16 @@ class _ChatScreenState extends State<ChatScreen> {
   final ChatService _chatService = ChatService();
   final User _currentUser = FirebaseAuth.instance.currentUser!;
   final Map<String, Map<String, dynamic>> _userProfileCache = {};
+  final ScrollController _scrollController = ScrollController();
 
-  late UserModel _userData;
   String? _userRole;
+  String? _highlightedPostId;
 
   @override
   void initState() {
     super.initState();
     _loadUserData();
+    _highlightedPostId = widget.postId;
   }
 
   Future<void> _loadUserData() async {
@@ -40,7 +42,6 @@ class _ChatScreenState extends State<ChatScreen> {
     final data = await authService.getUserData(FirebaseAuth.instance.currentUser!.uid);
     if (data != null) {
       setState(() {
-        _userData = UserModel.fromMap(data);
         _userRole = data['role'];
       });
     }
@@ -87,6 +88,14 @@ class _ChatScreenState extends State<ChatScreen> {
 
           // Display posts
           List<PostModel> posts = snapshot.data!;
+
+          // Scroll to highlighted post if applicable
+          if (_highlightedPostId != null) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _scrollToPost(posts, _highlightedPostId!);
+            });
+          }
+
           return ListView.builder(
             itemCount: posts.length,
             itemBuilder: (context, index) {
@@ -97,6 +106,25 @@ class _ChatScreenState extends State<ChatScreen> {
         },
       ),
     );
+  }
+
+  void _scrollToPost(List<PostModel> posts, String postId) {
+    try {
+      final index = posts.indexWhere((post) => post.postId == postId);
+      if (index != -1) {
+        _scrollController.animateTo(
+          index * 250.0,  // Approximate height of a post card
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeInOut,
+        );
+        // Clear highlight after 2 seconds
+        Future.delayed(const Duration(seconds: 2), () {
+          setState(() => _highlightedPostId = null);
+        });
+      }
+    } catch (e) {
+      print('Error scrolling to post: $e');
+    }
   }
 
   Widget _buildPostCard(PostModel post) {
@@ -289,12 +317,6 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildVideoPlayer(String videoUrl) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: VideoPlayerWidget(videoUrl: videoUrl),
-    );
-  }
 
   void _showLikersPopup(List<String> likedBy, BuildContext context) {
     showDialog(
@@ -356,5 +378,11 @@ class _ChatScreenState extends State<ChatScreen> {
         post: post,
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 }

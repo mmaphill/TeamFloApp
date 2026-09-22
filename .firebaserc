@@ -1,6 +1,7 @@
 {
   "projects": {
-    "teamflo": "teamfloapp"
+    "teamflo": "teamfloapp",
+    "default": "teamfloapp"
   },
   "targets": {},
   "etags": {}

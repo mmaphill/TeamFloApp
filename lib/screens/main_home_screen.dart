@@ -16,7 +16,16 @@ import 'schedule_screen.dart';
 import 'profile_screen.dart';
 
 class MainHomeScreen extends StatefulWidget {
-  const MainHomeScreen({super.key});
+  final int? initialIndex;
+  final String? postId;
+  final String? classId;
+
+  const MainHomeScreen({
+    super.key,
+    this.initialIndex,
+    this.postId,
+    this.classId,
+  });
 
   @override
   State<MainHomeScreen> createState() => _MainHomeScreenState();
@@ -25,18 +34,12 @@ class MainHomeScreen extends StatefulWidget {
 class _MainHomeScreenState extends State<MainHomeScreen> {
   final AuthService _authService = AuthService();
   final User _currentUser = FirebaseAuth.instance.currentUser!;
-  int _selectedIndex = 0;
+  late int _selectedIndex;
   UserModel? _userData;
 
-  final List<Widget> _screens = [
-    const HomeScreen(),
-    const ChatScreen(),
-    const CalendarScreen(),
-    const ScheduleScreen(),
-    const StatsScreen(),
-  ];
+  late List<Widget> _screens;
 
-  final List<String> _titles = [
+  final List<String> _titels = [
     'Team Flo BJJ',
     'Community Chat',
     'Training Journal',
@@ -48,6 +51,8 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
   void initState() {
     super.initState();
     _checkPrivacyPolicy();
+    _selectedIndex = widget.initialIndex ?? 0;
+    _buildScreens();
 
     // Initialize with default/empty value
     _userData = UserModel(
@@ -57,6 +62,16 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
       role: 'member',
       createdAt: DateTime.now(),
     );
+  }
+
+  void _buildScreens() {
+    _screens = [
+      const HomeScreen(),
+      ChatScreen(postId: widget.postId),
+      const CalendarScreen(),
+      const ScheduleScreen(),
+      const StatsScreen(),
+    ];
   }
 
   Future<void> _checkPrivacyPolicy() async {
@@ -170,7 +185,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
               ),
             ],
           ),
-          body: _screens[_selectedIndex],
+          body: _buildBody(),
           bottomNavigationBar: BottomNavigationBar(
             backgroundColor: const Color(0xFF3A3A3A),
             selectedItemColor: const Color(0xFFFFB2B3),
@@ -194,6 +209,11 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
         );
       }
     );
+  }
+
+  Widget _buildBody() {
+    _buildScreens();
+    return _screens[_selectedIndex];
   }
 
   Future<void> _logout() async {

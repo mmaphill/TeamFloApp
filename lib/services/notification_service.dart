@@ -3,6 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
+import '../main.dart';
+
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
 
@@ -97,8 +99,37 @@ class NotificationService {
 
   void _handleMessageOpenedApp(RemoteMessage message) {
     print('Message opened: ${message.notification?.title}');
-    // Navigate to relevant screen based on message.data
-    // Example: if (message.data['type'] == 'class') { navigateToClass(); }
+
+    final type = message.data['type'];
+
+    if (type == 'tag') {
+      final postId = message.data['postId'];
+      // Navigate to ChatScreen and pass postId
+      navigatorKey.currentState?.pushNamed(
+        '/chat',
+        arguments: postId,
+      );
+    } else if (type == 'workout_reminder') {
+      final classId = message.data['classId'];
+      navigatorKey.currentState?.pushNamed(
+        '/journal',
+        arguments: classId,
+      );
+    }
+  }
+
+  void _navigateToPost(String postId) {
+    navigatorKey.currentState?.pushNamed(
+      '/chat',
+      arguments: {'postId': postId},
+    );
+  }
+
+  void _navigateToClass(String classId) {
+    navigatorKey.currentState?.pushNamed(
+      '/journal',
+      arguments: {'classId': classId},
+    );
   }
 
   Future<void> _saveTokenToFirestore(String token) async {
