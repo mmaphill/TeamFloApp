@@ -1,6 +1,10 @@
 workflows:
   teamflo-ios:
     name: TeamFloApp iOS Build
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_id: com.teamflobjj.app
     scripts:
       - name: Build Flutter App
         script: |
