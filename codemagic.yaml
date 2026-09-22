@@ -8,6 +8,7 @@ workflows:
     scripts:
       - name: Build Flutter App
         script: |
-          flutter build ipa --release
+          flutter build ipa --release \
+            --export-options-plist=$CM_EXPORT_OPTIONS_PLIST
     artifacts:
       - build/ios/ipa/**/*.ipa
