@@ -16,7 +16,7 @@
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
-		F056B8613062F07300C6AF01 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = F056B8603062F07300C6AF01 /* GoogleService-Info.plist */; };
+		F056B86230632FCE00C6AF01 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = F056B8603062F07300C6AF01 /* GoogleService-Info.plist */; };
 		F0FC6AE8303F887F00FDBC1A /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = F0FC6AE7303F887F00FDBC1A /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
@@ -234,12 +234,12 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F056B86230632FCE00C6AF01 /* GoogleService-Info.plist in Resources */,
 				97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */,
 				3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */,
 				F0FC6AE8303F887F00FDBC1A /* PrivacyInfo.xcprivacy in Resources */,
 				97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */,
 				97C146FC1CF9000F007C117D /* Main.storyboard in Resources */,
-				F056B8613062F07300C6AF01 /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
