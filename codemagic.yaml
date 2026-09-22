@@ -4,7 +4,7 @@ workflows:
     environment:
       ios_signing:
         distribution_type: app_store
-        bundle_id: com.teamflobjj.app
+        bundle_identifier: com.teamflobjj.app
     scripts:
       - name: Build Flutter App
         script: |
