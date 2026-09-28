@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../services/analytics_service.dart';
+import '../utils/log.dart';
 
 class StatsHighlightsWidget extends StatefulWidget {
   const StatsHighlightsWidget({super.key});
@@ -23,12 +24,12 @@ class _StatsHighlightsWidgetState extends State<StatsHighlightsWidget> {
       return await _loadStatsInternal().timeout(
         Duration(seconds: 3),
         onTimeout: () {
-          print('⏱Stats loading timed out after 3 seconds');
+          log('⏱Stats loading timed out after 3 seconds');
           return _emptyStats();
         },
       );
     } catch (e) {
-      print('Error loading stats: $e');
+      log('Error loading stats: $e');
       return _emptyStats();
     }
   }
@@ -43,7 +44,7 @@ class _StatsHighlightsWidgetState extends State<StatsHighlightsWidget> {
 
     final journalEntries = await analyticsService.getJournalEntries(uid);
     final userProfile = await analyticsService.getUserProfile(uid);
-    final positions = await analyticsService.getPositionFrequency(journalEntries);
+    final positions = analyticsService.getPositionFrequency(journalEntries);
     final classesThisMonth = analyticsService.getClassesThisMonth(journalEntries);
     final submissions = analyticsService.aggregateSubmissions(journalEntries);
     final types = analyticsService.aggregateTypes(journalEntries);
@@ -216,7 +217,7 @@ class _StatsHighlightsWidgetState extends State<StatsHighlightsWidget> {
             Text(
               subtitle,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.6),
+                color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.6),
               ),
             ),
           ],
@@ -246,7 +247,7 @@ class _StatsHighlightsWidgetState extends State<StatsHighlightsWidget> {
           children: top5.map((entry) {
             return Chip(
               label: Text('${entry.key} (${entry.value})'),
-              backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
+              backgroundColor: Theme.of(context).primaryColor.withValues(alpha: 0.1),
             );
           }).toList(),
         ),

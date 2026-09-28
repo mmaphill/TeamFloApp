@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:team_flo_app/screens/privacy_policy_screen.dart';
 import 'package:team_flo_app/services/validation_service.dart';
 import '../services/auth_service.dart';
+import '../utils/log.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -48,7 +49,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (error == null) {
       if (kDebugMode) {
-        print('Login Successful!');
+        log('Login Successful!');
       }
 
       // Get user data to check privacy policy

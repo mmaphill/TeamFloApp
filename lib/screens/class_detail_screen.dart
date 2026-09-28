@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../models/class_schedule_model.dart';
 import '../services/schedule_service.dart';
 import '../config/colors.dart';
+import '../utils/log.dart';
 
 class ClassDetailScreen extends StatefulWidget {
   final ClassSchedule classSchedule;
@@ -50,7 +51,7 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
           attendees.add({'name': name, 'userId': userId});
         }
       } catch (e) {
-        print('Error fetching attendee $userId: $e');
+        log('Error fetching attendee $userId: $e');
       }
     }
 

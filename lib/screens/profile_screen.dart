@@ -16,6 +16,7 @@ import '../services/validation_service.dart';
 import 'crop_photo_screen.dart';
 import '../config/theme_provider.dart';
 import 'package:provider/provider.dart';
+import '../utils/log.dart';
 
 class ProfileScreen extends StatefulWidget {
   static final GlobalKey<_ProfileScreenState> profileKey = GlobalKey<_ProfileScreenState>();
@@ -140,7 +141,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           notificationsEnabled: user.notificationsEnabled,
           fcmToken: user.fcmToken,
         );
-        print('DEBUG: Loaded name="${_userData.name}", goals="${_userData.goals}"');
+        log('DEBUG: Loaded name="${_userData.name}", goals="${_userData.goals}"');
       });
     }
   }
@@ -418,7 +419,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               children: [
                 // Belt Level Dropdown
                 DropdownButtonFormField<String>(
-                  value: rankController.text.isEmpty ? 'White' : rankController.text,
+                  initialValue: rankController.text.isEmpty ? 'White' : rankController.text,
                   items: ['White', 'Blue', 'Purple', 'Brown', 'Black']
                       .map((belt) => DropdownMenuItem(
                     value: belt,
@@ -566,7 +567,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               children: [
                 // Belt Level Dropdown
                 DropdownButtonFormField<String>(
-                  value: rankController.text,
+                  initialValue: rankController.text,
                   items: ['White', 'Blue', 'Purple', 'Brown', 'Black']
                       .map((belt) => DropdownMenuItem(
                     value: belt,
@@ -714,7 +715,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 12),
                 // Format dropdown
                 DropdownButtonFormField<String>(
-                  value: format,
+                  initialValue: format,
                   decoration: const InputDecoration(
                     labelText: 'Format',
                     border: OutlineInputBorder(),
@@ -734,7 +735,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 12),
                 // Rank dropdown (conditional)
                 DropdownButtonFormField<String>(
-                  value: rank,
+                  initialValue: rank,
                   decoration: const InputDecoration(
                     labelText: 'Rank',
                     border: OutlineInputBorder(),
@@ -1010,7 +1011,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   child: CircleAvatar(
                     radius: 60,
                     backgroundColor: Color(int.parse(
-                      _userData.avatarColor!.replaceFirst('#', '0xff'),
+                      _userData.avatarColor.replaceFirst('#', '0xff'),
                     )),
                     backgroundImage: _userData.photoUrl != null
                         ? NetworkImage(_userData.photoUrl!)
@@ -1218,7 +1219,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           onChanged: (value) {
                             themeProvider.setThemeMode(value ? ThemeMode.dark : ThemeMode.light);
                           },
-                          activeColor: Theme.of(context).colorScheme.primary,
+                          activeThumbColor: Theme.of(context).colorScheme.primary,
                         ),
                       ],
                     ),
@@ -1269,7 +1270,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                         setState(() => _isLoading = false);
                       },
-                      activeColor: Theme.of(context).colorScheme.primary,
+                      activeThumbColor: Theme.of(context).colorScheme.primary,
                     ),
                   ],
                 ),
@@ -1471,7 +1472,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 12),
                 // Format dropdown
                 DropdownButtonFormField<String>(
-                  value: format,
+                  initialValue: format,
                   decoration: const InputDecoration(
                     labelText: 'Format',
                     border: OutlineInputBorder(),
@@ -1490,7 +1491,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 12),
                 // Rank dropdown (changes based on format)
                 DropdownButtonFormField<String>(
-                  value: rank,
+                  initialValue: rank,
                   decoration: const InputDecoration(
                     labelText: 'Rank',
                     border: OutlineInputBorder(),
@@ -1506,7 +1507,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
-                  value: place,
+                  initialValue: place,
                   decoration: const InputDecoration(
                     labelText: 'Place',
                     border: OutlineInputBorder(),

@@ -11,6 +11,7 @@ import '../widgets/video_preview.dart';
 import '../config/mention_text_renderer.dart';
 import 'comments_bottom_sheet.dart';
 import 'likers_popup.dart';
+import '../utils/log.dart';
 
 class ChatScreen extends StatefulWidget {
   final String? postId;
@@ -123,7 +124,7 @@ class _ChatScreenState extends State<ChatScreen> {
         });
       }
     } catch (e) {
-      print('Error scrolling to post: $e');
+      log('Error scrolling to post: $e');
     }
   }
 
@@ -357,15 +358,15 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _debugPrintPost(PostModel post) {
-    print('=== POST DEBUG ===');
-    print('Post ID: ${post.postId}');
-    print('User: ${post.userName}');
-    print('Content: ${post.content}');
-    print('Media URLs: ${post.mediaUrls.length} items');
+    log('=== POST DEBUG ===');
+    log('Post ID: ${post.postId}');
+    log('User: ${post.userName}');
+    log('Content: ${post.content}');
+    log('Media URLs: ${post.mediaUrls.length} items');
     for (int i = 0; i < post.mediaUrls.length; i++) {
-      print('  [$i] ${post.mediaTypes[i]}: ${post.mediaUrls[i]}');
+      log('  [$i] ${post.mediaTypes[i]}: ${post.mediaUrls[i]}');
     }
-    print('=================');
+    log('=================');
   }
 
   void _showCommentsBottomSheet(String postId, PostModel post) {

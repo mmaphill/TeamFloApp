@@ -1,3 +1,5 @@
+import '../utils/log.dart';
+
 class ValidationService {
   // Validate email format
   static String? validateEmail(String? email) {
@@ -64,7 +66,7 @@ class ValidationService {
   // Validate Numerical Input
   static int validatePositiveNumber(int num) {
     if (num < 0) {
-      print ("Value can't be less than 0. Returned 0");
+      log("Value can't be less than 0. Returned 0");
       return 0;
     }
 

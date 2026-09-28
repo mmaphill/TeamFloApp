@@ -69,7 +69,7 @@ class JournalService {
         .map((snapshot) {
       return snapshot.docs
           .map((doc) =>
-          JournalEntry.fromMap(doc.data() as Map<String, dynamic>, doc.id))
+          JournalEntry.fromMap(doc.data(), doc.id))
           .toList();
     });
   }

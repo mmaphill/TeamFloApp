@@ -14,6 +14,7 @@ import 'home_screen.dart';
 import 'journal_entry_screen.dart';
 import 'schedule_screen.dart';
 import 'profile_screen.dart';
+import '../utils/log.dart';
 
 class MainHomeScreen extends StatefulWidget {
   final int? initialIndex;
@@ -38,14 +39,6 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
   UserModel? _userData;
 
   late List<Widget> _screens;
-
-  final List<String> _titels = [
-    'Team Flo BJJ',
-    'Community Chat',
-    'Training Journal',
-    'Class Schedule',
-    'Stats',
-  ];
 
   @override
   void initState() {
@@ -149,8 +142,8 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
               PopupMenuButton<String>(
                 child: CircleAvatar(
                   backgroundImage: _userData?.photoUrl != null ? NetworkImage(_userData!.photoUrl!) : null,
-                  child: _userData?.photoUrl == null ? const Icon(Icons.person) : null,
                   radius: 18,
+                  child: _userData?.photoUrl == null ? const Icon(Icons.person) : null,
                 ),
                 onSelected: (value) {
                   if (value == 'profile') {
@@ -253,7 +246,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
         )
         .map((doc) => doc.data())
         .handleError((error, stackTrace) {
-          print('Error fetching user data: $error');
+          log('Error fetching user data: $error');
           return null;
         });
   }

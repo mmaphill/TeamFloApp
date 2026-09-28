@@ -6,7 +6,7 @@ class EditBeltDialog extends StatefulWidget {
   final String notes;
   final List<String> availableBelts; // e.g., ['White', 'Blue', 'Purple', ...]
 
-  const EditBeltDialog({
+  const EditBeltDialog({super.key, 
     required this.rank,
     required this.promotionDate,
     required this.notes,
@@ -46,7 +46,7 @@ class _EditBeltDialogState extends State<EditBeltDialog> {
           children: [
             // Belt Level Dropdown
             DropdownButtonFormField<String>(
-              value: selectedRank,
+              initialValue: selectedRank,
               items: widget.availableBelts
                   .map((belt) => DropdownMenuItem(
                 value: belt,

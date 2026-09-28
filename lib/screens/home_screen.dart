@@ -72,7 +72,7 @@ class _HomeScreenState extends State<HomeScreen> {
           avatarColor: user.avatarColor,
           currentBelt: currentBelt,
         );
-        _goalsController.text = _userData!.goals;
+        _goalsController.text = _userData.goals;
       });
     }
   }

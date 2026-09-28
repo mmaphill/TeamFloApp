@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:uuid/uuid.dart';
+import '../utils/log.dart';
 
 class StorageService {
   final FirebaseStorage _storage = FirebaseStorage.instance;
@@ -14,7 +15,7 @@ class StorageService {
       String downloadUrl = await ref.getDownloadURL();
       return downloadUrl;
     } catch (e) {
-      print('ERROR uploading journal image: $e');
+      log('ERROR uploading journal image: $e');
       return null;
     }
   }
@@ -40,7 +41,7 @@ class StorageService {
       String downloadUrl = await ref.getDownloadURL();
       return downloadUrl;
     } catch (e) {
-      print('ERROR uploading journal image: $e');  // Add debug logging
+      log('ERROR uploading journal image: $e');  // Add debug logging
       return null;
     }
   }

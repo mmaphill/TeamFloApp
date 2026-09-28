@@ -148,7 +148,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   child: Container(
                     decoration: BoxDecoration(
                       color: isToday
-                          ? AppColors.primary.withOpacity(0.2)
+                          ? AppColors.primary.withValues(alpha: 0.2)
                           : hasEntry
                           ? Colors.grey.shade800
                           : Colors.transparent,

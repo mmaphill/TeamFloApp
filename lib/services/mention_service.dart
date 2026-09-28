@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../utils/log.dart';
 
 class MentionService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -9,35 +10,35 @@ class MentionService {
     if (query.isEmpty) return [];
 
     try {
-      print('🔄 [MentionService.searchUsersByName] STARTED');
-      print('   Query: "$query"');
+      log('🔄 [MentionService.searchUsersByName] STARTED');
+      log('   Query: "$query"');
 
       final queryLower = query.toLowerCase();
-      print('   📋 Fetching ALL users from collection...');
+      log('   📋 Fetching ALL users from collection...');
 
       // Fetch all users
       final snapshot = await _firestore.collection('users').get();
-      print('   √ Fetch succeeded');
+      log('   √ Fetch succeeded');
 
       final users = snapshot.docs;
-      print('   📊 Got ${users.length} total users');
+      log('   📊 Got ${users.length} total users');
 
       // Display all users for debugging
-      print('   👥 All users in collection:');
+      log('   👥 All users in collection:');
       for (var doc in users) {
         final name = doc['name'] ?? 'Unknown';
         final uid = doc.id;
-        print('      - $name (uid: $uid)');
+        log('      - $name (uid: $uid)');
       }
 
       // Filter client-side: name contains query
-      print('   🔎 Filtering for name containing: "$query"');
+      log('   🔎 Filtering for name containing: "$query"');
       final results = <Map<String, dynamic>>[];
 
       for (var doc in users) {
         final name = doc['name'] ?? '';
         if (name.toLowerCase().contains(queryLower)) {
-          print('      √ "$name" matches (lowercase: "${name.toLowerCase()}")');
+          log('      √ "$name" matches (lowercase: "${name.toLowerCase()}")');
           results.add({
             'uid': doc.id,
             'name': name,
@@ -45,10 +46,10 @@ class MentionService {
         }
       }
 
-      print('   ✅ Search returned ${results.length} results');
+      log('   ✅ Search returned ${results.length} results');
       return results;
     } catch (e) {
-      print('   ❌ Search error: $e');
+      log('   ❌ Search error: $e');
       return [];
     }
   }

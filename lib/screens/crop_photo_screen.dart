@@ -1,8 +1,7 @@
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:image/image.dart' as img;
 import '../models/photo_crop_model.dart';
+import '../utils/log.dart';
 
 class CropPhotoScreen extends StatefulWidget {
   final File imageFile;
@@ -77,7 +76,7 @@ class _CropPhotoScreenState extends State<CropPhotoScreen> {
         });
       }
     } catch (e) {
-      print('Error saving image: $e');
+      log('Error saving image: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error saving image: $e')),
@@ -274,7 +273,7 @@ class CircleVignettePainter extends CustomPainter {
 
     // Draw semi-transparent overlay outside circle
     final paint = Paint()
-      ..color = Colors.black.withOpacity(0.5)
+      ..color = Colors.black.withValues(alpha: 0.5)
       ..style = PaintingStyle.fill;
 
     // Draw rectangle covering entire canvas

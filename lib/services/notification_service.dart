@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-
+import '../utils/log.dart';
 import '../main.dart';
 
 class NotificationService {
@@ -35,7 +35,7 @@ class NotificationService {
 
     // Get the device token and save it to Firestore for targeting
     final token = await _firebaseMessaging.getToken();
-    print('FCM Token: $token');
+    log('FCM Token: $token');
     await _saveTokenToFirestore(token!);
 
     // Handle messages when app is in foreground
@@ -71,12 +71,12 @@ class NotificationService {
   }
 
   void _handleNotificationTap(NotificationResponse response) {
-    print('Notification tapped: ${response.payload}');
+    log('Notification tapped: ${response.payload}');
     // Handle navigation based on payload here
   }
 
   void _handleForegroundMessage(RemoteMessage message) {
-    print('Foreground message: ${message.notification?.title}');
+    log('Foreground message: ${message.notification?.title}');
 
     // Display a local notification while app is open
     _localNotifications.show(
@@ -98,7 +98,7 @@ class NotificationService {
   }
 
   void _handleMessageOpenedApp(RemoteMessage message) {
-    print('Message opened: ${message.notification?.title}');
+    log('Message opened: ${message.notification?.title}');
 
     final type = message.data['type'];
 
@@ -135,7 +135,7 @@ class NotificationService {
   Future<void> _saveTokenToFirestore(String token) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) {
-      print('User not authenticated, skipping token save');
+      log('User not authenticated, skipping token save');
       return;
     }
 
@@ -143,13 +143,13 @@ class NotificationService {
         .collection('users')
         .doc(uid)
         .update({'fcmToken': token}).catchError((error) {
-      print('Error saving token: $error');
+      log('Error saving token: $error');
     });
   }
 
   void listenForTokenRefresh() {
     _firebaseMessaging.onTokenRefresh.listen((newToken) {
-      print('Token refreshed: $newToken');
+      log('Token refreshed: $newToken');
       _saveTokenToFirestore(newToken);
     });
   }
@@ -157,5 +157,5 @@ class NotificationService {
 
 // Top-level function for background messages
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  print('Background message: ${message.notification?.title}');
+  log('Background message: ${message.notification?.title}');
 }

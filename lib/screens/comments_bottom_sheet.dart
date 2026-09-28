@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../models/post_model.dart';
 import '../models/mention_model.dart';
 import '../services/chat_service.dart';
@@ -7,6 +6,7 @@ import '../services/auth_service.dart';
 import '../config/colors.dart';
 import '../widgets/mention_autocomplete_widget.dart';
 import '../config/mention_text_renderer.dart';
+import '../utils/log.dart';
 
 class CommentsBottomSheet extends StatefulWidget {
   final String postId;
@@ -61,7 +61,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
           .map((m) => Mention.fromMap(m))
           .toList();
     } catch (e) {
-      print('Error parsing comment mentions: $e');
+      log('Error parsing comment mentions: $e');
       return [];
     }
   }
@@ -93,7 +93,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
         });
       }
 
-      print('✓ Mention added to comment: @$userName ($userId)');
+      log('✓ Mention added to comment: @$userName ($userId)');
     }
   }
 

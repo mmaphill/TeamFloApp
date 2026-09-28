@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:team_flo_app/services/auth_service.dart';
 import '../models/post_model.dart';
 import '../models/mention_model.dart';
+import '../utils/log.dart';
 
 class ChatService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -17,11 +18,11 @@ class ChatService {
     List<Mention> mentions =const [],
   }) async {
     try {
-      print('🔥 createPost called with:');
-      print('  content: $content');
-      print('  mediaUrls: ${mediaUrls.length} items → $mediaUrls');
-      print('  mediaTypes: ${mediaTypes.length} items → $mediaTypes');
-      print('  mentions: ${mentions.length} items');
+      log('🔥 createPost called with:');
+      log('  content: $content');
+      log('  mediaUrls: ${mediaUrls.length} items → $mediaUrls');
+      log('  mediaTypes: ${mediaTypes.length} items → $mediaTypes');
+      log('  mentions: ${mentions.length} items');
 
       await _firestore.collection('posts').add({
         'userId': userId,
@@ -34,10 +35,10 @@ class ChatService {
         'commentCount': 0,
         'mentions': mentions.map((m) => m.toMap()).toList(),
       });
-      print('✓ Post created successfully');
+      log('✓ Post created successfully');
       return null; // Success
     } catch (e) {
-      print('✗ ERROR creating post: $e');
+      log('✗ ERROR creating post: $e');
       return e.toString();
     }
   }
@@ -54,7 +55,7 @@ class ChatService {
       }
       return {'name': 'Unknown User', 'photoUrl': null};
     } catch (e) {
-      print('Error fetching user profile: $e');
+      log('Error fetching user profile: $e');
       return {'name': 'Unknown User', 'photoUrl': null};
     }
   }
@@ -227,7 +228,7 @@ class ChatService {
   // Like/unlike a comment
   Future<String?> likeComment(String postId, String commentId, String userId) async {
     try {
-      print('Liking comment: $commentId');
+      log('Liking comment: $commentId');
       DocumentSnapshot doc = await _firestore
           .collection('posts')
           .doc(postId)
@@ -242,16 +243,16 @@ class ChatService {
         likedBy = List<String>.from(data['likedBy'] ?? []);
       }
 
-      print('Current likedBy: $likedBy, userId: $userId');
+      log('Current likedBy: $likedBy, userId: $userId');
 
       if (likedBy.contains(userId)) {
         // Unlike
         likedBy.remove(userId);
-        print('Unliked comment');
+        log('Unliked comment');
       } else {
         // Like
         likedBy.add(userId);
-        print('Liked comment');
+        log('Liked comment');
       }
 
       await _firestore
@@ -262,10 +263,10 @@ class ChatService {
           .update({
         'likedBy': likedBy,
       });
-      print('✓ Comment like updated successfully');
+      log('✓ Comment like updated successfully');
       return null;
     } catch (e) {
-      print('✗ ERROR liking comment: $e');
+      log('✗ ERROR liking comment: $e');
       return e.toString();
     }
   }

@@ -50,7 +50,6 @@ class AppThemes {
       ),
       hintStyle: TextStyle(color: AppColors.darkText.withAlpha(150)),
     ),
-    dialogBackgroundColor: AppColors.darkSurface,
     bottomNavigationBarTheme: BottomNavigationBarThemeData(
       backgroundColor: AppColors.darkSurface,
       selectedItemColor: AppColors.primary,
@@ -67,7 +66,7 @@ class AppThemes {
       thumbColor: AppColors.primary,
       overlayColor: AppColors.primary.withAlpha(100),
       valueIndicatorColor: AppColors.primary,
-    ),
+    ), dialogTheme: DialogThemeData(backgroundColor: AppColors.darkSurface),
   );
 
   // Light Theme
@@ -118,7 +117,6 @@ class AppThemes {
       ),
       hintStyle: TextStyle(color: AppColors.lightText.withAlpha(100)),
     ),
-    dialogBackgroundColor: AppColors.lightSurface,
     bottomNavigationBarTheme: BottomNavigationBarThemeData(
       backgroundColor: AppColors.lightSurface,
       selectedItemColor: AppColors.primary,
@@ -135,6 +133,6 @@ class AppThemes {
       thumbColor: AppColors.primary,
       overlayColor: AppColors.primary.withAlpha(100),
       valueIndicatorColor: AppColors.primary,
-    ),
+    ), dialogTheme: DialogThemeData(backgroundColor: AppColors.lightSurface),
   );
 }

@@ -21,22 +21,22 @@ class AppColors {
   static const Color mention = Color(0xFF42A5F5);
 
   // Deprecated (kept for reference during migration)
-  @deprecated
+  @Deprecated('Use AppColors.darkBg instead')
   static const Color dark = darkBg;
-  @deprecated
+  @Deprecated('Use AppColors.darkText instead')
   static const Color light = darkText;
-  @deprecated
+  @Deprecated('Use AppColors.darkSurface instead')
   static const Color surface = darkSurface;
-  @deprecated
+  @Deprecated('Use AppColors.darkSurfaceVariant')
   static const Color surfaceVariant = darkSurfaceVariant;
-  @deprecated
+  @Deprecated('Use AppColors.darkText instead')
   static const Color onSurface = darkText;
-  @deprecated
+  @Deprecated('Use AppColors.darkBg instead')
   static const Color background = darkBg;
-  @deprecated
+  @Deprecated('No longer in use. This color will be removed at a later time')
   static const Color onPrimary = Colors.white;
-  @deprecated
+  @Deprecated('Use AppColors.darkText instead')
   static const Color onDark = darkText;
-  @deprecated
+  @Deprecated('Use AppColors.primary instead')
   static const Color error = primary;
 }

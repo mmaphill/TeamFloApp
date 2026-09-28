@@ -5,7 +5,7 @@ class VideoPreview extends StatefulWidget {
   final String videoUrl;
   final VoidCallback onTap;
 
-  const VideoPreview({
+  const VideoPreview({super.key, 
     required this.videoUrl,
     required this.onTap,
   });

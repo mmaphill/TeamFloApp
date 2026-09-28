@@ -96,7 +96,7 @@ class _SubmissionCounterWidgetState extends State<SubmissionCounterWidget> {
         Text(
           description,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.6),
+            color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.6),
           ),
         ),
         const SizedBox(height: 12),

@@ -505,7 +505,7 @@ class _StatsScreenState extends State<StatsScreen> {
               ],
             ),
           );
-        }).toList(),
+        }),
       ],
     );
   }
@@ -733,7 +733,7 @@ class _StatsScreenState extends State<StatsScreen> {
               ),
             ),
           );
-        }).toList(),
+        }),
       ],
     );
   }
@@ -799,7 +799,7 @@ class _StatsScreenState extends State<StatsScreen> {
               ),
             ),
           );
-        }).toList(),
+        }),
       ],
     );
   }
@@ -874,7 +874,7 @@ class _StatsScreenState extends State<StatsScreen> {
               ],
             ),
           );
-        }).toList(),
+        }),
       ],
     );
   }

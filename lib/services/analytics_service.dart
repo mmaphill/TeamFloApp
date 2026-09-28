@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../utils/log.dart';
 
 class AnalyticsService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -15,7 +16,7 @@ class AnalyticsService {
 
       return snapshot.docs.map((doc) => doc.data()).toList();
     } catch (e) {
-      print('Error fetching journal entries: $e');
+      log('Error fetching journal entries: $e');
       return [];
     }
   }
@@ -26,7 +27,7 @@ class AnalyticsService {
       final snapshot = await _firestore.collection('users').doc(uid).get();
       return snapshot.data();
     } catch (e) {
-      print('Error fetching user profile: $e');
+      log('Error fetching user profile: $e');
       return null;
     }
   }
@@ -344,7 +345,7 @@ class AnalyticsService {
         'summaryPreference': selectedStats,
       });
     } catch (e) {
-      print('Error saving summary preference: $e');
+      log('Error saving summary preference: $e');
     }
   }
 
@@ -355,7 +356,7 @@ class AnalyticsService {
       final preference = snapshot.data()?['summaryPreference'] as List?;
       return preference?.cast<String>() ?? ['Classes', 'Submissions', 'SubmissionSuccessRate'];
     } catch (e) {
-      print('Error fetching summary preference: $e');
+      log('Error fetching summary preference: $e');
       return ['Classes', 'Submissions', 'Submission Success Rate'];
     }
   }
@@ -375,7 +376,7 @@ class AnalyticsService {
       final techniques = entry['techniques'] as Map<String, dynamic>? ?? {};
 
       for (final typeEntry in techniques.entries) {
-        final type = typeEntry.key as String;
+        final type = typeEntry.key;
         final techniqueList = (typeEntry.value as List?)?.cast<String>() ?? [];
 
         if (!techniquesByType.containsKey(type)) {
@@ -402,7 +403,7 @@ class AnalyticsService {
 
     // Calculate diversity (unique techniques / total entries with techniques)
     final uniqueCount = techniqueFrequency.length;
-    final totalTechniquesLogged = techniqueFrequency.values.fold<int>(0, (sum, v) => sum + v);
+    final totalTechniquesLogged = techniqueFrequency.values.fold<int>(0, (total, v) => total + v);
     final diversity = totalTechniquesLogged > 0 ? uniqueCount / totalTechniquesLogged : 0.0;
 
     return (
@@ -456,14 +457,14 @@ class AnalyticsService {
           }
         } catch (e) {
           // Skip documents that don't have techniques or have parsing errors
-          print('Skipping entry: $e');
+          log('Skipping entry: $e');
           continue;
         }
       }
 
       return all.toList()..sort();
     } catch (e) {
-      print('Error fetching gym techniques: $e');
+      log('Error fetching gym techniques: $e');
       return [];
     }
   }
@@ -487,8 +488,12 @@ class AnalyticsService {
 
     final matrix = List.generate(s1.length + 1, (i) => List.generate(s2.length + 1, (j) => 0));
 
-    for (int i = 0; i <= s1.length; i++) matrix[i][0] = i;
-    for (int j = 0; j <= s2.length; j++) matrix[0][j] = j;
+    for (int i = 0; i <= s1.length; i++) {
+      matrix[i][0] = i;
+    }
+    for (int j = 0; j <= s2.length; j++) {
+      matrix[0][j] = j;
+    }
 
     for (int i = 1; i <= s1.length; i++) {
       for (int j = 1; j <= s2.length; j++) {

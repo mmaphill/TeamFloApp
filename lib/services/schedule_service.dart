@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/class_schedule_model.dart';
+import '../utils/log.dart';
 
 class ScheduleService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -117,7 +118,7 @@ class ScheduleService {
         'createdBy': FirebaseAuth.instance.currentUser!.uid,
       });
     } catch (e) {
-      print('Error creating class: $e');
+      log('Error creating class: $e');
       rethrow;
     }
   }
@@ -245,9 +246,9 @@ class ScheduleService {
         });
       }
 
-      print('Schedule seeded with ${classes.length} classes');
+      log('Schedule seeded with ${classes.length} classes');
     } catch (e) {
-      print('Error seeding schedule: $e');
+      log('Error seeding schedule: $e');
     }
   }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../utils/log.dart';
 
 class ThemeProvider extends ChangeNotifier {
   // Start with dark mode as default
@@ -32,7 +33,7 @@ class ThemeProvider extends ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      print('Error loading theme: $e');
+      log('Error loading theme: $e');
       _themeMode = ThemeMode.dark; // Fallback to dark
     }
   }
@@ -51,7 +52,7 @@ class ThemeProvider extends ChangeNotifier {
         });
       }
     } catch (e) {
-      print('Error saving theme preference: $e');
+      log('Error saving theme preference: $e');
     }
   }
 
@@ -69,7 +70,7 @@ class ThemeProvider extends ChangeNotifier {
         });
       }
     } catch (e) {
-      print('Error saving theme preference: $e');
+      log('Error saving theme preference: $e');
     }
   }
 }

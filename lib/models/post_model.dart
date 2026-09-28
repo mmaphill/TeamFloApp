@@ -1,4 +1,5 @@
 import 'mention_model.dart';
+import '../utils/log.dart';
 
 class PostModel {
   final String postId;
@@ -34,7 +35,7 @@ class PostModel {
             .map((m) => Mention.fromMap(m as Map<String, dynamic>))
             .toList();
       } catch (e) {
-        print('Error parsing mentions: $e');
+        log('Error parsing mentions: $e');
         mentions = null;
       }
     }

@@ -2,7 +2,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:intl/intl.dart';
 import 'package:team_flo_app/services/analytics_service.dart';
 import 'package:team_flo_app/widgets/submission_counter_widget.dart';
 import 'dart:io';
@@ -17,6 +16,7 @@ import '../models/class_schedule_model.dart';
 import '../config/colors.dart';
 import '../services/validation_service.dart';
 import '../widgets/belt_rank_badge.dart';
+import '../utils/log.dart';
 
 class JournalEntryScreen extends StatefulWidget {
   final String userId;
@@ -75,7 +75,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
 
   final List<String> types = ['Pass', 'Escape', 'Retention', 'Sweep', 'Submission',];
 
-  Map<String, List<String>> _techniques = {}; // {'Pass': ['Knee Slice'], etc}
+  final Map<String, List<String>> _techniques = {}; // {'Pass': ['Knee Slice'], etc}
 
   @override
   void initState() {
@@ -246,13 +246,13 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
   Future<void> _loadGymTechniques() async {
     try {
       final techniques = await _analyticsService.getAllTechniquesFromGym();
-      print('Loaded ${techniques.length} gym techniques');
-      print('Techniques: $techniques');
+      log('Loaded ${techniques.length} gym techniques');
+      log('Techniques: $techniques');
       setState(() {
         _allTechniques = techniques;
       });
     } catch (e) {
-      print('Error loading gym techniques: $e');
+      log('Error loading gym techniques: $e');
     }
   }
 
@@ -578,7 +578,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
                     ],
                   ),
                 );
-              }).toList(),
+              }),
 
             // Submission Counter Widget
             SubmissionCounterWidget(
