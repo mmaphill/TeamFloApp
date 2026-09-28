@@ -48,6 +48,7 @@ class _StatsHighlightsWidgetState extends State<StatsHighlightsWidget> {
     final submissions = analyticsService.aggregateSubmissions(journalEntries);
     final types = analyticsService.aggregateTypes(journalEntries);
     final competitionStats = analyticsService.parseCompetitionStats(userProfile);
+    final competitionPoints = analyticsService.parseCompetitionStats(userProfile);
     final overallWinRate = analyticsService.calculateOverallWinRate(competitionStats);
     final totalMatches = analyticsService.getTotalMatches(competitionStats);
 
@@ -60,6 +61,7 @@ class _StatsHighlightsWidgetState extends State<StatsHighlightsWidget> {
       ),
       'types': types,
       'positions': positions,
+      'competitionPoints': competitionPoints,
       'overallWinRate': overallWinRate,
       'totalMatches': totalMatches,
     };
@@ -75,6 +77,7 @@ class _StatsHighlightsWidgetState extends State<StatsHighlightsWidget> {
       ),
       'types': <String, int>{},
       'positions': <String, int>{},
+      'competitionPoints': 0,
       'overallWinRate': 0.0,
       'totalMatches': 0,
     };

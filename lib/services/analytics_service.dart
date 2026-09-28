@@ -192,6 +192,14 @@ class AnalyticsService {
     return totalWins / totalMatches;
   }
 
+  // Get total points from competition
+  // int getTotalPoints(List<Map<String, dynamic>> competitionStats) {
+  //   int total = 0;
+  //   for (final stats in competitionStats) {
+  //     final
+  //   }
+  // }
+
   // Get total competition count
   int getTotalMatches(List<Map<String, dynamic>> competitionStats) {
     int total = 0;

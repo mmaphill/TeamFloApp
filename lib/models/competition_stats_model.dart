@@ -8,6 +8,7 @@ class CompetitionStats {
   final String place; // overall competition placement
   final int submissionWins;
   final int pointWins;
+  // final int points;
   final int refDecisionWins;
   final int submissionLosses;
   final int pointLosses;
@@ -22,6 +23,7 @@ class CompetitionStats {
     this.place = '',
     this.submissionWins = 0,
     this.pointWins = 0,
+    // this.points = 0,
     this.refDecisionWins = 0,
     this.submissionLosses = 0,
     this.pointLosses = 0,
@@ -56,6 +58,7 @@ class CompetitionStats {
       place: map['place'] ?? '',
       submissionWins: map['submissionWins'] ?? 0,
       pointWins: map['pointWins'] ?? 0,
+      // points: map['points'] ?? 0,
       refDecisionWins: map['refDecisionWins'] ?? 0,
       submissionLosses: map['submissionLosses'] ?? 0,
       pointLosses: map['pointLosses'] ?? 0,
@@ -73,6 +76,7 @@ class CompetitionStats {
       'place': place,
       'submissionWins': submissionWins,
       'pointWins': pointWins,
+      // 'points': points,
       'refDecisionWins': refDecisionWins,
       'submissionLosses': submissionLosses,
       'pointLosses': pointLosses,
