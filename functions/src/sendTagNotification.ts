@@ -1,5 +1,5 @@
 import { onDocumentCreated } from "firebase-functions/v2/firestore";
-import * as admin from "firebase-admin";
+import { sendToUser } from "./sendToUser";
 
 export const sendTagNotification = onDocumentCreated(
     "posts/{postId}",
@@ -10,51 +10,32 @@ export const sendTagNotification = onDocumentCreated(
         if (!snap) return;
 
         const post = snap.data();
-        const mentions = post.mentions || [];
+        const mentions: any[] = post.mentions || [];
 
-        const taggedUserIds = mentions.map((m: any) => m.userId);
+        // Check this matches the field name your posts use for the author
+        const authorId: string | undefined = post.userId;
+        const authorName: string = post.userName || "Someone";
+
+        // Remove duplicates, empty values, and the author tagging themselves
+        const taggedUserIds = [
+            ...new Set<string>(
+                mentions.map((m) => m.userId).filter((id) => !!id)
+            ),
+        ].filter((id) => id !== authorId);
 
         if (taggedUserIds.length === 0) return;
 
-        for (const userId of taggedUserIds) {
-            try {
-                const userDoc = await admin
-                    .firestore()
-                    .collection("users")
-                    .doc(userId)
-                    .get();
+        await Promise.all(
+            taggedUserIds.map((userId) =>
+                sendToUser(
+                    userId,
+                    "You were tagged",
+                    `${authorName} tagged you in a post`,
+                    { type: "tag", postId }
+                )
+            )
+        );
 
-                if (!userDoc.exists) continue;
-
-                const userData = userDoc.data();
-
-                if (!userData?.notificationsEnabled) {
-                    console.log(`Notifications disabled for user ${userId}`);
-                    continue;
-                }
-
-                const fcmToken = userData?.fcmToken;
-                if (!fcmToken) {
-                    console.log(`No FCM token for user ${userId}`);
-                    continue;
-                }
-
-                await admin.messaging().send({
-                    token: fcmToken,
-                    notification: {
-                        title: "You were tagged",
-                        body: `${post.userName} tagged you in a post`,
-                    },
-                    data: {
-                        type: "tag",
-                        postId: postId,
-                    },
-                });
-
-                console.log(`Sent tag notification to ${userId}`);
-            } catch (error) {
-                console.error(`Error sending notification to ${userId}:`, error);
-            }
-        }
+        console.log(`Processed ${taggedUserIds.length} tag notification(s)`);
     }
 );

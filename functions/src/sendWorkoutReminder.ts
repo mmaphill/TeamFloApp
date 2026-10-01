@@ -1,5 +1,6 @@
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import * as admin from "firebase-admin";
+import { sendToUser } from "./sendToUser";
 
 export const sendWorkoutReminder = onSchedule(
     {
@@ -7,83 +8,49 @@ export const sendWorkoutReminder = onSchedule(
         timeZone: "America/New_York",
     },
     async () => {
-        try {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
+        // Look back 24 hours from now. This avoids the UTC/Eastern mismatch,
+        // and each class falls into exactly one daily run.
+        const now = new Date();
+        const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
-            const tomorrow = new Date(today);
-            tomorrow.setDate(tomorrow.getDate() + 1);
+        const classesSnapshot = await admin
+            .firestore()
+            .collection("classes")
+            .where("classDate", ">=", dayAgo)
+            .where("classDate", "<", now)
+            .get();
 
-            const classesSnapshot = await admin
-                .firestore()
-                .collection("classes")
-                .where("classDate", ">=", today)
-                .where("classDate", "<", tomorrow)
-                .get();
+        console.log(`Found ${classesSnapshot.size} classes in the last 24 hours`);
 
-            console.log(`Found ${classesSnapshot.docs.length} classes for today`);
+        for (const classDoc of classesSnapshot.docs) {
+            const classData = classDoc.data();
+            const attendees: string[] = classData.attendees || [];
+            const className: string = classData.className || "class";
 
-            for (const classDoc of classesSnapshot.docs) {
-                const classData = classDoc.data();
-                const attendees = classData.attendees || [];
+            for (const userId of attendees) {
+                try {
+                    // Skip users who already logged this class
+                    const journalQuery = await admin
+                        .firestore()
+                        .collection("users")
+                        .doc(userId)
+                        .collection("journal")
+                        .where("classId", "==", classDoc.id)
+                        .limit(1)
+                        .get();
 
-                console.log(
-                    `Processing class ${classDoc.id} with ${attendees.length} attendees`
-                );
+                    if (!journalQuery.empty) continue;
 
-                for (const userId of attendees) {
-                    try {
-                        const userDoc = await admin
-                            .firestore()
-                            .collection("users")
-                            .doc(userId)
-                            .get();
-
-                        if (!userDoc.exists) continue;
-
-                        const userData = userDoc.data();
-
-                        if (!userData?.notificationsEnabled) continue;
-
-                        const fcmToken = userData?.fcmToken;
-                        if (!fcmToken) continue;
-
-                        const journalQuery = await admin
-                            .firestore()
-                            .collection("users")
-                            .doc(userId)
-                            .collection("journal")
-                            .where("classId", "==", classDoc.id)
-                            .get();
-
-                        if (!journalQuery.empty) {
-                            console.log(
-                                `User ${userId} already logged class ${classDoc.id}`
-                            );
-                            continue;
-                        }
-
-                        await admin.messaging().send({
-                            token: fcmToken,
-                            notification: {
-                                title: "Log your workout",
-                                body: `Don't forget to log your session from ${classData.className}`,
-                            },
-                            data: {
-                                type: "workout_reminder",
-                                classId: classDoc.id,
-                            },
-                        });
-
-                        console.log(`Sent workout reminder to ${userId}`);
-                    } catch (error) {
-                        console.error(`Error sending reminder to ${userId}:`, error);
-                    }
+                    await sendToUser(
+                        userId,
+                        "Log your workout",
+                        `Don't forget to log your session from ${className}`,
+                        { type: "workout_reminder", classId: classDoc.id }
+                    );
+                } catch (error) {
+                    console.error(`Error processing reminder for ${userId}:`, error);
                 }
             }
-        } catch (error) {
-            console.error("Error in sendWorkoutReminder:", error);
-            throw error;
         }
     }
 );
