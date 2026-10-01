@@ -8,6 +8,7 @@ import 'firebase_options.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_home_screen.dart';
 import 'config/theme_data.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -17,9 +18,19 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
+  // Must be registered before runApp
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+
   // Initialize notifications
   await NotificationService().initialize();
   NotificationService().listenForTokenRefresh();
+
+  // Save the FCM token whenever a user logs in (including on app start)
+  FirebaseAuth.instance.authStateChanges().listen((user) {
+    if (user != null) {
+      NotificationService().saveCurrentToken();
+    }
+  });
 
   runApp(const TeamFloApp());
 }
@@ -40,6 +51,10 @@ class _TeamFloAppState extends State<TeamFloApp> {
     // Initialize theme provider and load saved preference
     _themeProvider = ThemeProvider();
     _themeProvider.loadSavedTheme();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      NotificationService().handleInitialMessage();
+    });
   }
 
   @override

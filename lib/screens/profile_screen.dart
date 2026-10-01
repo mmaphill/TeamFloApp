@@ -685,8 +685,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     final stat = _userData.competitionStats[statsIndex];
     final compNameController = TextEditingController(text: stat.compName);
-    String format = stat.format ?? 'Gi';
-    String rank = stat.rank ?? (format == 'Gi' ? 'White' : 'Beginner');
+    String format = stat.format;
+    String rank = stat.rank;
     int submissionWins = stat.submissionWins;
     int submissionLosses = stat.submissionLosses;
     int pointWins = stat.pointWins;

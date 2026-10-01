@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -33,19 +34,40 @@ class NotificationService {
     // Initialize local notifications for foreground display
     await _initializeLocalNotifications();
 
-    // Get the device token and save it to Firestore for targeting
-    final token = await _firebaseMessaging.getToken();
-    log('FCM Token: $token');
-    await _saveTokenToFirestore(token!);
-
-    // Handle messages when app is in foreground
+    // App open: show a banner
     FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
 
-    // Handle message when user taps notification (app in background/terminated)
-    FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageOpenedApp);
+    // App in background: user tapped the notification
+    FirebaseMessaging.onMessageOpenedApp.listen((message) {
+      log('Opened from background: ${message.data}');
+    });
+  }
 
-    // Handle background messages
-    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  // App was fully closed and opened by tapping a notification
+  // Call once after the first frame so the navigator exist
+  Future<void> handleInitialMessage() async {
+    final message = await _firebaseMessaging.getInitialMessage();
+    if (message == null) return;
+
+    // wait for firebase auth to restore the logged-in user
+    await FirebaseAuth.instance.authStateChanges().first;
+
+    log('Opened from terminated: ${message.data}');
+    _navigateFromData(message.data);
+  }
+
+  // Gets the current FCM token and saves it for the logged-in user.
+  Future<void> saveCurrentToken() async {
+    try {
+      final token = await _firebaseMessaging.getToken();
+      if (token == null) {
+        log('No FCM token available yet');
+        return;
+      }
+      await _saveTokenToFirestore(token);
+    } catch (e) {
+      log('Error getting FCM token: $e');
+    }
   }
 
   Future<void> _initializeLocalNotifications() async {
@@ -59,7 +81,7 @@ class NotificationService {
       requestSoundPermission: false,
     );
 
-    final InitializationSettings settings = InitializationSettings(
+    const InitializationSettings settings = InitializationSettings(
       android: androidSettings,
       iOS: iOSSettings,
     );
@@ -71,8 +93,15 @@ class NotificationService {
   }
 
   void _handleNotificationTap(NotificationResponse response) {
-    log('Notification tapped: ${response.payload}');
-    // Handle navigation based on payload here
+    final payload = response.payload;
+    if (payload == null) return;
+
+    try {
+      final data = Map<String, dynamic>.from(jsonDecode(payload) as Map);
+      _navigateFromData(data);
+    } catch (e) {
+      log('Could not read notification payload: $e');
+    }
   }
 
   void _handleForegroundMessage(RemoteMessage message) {
@@ -93,43 +122,35 @@ class NotificationService {
         ),
         iOS: const DarwinNotificationDetails(),
       ),
-      payload: message.data.isEmpty ? null : message.data.toString(),
+      payload: message.data.isEmpty ? null : jsonEncode(message.data),
     );
   }
 
-  void _handleMessageOpenedApp(RemoteMessage message) {
-    log('Message opened: ${message.notification?.title}');
+  // One place that decides where a notification goes
+  // Used by all three cases: foreground, background, and closed.
+  void _navigateFromData(Map<String, dynamic> data) {
+    final navigator = navigatorKey.currentState;
+    if (navigator == null) {
+      log('Navigator not ready, skipping notification navigation');
+      return;
+    }
 
-    final type = message.data['type'];
+    // Never skip past the login screen
+    if (FirebaseAuth.instance.currentUser == null) return;
+
+    final type = data['type'];
 
     if (type == 'tag') {
-      final postId = message.data['postId'];
-      // Navigate to ChatScreen and pass postId
-      navigatorKey.currentState?.pushNamed(
-        '/chat',
-        arguments: postId,
-      );
+      final postId = data['postId'] as String?;
+      navigator.popUntil((route) => route.isFirst);
+      navigator.pushNamed('/chat', arguments: postId);
     } else if (type == 'workout_reminder') {
-      final classId = message.data['classId'];
-      navigatorKey.currentState?.pushNamed(
-        '/journal',
-        arguments: classId,
-      );
+      final classId = data['classId'] as String?;
+      navigator.popUntil((route) => route.isFirst);
+      navigator.pushNamed('/journal', arguments: classId);
+    } else {
+      log('Unknown notification type $type');
     }
-  }
-
-  void _navigateToPost(String postId) {
-    navigatorKey.currentState?.pushNamed(
-      '/chat',
-      arguments: {'postId': postId},
-    );
-  }
-
-  void _navigateToClass(String classId) {
-    navigatorKey.currentState?.pushNamed(
-      '/journal',
-      arguments: {'classId': classId},
-    );
   }
 
   Future<void> _saveTokenToFirestore(String token) async {
@@ -139,23 +160,29 @@ class NotificationService {
       return;
     }
 
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .update({'fcmToken': token}).catchError((error) {
-      log('Error saving token: $error');
-    });
+    try {
+      // set + merge works even if the field doesn't exist yet
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .set({'fcmToken': token}, SetOptions(merge: true));
+    } catch (e) {
+      log('Error saving token: $e');
+    }
   }
 
   void listenForTokenRefresh() {
     _firebaseMessaging.onTokenRefresh.listen((newToken) {
-      log('Token refreshed: $newToken');
+      log('Token refreshed');
       _saveTokenToFirestore(newToken);
     });
   }
 }
 
-// Top-level function for background messages
-Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+
+// Runs in a separate isolate when a message arrives in the background
+// Must be top-level, public, and marked so release builds keep it
+@pragma('vm:entry-point')
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   log('Background message: ${message.notification?.title}');
 }
