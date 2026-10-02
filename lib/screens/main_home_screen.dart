@@ -14,6 +14,7 @@ import 'home_screen.dart';
 import 'journal_entry_screen.dart';
 import 'schedule_screen.dart';
 import 'profile_screen.dart';
+import 'staff_portal_screen.dart';
 import '../utils/log.dart';
 
 class MainHomeScreen extends StatefulWidget {
@@ -39,6 +40,11 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
   UserModel? _userData;
 
   late List<Widget> _screens;
+
+  /// Instructors and admins see the Staff Portal.
+  /// (Firestore rules enforce this too, so hiding the menu is just for tidiness.)
+  bool get _isStaff =>
+      _userData?.role == 'instructor' || _userData?.role == 'admin';
 
   @override
   void initState() {
@@ -85,122 +91,135 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<Map<String, dynamic>?>(
-      stream: _getUserDataStream(),  // ← Real-time stream
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error})'));
-        }
-        if (snapshot.hasData && snapshot.data != null) {
-          _userData = UserModel.fromMap(snapshot.data!);
-        }
+        stream: _getUserDataStream(),  // ← Real-time stream
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error})'));
+          }
+          if (snapshot.hasData && snapshot.data != null) {
+            _userData = UserModel.fromMap(snapshot.data!);
+          }
 
-        return Scaffold(
-          appBar: AppBar(
-            leading: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: GestureDetector(
-                onTap: () {
-                  setState(() => _selectedIndex = 0);  // Always go to home
-                },
-                child: CircleAvatar(
-                  backgroundImage: AssetImage('lib/assets/images/TeamFlo.png'),
-                  radius: 20,
-                ),
-              )
-            ),
-            backgroundColor: AppColors.dark,
-            actions: [
-              Padding(
-                padding: const EdgeInsets.only(right: 12),
-                child: BeltRankBadge(
-                  beltRank: _userData?.currentBelt,
-                  width: 160,
-                  height: 160,
-                ),
+          return Scaffold(
+            appBar: AppBar(
+              leading: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() => _selectedIndex = 0);  // Always go to home
+                    },
+                    child: CircleAvatar(
+                      backgroundImage: AssetImage('lib/assets/images/TeamFlo.png'),
+                      radius: 20,
+                    ),
+                  )
               ),
-              // Custom actions based on selected screen
-              if (_selectedIndex == 1) // ChatScreen
-                IconButton(
-                  icon: const Icon(Icons.add),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const CreatePostScreen()),
-                    );
+              backgroundColor: AppColors.dark,
+              actions: [
+                Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: BeltRankBadge(
+                    beltRank: _userData?.currentBelt,
+                    width: 160,
+                    height: 160,
+                  ),
+                ),
+                // Custom actions based on selected screen
+                if (_selectedIndex == 1) // ChatScreen
+                  IconButton(
+                    icon: const Icon(Icons.add),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const CreatePostScreen()),
+                      );
+                    },
+                  ),
+                if (_selectedIndex == 2) // CalendarScreen
+                  IconButton(
+                    icon: const Icon(Icons.add),
+                    onPressed: () => _openJournalEntry(DateTime.now()),
+                  ),
+                // Profile dropdown menu (all screens)
+                PopupMenuButton<String>(
+                  child: CircleAvatar(
+                    backgroundImage: _userData?.photoUrl != null ? NetworkImage(_userData!.photoUrl!) : null,
+                    radius: 18,
+                    child: _userData?.photoUrl == null ? const Icon(Icons.person) : null,
+                  ),
+                  onSelected: (value) {
+                    if (value == 'profile') {
+                      _openProfileScreen();
+                    } else if (value == 'staff') {
+                      _openStaffPortal();
+                    } else if (value == 'logout') {
+                      _logout();
+                    }
                   },
-                ),
-              if (_selectedIndex == 2) // CalendarScreen
-                IconButton(
-                  icon: const Icon(Icons.add),
-                  onPressed: () => _openJournalEntry(DateTime.now()),
-                ),
-              // Profile dropdown menu (all screens)
-              PopupMenuButton<String>(
-                child: CircleAvatar(
-                  backgroundImage: _userData?.photoUrl != null ? NetworkImage(_userData!.photoUrl!) : null,
-                  radius: 18,
-                  child: _userData?.photoUrl == null ? const Icon(Icons.person) : null,
-                ),
-                onSelected: (value) {
-                  if (value == 'profile') {
-                    _openProfileScreen();
-                  } else if (value == 'logout') {
-                    _logout();
-                  }
-                },
-                itemBuilder: (BuildContext context) => [
-                  const PopupMenuItem(
-                    value: 'profile',
-                    child: Row(
-                      children: [
-                        Icon(Icons.person, size: 20),
-                        SizedBox(width: 8),
-                        Text('View/Edit Profile'),
-                      ],
+                  itemBuilder: (BuildContext context) => [
+                    const PopupMenuItem(
+                      value: 'profile',
+                      child: Row(
+                        children: [
+                          Icon(Icons.person, size: 20),
+                          SizedBox(width: 8),
+                          Text('View/Edit Profile'),
+                        ],
+                      ),
                     ),
-                  ),
-                  const PopupMenuDivider(),
-                  const PopupMenuItem(
-                    value: 'logout',
-                    child: Row(
-                      children: [
-                        Icon(Icons.logout, size: 20, color: Colors.red),
-                        SizedBox(width: 8),
-                        Text('Logout', style: TextStyle(color: Colors.red)),
-                      ],
+                    if (_isStaff)
+                      const PopupMenuItem(
+                        value: 'staff',
+                        child: Row(
+                          children: [
+                            Icon(Icons.admin_panel_settings, size: 20),
+                            SizedBox(width: 8),
+                            Text('Staff Portal'),
+                          ],
+                        ),
+                      ),
+                    const PopupMenuDivider(),
+                    const PopupMenuItem(
+                      value: 'logout',
+                      child: Row(
+                        children: [
+                          Icon(Icons.logout, size: 20, color: Colors.red),
+                          SizedBox(width: 8),
+                          Text('Logout', style: TextStyle(color: Colors.red)),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          body: _buildBody(),
-          bottomNavigationBar: BottomNavigationBar(
-            backgroundColor: const Color(0xFF3A3A3A),
-            selectedItemColor: const Color(0xFFFFB2B3),
-            unselectedItemColor: AppColors.light,
-            elevation: 16.0,
-            currentIndex: _selectedIndex,
-            onTap: (index) async {
-              setState(() => _selectedIndex = index);
-            },
-            items: const [
-              BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-              BottomNavigationBarItem(icon: Icon(Icons.feed), label: 'Chat'),
-              BottomNavigationBarItem(
-                  icon: Icon(Icons.calendar_today), label: 'Calendar'),
-              BottomNavigationBarItem(
-                  icon: Icon(Icons.schedule), label: 'Schedule'),
-              BottomNavigationBarItem(
-                  icon: Icon(Icons.bar_chart), label: 'Stats'),
-            ],
-          ),
-        );
-      }
+                  ],
+                ),
+              ],
+            ),
+            body: _buildBody(),
+            bottomNavigationBar: BottomNavigationBar(
+              backgroundColor: const Color(0xFF3A3A3A),
+              selectedItemColor: const Color(0xFFFFB2B3),
+              unselectedItemColor: AppColors.light,
+              elevation: 16.0,
+              currentIndex: _selectedIndex,
+              onTap: (index) async {
+                setState(() => _selectedIndex = index);
+              },
+              items: const [
+                BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+                BottomNavigationBarItem(icon: Icon(Icons.feed), label: 'Chat'),
+                BottomNavigationBarItem(
+                    icon: Icon(Icons.calendar_today), label: 'Calendar'),
+                BottomNavigationBarItem(
+                    icon: Icon(Icons.schedule), label: 'Schedule'),
+                BottomNavigationBarItem(
+                    icon: Icon(Icons.bar_chart), label: 'Stats'),
+              ],
+            ),
+          );
+        }
     );
   }
 
@@ -239,16 +258,16 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
         .doc(_currentUser.uid)
         .snapshots()
         .timeout(
-          Duration(seconds: 5),
-          onTimeout: (sink) {
-            sink.close();
-          },
-        )
+      Duration(seconds: 5),
+      onTimeout: (sink) {
+        sink.close();
+      },
+    )
         .map((doc) => doc.data())
         .handleError((error, stackTrace) {
-          log('Error fetching user data: $error');
-          return null;
-        });
+      log('Error fetching user data: $error');
+      return null;
+    });
   }
 
   void _openProfileScreen() {
@@ -257,6 +276,13 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
       MaterialPageRoute(
         builder: (context) => ProfileScreen(key: ProfileScreen.profileKey),
       ),
+    );
+  }
+
+  void _openStaffPortal() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const StaffPortalScreen()),
     );
   }
 

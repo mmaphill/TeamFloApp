@@ -13,12 +13,19 @@ class ScheduleScreen extends StatefulWidget {
 
 class _ScheduleScreenState extends State<ScheduleScreen> {
   final ScheduleService _scheduleService = ScheduleService();
+  late final Stream<List<ClassSchedule>> _upcomingStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _upcomingStream = _scheduleService.getUpcomingClassesStream();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: StreamBuilder<List<ClassSchedule>>(
-        stream: _scheduleService.getUpcomingClassesStream(),
+        stream: _upcomingStream,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());

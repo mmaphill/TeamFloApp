@@ -1,6 +1,12 @@
+import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../models/class_history_model.dart';
 import '../services/analytics_service.dart';
+import '../services/attendance_stats_service.dart';
+import '../services/schedule_service.dart';
+import '../widgets/attendance_stats_section.dart';
+import '../utils/log.dart';
 
 class StatsScreen extends StatefulWidget {
   const StatsScreen({super.key});
@@ -10,8 +16,9 @@ class StatsScreen extends StatefulWidget {
 }
 
 class _StatsScreenState extends State<StatsScreen> {
+  static const int _maxSummaries = 3;
+
   late Future<Map<String, dynamic>> statsFuture;
-  late Future<List<String>> summaryPreferenceFuture;
   List<String> selectedSummaries = ['Classes', 'Submissions', 'Submission Success Rate'];
 
   final availableSummaries = [
@@ -22,19 +29,51 @@ class _StatsScreenState extends State<StatsScreen> {
     // any other ideas will be added to the list here
   ];
 
+  // Live attendance data
+  StreamSubscription<List<ClassHistoryRecord>>? _historySubscription;
+  AttendanceStats? _attendance;
+  bool _attendanceError = false;
+
   @override
   void initState() {
     super.initState();
     final uid = FirebaseAuth.instance.currentUser?.uid;
+
     if (uid != null) {
-      summaryPreferenceFuture = AnalyticsService().getSummaryPreference(uid);
-      summaryPreferenceFuture.then((prefs) {
-        setState(() {
-          selectedSummaries = prefs;
-        });
+      AnalyticsService().getSummaryPreference(uid).then((prefs) {
+        if (!mounted) return;
+        // Ignore old/renamed entries that no longer match a card
+        final valid = prefs
+            .where((p) => availableSummaries.contains(p))
+            .take(_maxSummaries)
+            .toList();
+        if (valid.isEmpty) return;
+        setState(() => selectedSummaries = valid);
       });
+
+      _historySubscription = ScheduleService().getUserHistoryStream(uid).listen(
+            (records) {
+          if (!mounted) return;
+          setState(() {
+            _attendance = AttendanceStats.fromRecords(records);
+            _attendanceError = false;
+          });
+        },
+        onError: (e) {
+          log('Error loading attendance history: $e');
+          if (!mounted) return;
+          setState(() => _attendanceError = true);
+        },
+      );
     }
+
     statsFuture = _loadStats();
+  }
+
+  @override
+  void dispose() {
+    _historySubscription?.cancel();
+    super.dispose();
   }
 
   Future<Map<String, dynamic>> _loadStats() async {
@@ -48,13 +87,11 @@ class _StatsScreenState extends State<StatsScreen> {
     final journalEntries = await analyticsService.getJournalEntries(uid);
     final userProfile = await analyticsService.getUserProfile(uid);
 
-    final classesThisMonth = analyticsService.getClassesThisMonth(journalEntries);
     final types = analyticsService.aggregateTypes(journalEntries);
     final submissions = analyticsService.aggregateSubmissions(journalEntries);
     final positions = analyticsService.getPositionFrequency(journalEntries);
     final techniques = analyticsService.aggregateTechniques(journalEntries);
     final topTechniques = analyticsService.getTopTechniques(journalEntries, limit: 5);
-    final attendanceTrend = analyticsService.getAttendanceTrend(journalEntries);
     final metrics = analyticsService.getAverageMetrics(journalEntries);
 
     final competitionStats = analyticsService.parseCompetitionStats(userProfile);
@@ -68,22 +105,20 @@ class _StatsScreenState extends State<StatsScreen> {
 
     return {
       'journalEntries': journalEntries,
-      'classesThisMonth': classesThisMonth,
       'types': types,
       'submissions': (
-        totalSubmissions: submissions.totalSubmissions,
-        submissionAttempts: submissions.submissionAttempts,
-        timesSubmitted: submissions.timesSubmitted,
+      totalSubmissions: submissions.totalSubmissions,
+      submissionAttempts: submissions.submissionAttempts,
+      timesSubmitted: submissions.timesSubmitted,
       ),
       'positions': positions,
       'techniques': (
-        techniquesByType: techniques.techniquesByType,
-        techniqueFrequency: techniques.techniqueFrequency,
-        mostUsedTechnique: techniques.mostUsedTechnique,
-        techniqueDiversity: techniques.techniqueDiversity,
+      techniquesByType: techniques.techniquesByType,
+      techniqueFrequency: techniques.techniqueFrequency,
+      mostUsedTechnique: techniques.mostUsedTechnique,
+      techniqueDiversity: techniques.techniqueDiversity,
       ),
       'topTechniques': topTechniques.isNotEmpty ? topTechniques : [],
-      'attendanceTrend': attendanceTrend,
       'metrics': metrics,
       'competitionStats': competitionStats,
       'overallWinRate': overallWinRate,
@@ -97,29 +132,24 @@ class _StatsScreenState extends State<StatsScreen> {
   }
 
   Future<void> _toggleSummarySelection(String summary) async {
-    setState(() {
-      if (selectedSummaries.contains(summary)) {
-        if (selectedSummaries.length > 1) {
-          selectedSummaries.remove(summary);
-        }
-      } else {
-        if (selectedSummaries.length < 4) {
-          selectedSummaries.add(summary);
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Max 3 summaries allowed')),
-          );
-          return;
-        }
+    if (selectedSummaries.contains(summary)) {
+      if (selectedSummaries.length <= 1) return; // Keep at least one
+      setState(() => selectedSummaries.remove(summary));
+    } else {
+      if (selectedSummaries.length >= _maxSummaries) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Max $_maxSummaries summaries allowed')),
+        );
+        return;
       }
-    });
+      setState(() => selectedSummaries.add(summary));
+    }
 
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid != null) {
       await AnalyticsService().saveSummaryPreference(uid, selectedSummaries);
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -129,28 +159,18 @@ class _StatsScreenState extends State<StatsScreen> {
         centerTitle: true,
         elevation: 0,
         actions: [
-          FutureBuilder<List<String>>(
-            future: summaryPreferenceFuture,
-            builder: (context, snapshot) {
-              if (snapshot.hasData) {
-                selectedSummaries = snapshot.data!;
-              }
-              return PopupMenuButton<String>(
-                icon: const Icon(Icons.tune),
-                onSelected: (value) {
-                  _toggleSummarySelection(value);
-                },
-                itemBuilder: (BuildContext context) {
-                  return availableSummaries.map((summary) {
-                    return CheckedPopupMenuItem<String>(
-                      value: summary,
-                      checked: selectedSummaries.contains(summary),
-                      child: Text(summary),
-                    );
-                  }).toList();
-                },
-              );
-            }
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.tune),
+            onSelected: _toggleSummarySelection,
+            itemBuilder: (BuildContext context) {
+              return availableSummaries.map((summary) {
+                return CheckedPopupMenuItem<String>(
+                  value: summary,
+                  checked: selectedSummaries.contains(summary),
+                  child: Text(summary),
+                );
+              }).toList();
+            },
           ),
         ],
       ),
@@ -169,19 +189,17 @@ class _StatsScreenState extends State<StatsScreen> {
 
           final stats = snapshot.data!;
           // journals
-          final classesThisMonth = stats['classesThisMonth'] as int;
           final types = stats['types'] as Map<String, int>;
           final submissions = stats['submissions'] as ({int totalSubmissions, int submissionAttempts, int timesSubmitted});
           final positions = stats['positions'] as Map<String, int>;
           final techniques = stats['techniques'] as ({
-            Map<String, Map<String, int>> techniquesByType,
-            Map<String, int> techniqueFrequency,
-            String? mostUsedTechnique,
-            double techniqueDiversity,
+          Map<String, Map<String, int>> techniquesByType,
+          Map<String, int> techniqueFrequency,
+          String? mostUsedTechnique,
+          double techniqueDiversity,
           });
           final topTechniquesRaw = (stats['topTechniques'] as List);
           final topTechniques = topTechniquesRaw.cast<Map<String, dynamic>>();
-          final attendanceTrend = stats['attendanceTrend'] as List<dynamic>;
           final metrics = stats['metrics'];
           final submissionSuccessRate = stats['submissionSuccessRate'];
           // competitions
@@ -191,6 +209,10 @@ class _StatsScreenState extends State<StatsScreen> {
           final lossBreakdown = stats['lossBreakdown'];
           final statsByFormat = stats['statsByFormat'] as Map<String, ({int wins, int losses})>;
           final statsByRank = stats['statsByRank'] as Map<String, ({int wins, int losses})>;
+
+          // attendance
+          final String classesValue =
+          _attendance == null ? '–' : '${_attendance!.classesThisMonth}';
 
           return RefreshIndicator(
             onRefresh: () async {
@@ -211,37 +233,37 @@ class _StatsScreenState extends State<StatsScreen> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
+                    const SizedBox(height: 16),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         if (selectedSummaries.contains('Classes'))
-                        // Header summary cards
-                          _buildSummaryCard(
-                            'Classes',
-                            '$classesThisMonth',
-                            'this month',
-                          ),
+                          _summaryItem('Classes', classesValue, 'this month'),
                         if (selectedSummaries.contains('Submissions'))
-                          _buildSummaryCard(
+                          _summaryItem(
                             'Submissions',
                             '${submissions.totalSubmissions}',
                             '${submissions.submissionAttempts} attempted',
                           ),
                         if (selectedSummaries.contains('Submission Success Rate'))
-                          _buildSummaryCard(
-                              'Sub Success Rate',
-                              '${(submissionSuccessRate * 100).toStringAsFixed(0)} %',
-                              '${(submissions.submissionAttempts - submissions.totalSubmissions)} missed subs',
+                          _summaryItem(
+                            'Sub Success Rate',
+                            '${(submissionSuccessRate * 100).toStringAsFixed(0)} %',
+                            '${(submissions.submissionAttempts - submissions.totalSubmissions)} missed subs',
                           ),
                         if (selectedSummaries.contains('Win Rate'))
-                          _buildSummaryCard(
+                          _summaryItem(
                             'Win Rate',
                             '${(overallWinRate * 100).toStringAsFixed(0)}%',
                             '$totalMatches matches',
                           ),
                       ],
                     ),
-                    const SizedBox(height:32),
+                    const SizedBox(height: 32),
+
+                    // Attendance (from class history)
+                    _buildAttendanceSection(),
+                    const SizedBox(height: 32),
 
                     // Competition Stats Summaries
                     Text(
@@ -252,19 +274,19 @@ class _StatsScreenState extends State<StatsScreen> {
                     ),
                     const SizedBox(height: 16),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildSummaryCard(
+                        _summaryItem(
                           'Competitions',
                           '$totalMatches',
                           'total matches',
                         ),
-                        _buildSummaryCard(
+                        _summaryItem(
                           'Submissions',
                           '${winBreakdown.submissions}',
                           'in comp',
                         ),
-                        _buildSummaryCard(
+                        _summaryItem(
                           'Point Wins',
                           '${winBreakdown.points}',
                           'in comps',
@@ -281,11 +303,6 @@ class _StatsScreenState extends State<StatsScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-
-                    // Attendance chart
-                    if (attendanceTrend.isNotEmpty)
-                      _buildAttendanceChart(attendanceTrend),
-                    const SizedBox(height: 24),
 
                     // Top positions
                     if (positions.isNotEmpty)
@@ -357,6 +374,34 @@ class _StatsScreenState extends State<StatsScreen> {
     );
   }
 
+  Widget _buildAttendanceSection() {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+
+    if (_attendanceError) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 16),
+        child: Text('Could not load attendance history'),
+      );
+    }
+    if (_attendance == null || uid == null) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 24),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    return AttendanceStatsSection(stats: _attendance!, userId: uid);
+  }
+
+  /// Summary card that shares the row width evenly, so cards never overflow.
+  Widget _summaryItem(String title, String value, String subtitle) {
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: _buildSummaryCard(title, value, subtitle),
+      ),
+    );
+  }
+
   Widget _buildSummaryCard(String title, String value, String subtitle) {
     return Card(
       elevation: 0,
@@ -390,60 +435,6 @@ class _StatsScreenState extends State<StatsScreen> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildAttendanceChart(List<dynamic> data) {
-    final maxClasses = data.fold<int>(0, (max, item) => item.classCount > max ? item.classCount : max);
-    if (maxClasses == 0) return const SizedBox.shrink();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Classes per Week (Last 8 weeks)',
-          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 16),
-        SizedBox(
-          height: 120,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: data.map((item) {
-              final classCount = item.classCount as int;
-              final heightFraction = classCount / maxClasses.clamp(1, double.infinity);
-              return Column(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Text(
-                    '${item.classCount}',
-                    style: Theme.of(context).textTheme.labelSmall,
-                  ),
-                  const SizedBox(height: 4),
-                  Container(
-                    width: 24,
-                    height: 80 * heightFraction.toDouble(),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).primaryColor,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'W${data.indexOf(item) + 1}',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      fontSize: 10,
-                    ),
-                  ),
-                ],
-              );
-            }).toList(),
-          ),
-        ),
-      ],
     );
   }
 
@@ -859,7 +850,7 @@ class _StatsScreenState extends State<StatsScreen> {
                 ),
                 const SizedBox(height: 4),
                 SizedBox(
-                  width: double.infinity,  // ← Full available width
+                  width: double.infinity,
                   child: Wrap(
                     spacing: 6,
                     runSpacing: 6,

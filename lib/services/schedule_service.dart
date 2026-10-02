@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_auth/firebase_auth.dart';import '../models/class_history_model.dart';
+
 import '../models/class_schedule_model.dart';
 import '../utils/log.dart';
 
@@ -18,75 +19,115 @@ class ScheduleService {
     });
   }
 
-  // Add attendance for a user
-  Future<String?> markAttendance(String classId, String userId) async {
-    try {
-      await _firestore
-          .collection('classes')
-          .doc(classId)
-          .collection('attendance')
-          .add({
-        'userId': userId,
-        'classId': classId,
-        'timestamp': FieldValue.serverTimestamp(),
-      });
-      return null; // Success
-    } catch (e) {
-      return e.toString();
-    }
+  // Toggle attendance for the current session
+  Future<String?> toggleAttendance(String classId, String userId) {
+    return _changeAttendance(classId, userId, join: null);
   }
 
-  // Remove attendance for a user
-  Future<String?> unmarkAttendance(String classId, String userId) async {
-    try {
-      DocumentSnapshot doc = await _firestore.collection('classes').doc(classId).get();
-      List<String> attendees = List<String>.from(doc['attendees'] ?? []);
+  // Join the current session
+  Future<String?> joinClass(String classId, String userId) {
+    return _changeAttendance(classId, userId, join: true);
+  }
 
-      if (attendees.contains(userId)) {
-        attendees.remove(userId);
-        await _firestore.collection('classes').doc(classId).update({
-          'attendees': attendees,
+  // Remove attendance for the current session
+  Future<String?> removeAttendance(String classId, String userId) {
+    return _changeAttendance(classId, userId, join: false);
+  }
+
+  Future<String?> unmarkAttendance(String classId, String userId) {
+    return _changeAttendance(classId, userId, join: false);
+  }
+
+  Future<String?> _changeAttendance(String classId, String userId, {bool? join}) async {
+    try {
+      final classRef = _firestore.collection('classes').doc(classId);
+
+      await _firestore.runTransaction((transaction) async {
+        // --- All reads first (Firestore transaction rule) ---
+        final classSnap = await transaction.get(classRef);
+        final data = classSnap.data();
+        if (data == null) {
+          throw Exception('Class not found');
+        }
+
+        // fromMap drops sign-ups from past sessions
+        final classSchedule = ClassSchedule.fromMap(data, classSnap.id);
+
+        final historyRef = _firestore.collection('classHistory').doc(
+          ClassHistoryRecord.buildId(classId, classSchedule.sessionDate, userId),
+        );
+        final historySnap = await transaction.get(historyRef);
+
+        // --- Decide what to do ---
+        final bool isAttending = classSchedule.attendees.contains(userId);
+        final bool shouldJoin = join ?? !isAttending;
+        if (shouldJoin == isAttending) return; // Nothing to change
+
+        final updated = List<String>.from(classSchedule.attendees);
+
+        if (shouldJoin) {
+          updated.add(userId);
+          // Only create the record if one doesn't exist
+          // (an instructor may have already added them as a walk-in)
+          if (!historySnap.exists) {
+            transaction.set(
+              historyRef,
+              ClassHistoryRecord.newSignUpData(classSchedule, userId),
+            );
+          }
+        } else {
+          // Block leaving once an instructor has confirmed attendance
+          final historyData = historySnap.data();
+          if (historyData != null &&
+              historyData['status'] != AttendanceStatus.signedUp) {
+            throw Exception('Your attendance was already confirmed by an instructor');
+          }
+          updated.remove(userId);
+          if (historySnap.exists) {
+            transaction.delete(historyRef);
+          }
+        }
+
+        // --- Writes ---
+        transaction.update(classRef, {
+          'attendees': updated,
+          'sessionDate': classSchedule.sessionDate,
         });
-      }
-      return null; // Success
-    } catch (e) {
-      return e.toString();
-    }
-  }
-
-  // Toggle attendance
-  Future<String?> toggleAttendance(String classId, String userId) async {
-    try {
-      DocumentSnapshot doc = await _firestore.collection('classes').doc(classId).get();
-      List<String> attendees = List<String>.from(doc['attendees'] ?? []);
-
-      if (attendees.contains(userId)) {
-        attendees.remove(userId);
-      } else {
-        attendees.add(userId);
-      }
-
-      await _firestore.collection('classes').doc(classId).update({
-        'attendees': attendees,
       });
       return null; // Success
     } catch (e) {
-      return e.toString();
+      return e.toString().replaceFirst('Exception: ', '');
     }
   }
 
-  // Get Attendees details for a class
+  // A member's full class history, newest first
+  Stream<List<ClassHistoryRecord>> getUserHistoryStream(String userId) {
+    return _firestore
+        .collection('classHistory')
+        .where('userId', isEqualTo: userId)
+        .orderBy('sessionDate', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+        .map((doc) => ClassHistoryRecord.fromMap(doc.data(), doc.id))
+        .toList());
+  }
+
+  // Get attendee details for a class (current session only)
   Future<List<Map<String, String>>> getClassAttendees(String classId) async {
     try {
-      DocumentSnapshot doc = await _firestore.collection('classes').doc(classId).get();
-      List<String> attendeeIds = List<String>.from(doc['attendees'] ?? []);
+      final doc = await _firestore.collection('classes').doc(classId).get();
+      final data = doc.data();
+      if (data == null) return [];
+
+      final classSchedule = ClassSchedule.fromMap(data, doc.id);
 
       List<Map<String, String>> attendees = [];
-      for (String userId in attendeeIds) {
-        DocumentSnapshot userDoc = await _firestore.collection('users').doc(userId).get();
-        if (userDoc.exists) {
+      for (String userId in classSchedule.attendees) {
+        final userDoc = await _firestore.collection('users').doc(userId).get();
+        final userData = userDoc.data();
+        if (userData != null) {
           attendees.add({
-            'name': userDoc['name'] ?? 'Unknown',
+            'name': userData['name'] ?? 'Unknown',
           });
         }
       }

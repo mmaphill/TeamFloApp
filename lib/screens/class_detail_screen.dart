@@ -18,7 +18,8 @@ class ClassDetailScreen extends StatefulWidget {
 class _ClassDetailScreenState extends State<ClassDetailScreen> {
   final ScheduleService _scheduleService = ScheduleService();
   final User _currentUser = FirebaseAuth.instance.currentUser!;
-  late List<Map<String, String>> _attendees;
+  List<Map<String, String>> _attendees = [];
+  String _sessionLabel = '';
   bool _isAttending = false;
   bool _isLoading = true;
 
@@ -29,76 +30,83 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
   }
 
   Future<void> _loadClassDetails() async {
-    // Read fresh data from Firestore instead of using widget.classSchedule
-    DocumentSnapshot classDoc = await FirebaseFirestore.instance
-        .collection('classes')
-        .doc(widget.classSchedule.classId)
-        .get();
+    try {
+      // Read fresh data from Firestore instead of using widget.classSchedule
+      final classDoc = await FirebaseFirestore.instance
+          .collection('classes')
+          .doc(widget.classSchedule.classId)
+          .get();
 
-    List<String> attendeeIds = List<String>.from(classDoc['attendees'] ?? []);
-    List<Map<String, String>> attendees = [];
-
-    for (String userId in attendeeIds) {
-      try {
-        DocumentSnapshot userDoc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(userId)
-            .get();
-
-        if (userDoc.exists && userDoc.data() != null) {
-          final data = userDoc.data() as Map<String, dynamic>;
-          String name = data['name'] ?? data['email'] ?? 'Unknown User';
-          attendees.add({'name': name, 'userId': userId});
-        }
-      } catch (e) {
-        log('Error fetching attendee $userId: $e');
+      final data = classDoc.data();
+      if (data == null) {
+        if (!mounted) return;
+        setState(() {
+          _attendees = [];
+          _isAttending = false;
+          _isLoading = false;
+        });
+        return;
       }
+
+      // fromMap drops sign-ups from past sessions
+      final freshClass = ClassSchedule.fromMap(data, classDoc.id);
+      final List<String> attendeeIds = freshClass.attendees;
+      List<Map<String, String>> attendees = [];
+
+      for (String userId in attendeeIds) {
+        try {
+          DocumentSnapshot userDoc = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(userId)
+              .get();
+
+          if (userDoc.exists && userDoc.data() != null) {
+            final userData = userDoc.data() as Map<String, dynamic>;
+            String name = userData['name'] ?? userData['email'] ?? 'Unknown User';
+            attendees.add({'name': name, 'userId': userId});
+          }
+        } catch (e) {
+          log('Error fetching attendee $userId: $e');
+        }
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _attendees = attendees;
+        _isAttending = attendeeIds.contains(_currentUser.uid);
+        _sessionLabel = freshClass.sessionDateLabel;
+        _isLoading = false;
+      });
+    } catch (e) {
+      log('Error loading class details: $e');
+      if (!mounted) return;
+      setState(() => _isLoading = false);
     }
-
-    final isAttending = attendeeIds.contains(_currentUser.uid);
-
-    setState(() {
-      _attendees = attendees;
-      _isAttending = isAttending;
-      _isLoading = false;
-    });
   }
 
   Future<void> _toggleAttendance() async {
     setState(() => _isLoading = true);
-    await _scheduleService.toggleAttendance(
+
+    final error = await _scheduleService.toggleAttendance(
       widget.classSchedule.classId,
       _currentUser.uid,
     );
 
-    await _loadClassDetails();
-  }
-
-  Future<List<String>> _getAttendeeNames() async {
-    List<String> names = [];
-
-    for (String userId in widget.classSchedule.attendees) {
-      try {
-        DocumentSnapshot userDoc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(userId)
-            .get();
-
-        if (userDoc.exists) {
-          final data = userDoc.data() as Map<String, dynamic>;
-          String name = data['name'] ?? data['email'] ?? 'Unknown';
-          names.add(name);
-        }
-      } catch (e) {
-        names.add('Unknown');
-      }
+    if (error != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not update attendance: $error')),
+      );
     }
 
-    return names;
+    await _loadClassDetails();
   }
 
   @override
   Widget build(BuildContext context) {
+    final String dayText = _sessionLabel.isEmpty
+        ? widget.classSchedule.day
+        : '${widget.classSchedule.day}, $_sessionLabel';
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: AppColors.dark,
@@ -170,7 +178,7 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          widget.classSchedule.day,
+                          dayText,
                           style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.bold,

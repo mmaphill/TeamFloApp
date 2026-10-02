@@ -1,6 +1,10 @@
+import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../models/class_history_model.dart';
 import '../services/analytics_service.dart';
+import '../services/attendance_stats_service.dart';
+import '../services/schedule_service.dart';
 import '../utils/log.dart';
 
 class StatsHighlightsWidget extends StatefulWidget {
@@ -13,10 +17,35 @@ class StatsHighlightsWidget extends StatefulWidget {
 class _StatsHighlightsWidgetState extends State<StatsHighlightsWidget> {
   late Future<Map<String, dynamic>> statsFuture;
 
+  // Classes this month now comes from attendance history (same as Stats screen)
+  StreamSubscription<List<ClassHistoryRecord>>? _historySubscription;
+  int? _classesThisMonth;
+
   @override
   void initState() {
     super.initState();
     statsFuture = _loadStats();
+
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid != null) {
+      _historySubscription = ScheduleService().getUserHistoryStream(uid).listen(
+            (records) {
+          if (!mounted) return;
+          setState(() {
+            _classesThisMonth = AttendanceStats.fromRecords(records).classesThisMonth;
+          });
+        },
+        onError: (e) {
+          log('Highlights: error loading attendance history: $e');
+        },
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _historySubscription?.cancel();
+    super.dispose();
   }
 
   Future<Map<String, dynamic>> _loadStats() async {
@@ -45,16 +74,13 @@ class _StatsHighlightsWidgetState extends State<StatsHighlightsWidget> {
     final journalEntries = await analyticsService.getJournalEntries(uid);
     final userProfile = await analyticsService.getUserProfile(uid);
     final positions = analyticsService.getPositionFrequency(journalEntries);
-    final classesThisMonth = analyticsService.getClassesThisMonth(journalEntries);
     final submissions = analyticsService.aggregateSubmissions(journalEntries);
     final types = analyticsService.aggregateTypes(journalEntries);
     final competitionStats = analyticsService.parseCompetitionStats(userProfile);
-    final competitionPoints = analyticsService.parseCompetitionStats(userProfile);
     final overallWinRate = analyticsService.calculateOverallWinRate(competitionStats);
     final totalMatches = analyticsService.getTotalMatches(competitionStats);
 
     return {
-      'classesThisMonth': classesThisMonth,
       'submissions': (
       totalSubmissions: submissions.totalSubmissions,
       submissionAttempts: submissions.submissionAttempts,
@@ -62,7 +88,6 @@ class _StatsHighlightsWidgetState extends State<StatsHighlightsWidget> {
       ),
       'types': types,
       'positions': positions,
-      'competitionPoints': competitionPoints,
       'overallWinRate': overallWinRate,
       'totalMatches': totalMatches,
     };
@@ -70,7 +95,6 @@ class _StatsHighlightsWidgetState extends State<StatsHighlightsWidget> {
 
   Map<String, dynamic> _emptyStats() {
     return {
-      'classesThisMonth': 0,
       'submissions': (
       totalSubmissions: 0,
       submissionAttempts: 0,
@@ -78,7 +102,6 @@ class _StatsHighlightsWidgetState extends State<StatsHighlightsWidget> {
       ),
       'types': <String, int>{},
       'positions': <String, int>{},
-      'competitionPoints': 0,
       'overallWinRate': 0.0,
       'totalMatches': 0,
     };
@@ -110,12 +133,14 @@ class _StatsHighlightsWidgetState extends State<StatsHighlightsWidget> {
         }
 
         final stats = snapshot.data!;
-        final classesThisMonth = stats['classesThisMonth'] as int;
         final submissions = stats['submissions'] as ({int totalSubmissions, int submissionAttempts, int timesSubmitted});
         final types = stats['types'] as Map<String, int>;
         final positions = stats['positions'] as Map<String, int>;
         final overallWinRate = stats['overallWinRate'] as double;
         final totalMatches = stats['totalMatches'] as int;
+
+        final String classesValue =
+        _classesThisMonth == null ? '–' : '$_classesThisMonth';
 
         return Padding(
           padding: const EdgeInsets.all(16.0),
@@ -138,7 +163,7 @@ class _StatsHighlightsWidgetState extends State<StatsHighlightsWidget> {
                     child: _buildSummaryCard(
                       context,
                       'Classes',
-                      '$classesThisMonth',
+                      classesValue,
                       'this month',
                     ),
                   ),

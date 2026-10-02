@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:team_flo_app/widgets/home_attendance_card.dart';
 import 'package:team_flo_app/widgets/instagram_feed_widget.dart';
 import '../models/belt_rank_model.dart';
 import '../models/user_model.dart';
@@ -58,6 +59,7 @@ class _HomeScreenState extends State<HomeScreen> {
         currentBelt = sorted.first.rank;
       }
 
+      if (!mounted) return;
       setState(() {
         _userData = UserModel(
           uid: user.uid,
@@ -93,7 +95,11 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 20),
 
+            // instagram feed
             InstagramFeedWidget(),
+
+            // attendance feed
+            const HomeAttendanceCard(),
 
             // Stats widget
             const StatsHighlightsWidget(),
