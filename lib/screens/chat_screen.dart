@@ -228,7 +228,7 @@ class _ChatScreenState extends State<ChatScreen> {
             // Media Display
             if (post.mediaUrls.isNotEmpty)
               SizedBox(
-                height: 200,
+                height: 250,
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
                   itemCount: post.mediaUrls.length,
@@ -256,16 +256,19 @@ class _ChatScreenState extends State<ChatScreen> {
                         },
                         child: Image.network(url, fit: BoxFit.cover),
                       )
-                          : VideoPreview(
-                        videoUrl: url,
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => VideoPlayerModal(videoUrl: url),
-                            ),
-                          );
-                        },
+                      : AspectRatio(
+                        aspectRatio: 0.5625,
+                        child: VideoPreview(
+                          videoUrl: url,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => VideoPlayerModal(videoUrl: url),
+                              ),
+                            );
+                          },
+                        ),
                       ),
                     );
                   },

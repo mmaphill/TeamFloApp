@@ -10,8 +10,10 @@ class VideoPlayerModal extends StatefulWidget {
   State<VideoPlayerModal> createState() => _VideoPlayerModalState();
 }
 
-class _VideoPlayerModalState extends State<VideoPlayerModal> {
+class _VideoPlayerModalState extends State<VideoPlayerModal> with SingleTickerProviderStateMixin {
   late VideoPlayerController _controller;
+  late AnimationController _fadeController;
+  late Animation<double> _fadeAnimation;
   late Future<void> _initializeVideoPlayerFuture;
 
   @override
@@ -20,11 +22,29 @@ class _VideoPlayerModalState extends State<VideoPlayerModal> {
     _controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl));
     _initializeVideoPlayerFuture = _controller.initialize();
     _controller.play();
+
+    // Setup fade animation for play button
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+
+    _fadeAnimation = Tween<double>(begin: 1.0, end: 0.0).animate(
+      CurvedAnimation(parent: _fadeController, curve: Curves.easeOut),
+    );
+
+    // Start fade after 1.5 seconds
+    Future.delayed(const Duration(milliseconds: 1500), () {
+      if (mounted) {
+        _fadeController.forward();
+      }
+    });
   }
 
   @override
   void dispose() {
     _controller.dispose();
+    _fadeController.dispose();
     super.dispose();
   }
 
@@ -34,7 +54,7 @@ class _VideoPlayerModalState extends State<VideoPlayerModal> {
       backgroundColor: Colors.black,
       insetPadding: const EdgeInsets.all(0),
       child: GestureDetector(
-        onTap: () => Navigator.pop(context), // Close on tap outside
+        onTap: () => Navigator.pop(context),
         child: Stack(
           alignment: Alignment.center,
           children: [
@@ -73,30 +93,33 @@ class _VideoPlayerModalState extends State<VideoPlayerModal> {
                 ),
               ),
             ),
-            // Play/Pause Button (center)
-            Positioned(
-              child: GestureDetector(
-                onTap: () {
-                  setState(() {
-                    if (_controller.value.isPlaying) {
-                      _controller.pause();
-                    } else {
-                      _controller.play();
-                    }
-                  });
-                },
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.black54,
-                    shape: BoxShape.circle,
-                  ),
-                  padding: const EdgeInsets.all(16),
-                  child: Icon(
-                    _controller.value.isPlaying
-                        ? Icons.pause
-                        : Icons.play_arrow,
-                    color: Colors.white,
-                    size: 40,
+            // Play/Pause Button with Fade (center)
+            FadeTransition(
+              opacity: _fadeAnimation,
+              child: Positioned(
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      if (_controller.value.isPlaying) {
+                        _controller.pause();
+                      } else {
+                        _controller.play();
+                      }
+                    });
+                  },
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      shape: BoxShape.circle,
+                    ),
+                    padding: const EdgeInsets.all(16),
+                    child: Icon(
+                      _controller.value.isPlaying
+                          ? Icons.pause
+                          : Icons.play_arrow,
+                      color: Colors.white,
+                      size: 40,
+                    ),
                   ),
                 ),
               ),

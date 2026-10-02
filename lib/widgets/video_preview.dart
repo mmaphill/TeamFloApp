@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
+import '../utils/log.dart';
 
 class VideoPreview extends StatefulWidget {
   final String videoUrl;
@@ -17,29 +18,21 @@ class VideoPreview extends StatefulWidget {
 class _VideoPreviewState extends State<VideoPreview> with SingleTickerProviderStateMixin {
   late VideoPlayerController _controller;
   late AnimationController _fadeController;
-  late Animation<double> _fadeAnimation;
-  late Future<void> _initializeVideoPlayerFuture;
 
   @override
   void initState() {
     super.initState();
+    log('🎬 VideoPreview: Initializing video for URL: ${widget.videoUrl}');
+
     _controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl));
-    _initializeVideoPlayerFuture = _controller.initialize();
 
-    _fadeController = AnimationController(
-      duration: const Duration(milliseconds: 500),
-      vsync: this,
-    );
-
-    _fadeAnimation = Tween<double>(begin: 1.0, end: 0.0).animate(
-      CurvedAnimation(parent: _fadeController, curve: Curves.easeOut),
-    );
-
-    // Start fade after 1.5 seconds
-    Future.delayed(const Duration(milliseconds: 1500), () {
-      if (mounted) {
-        _fadeController.forward();
-      }
+    _controller.initialize().then((_) {
+      log('✓ VideoPreview: Video initialized successfully');
+      log('✓ Is initialized: ${_controller.value.isInitialized}');
+      log('✓ Aspect ratio: ${_controller.value.aspectRatio}');
+      setState(() {});
+    }).catchError((error) {
+      log('✗ VideoPreview: Error initializing video: $error');
     });
   }
 
@@ -56,24 +49,22 @@ class _VideoPreviewState extends State<VideoPreview> with SingleTickerProviderSt
       child: Container(
         color: Colors.black,
         child: Stack(
+          fit: StackFit.expand,
           alignment: Alignment.center,
           children: [
-            // Video thumbnail
-            _controller.value.isInitialized
-              ? AspectRatio(aspectRatio: _controller.value.aspectRatio, child: VideoPlayer(_controller),)
-              : const SizedBox.expand(
-                child: ColoredBox(
-                  color: Colors.black26,
-                ),
+            if (_controller.value.isInitialized)
+              Positioned.fill(
+                child: VideoPlayer(_controller),
+              )
+            else
+              const Center(
+                child: CircularProgressIndicator(),
               ),
-            // Play icon that fades out
-            FadeTransition(
-              opacity: _fadeAnimation,
-              child: const Icon(
-                Icons.play_circle_outline,
-                size: 80,
-                color: Colors.white,
-              ),
+            // Static play icon - no fade
+            const Icon(
+              Icons.play_circle_outline,
+              size: 80,
+              color: Colors.white,
             ),
           ],
         ),
