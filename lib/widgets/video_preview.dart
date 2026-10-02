@@ -53,41 +53,30 @@ class _VideoPreviewState extends State<VideoPreview> with SingleTickerProviderSt
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: widget.onTap,
-      child: FutureBuilder<void>(
-        future: _initializeVideoPlayerFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.done) {
-            return Stack(
-              alignment: Alignment.center,
-              children: [
-                // Video frame as thumbnail
-                AspectRatio(
-                  aspectRatio: _controller.value.aspectRatio,
-                  child: VideoPlayer(_controller),
-                ),
-                // Dark overlay
-                Container(
+      child: Container(
+        color: Colors.black,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // Video thumbnail
+            _controller.value.isInitialized
+              ? AspectRatio(aspectRatio: _controller.value.aspectRatio, child: VideoPlayer(_controller),)
+              : const SizedBox.expand(
+                child: ColoredBox(
                   color: Colors.black26,
                 ),
-                // Play icon
-                const Center(
-                  child: Icon(
-                    Icons.play_circle_outline,
-                    size: 50,
-                    color: Colors.white,
-                  ),
-                ),
-              ],
-            );
-          } else {
-            return Container(
-              color: Colors.black26,
-              child: const Center(
-                child: CircularProgressIndicator(),
               ),
-            );
-          }
-        },
+            // Play icon that fades out
+            FadeTransition(
+              opacity: _fadeAnimation,
+              child: const Icon(
+                Icons.play_circle_outline,
+                size: 80,
+                color: Colors.white,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

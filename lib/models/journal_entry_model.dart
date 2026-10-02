@@ -17,6 +17,7 @@ class JournalEntry {
   final String? position; // Closed Guard, Open Guard, etc.
   final String? types; // Pass, Sweep, Submit
   final Map<String, List<String>> techniques; // User entered field
+  final int rounds; // Number of rounds training
   final int submissions; // Number of submissions
   final int submissionAttempts; // Total number of submissions attempted
   final int timesSubmitted; // Number of times submitted
@@ -39,6 +40,7 @@ class JournalEntry {
     this.position,
     this.types,
     this.techniques = const {},
+    this.rounds = 0,
     this.submissions = 0,
     this.submissionAttempts = 0,
     this.timesSubmitted = 0,
@@ -61,6 +63,7 @@ class JournalEntry {
       position: map['position'],
       types: map['types'],
       techniques: _parseTechniques(map['techniques']),
+      rounds: map['rounds'] ?? 0,
       submissions: map['submissions'] ?? 0,
       submissionAttempts: map['submissionAttempts'] ?? 0,
       timesSubmitted: map['timesSubmitted'] ?? 0,
@@ -83,6 +86,7 @@ class JournalEntry {
       'position': position,
       'types': types,
       'techniques': techniques.isEmpty ? null : techniques,
+      'rounds': rounds,
       'submissions': submissions,
       'submissionAttempts': submissionAttempts,
       'timesSubmitted': timesSubmitted,

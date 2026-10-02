@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 
 class SubmissionCounterWidget extends StatefulWidget {
+  final int initialRounds;
   final int initialSuccessful;
   final int initialAttempted;
   final int initialTimesSubmitted;
-  final Function(int submissions, int submissionAttempts, int timesSubmitted) onChanged;
+  final Function(int rounds, int submissions, int submissionAttempts, int timesSubmitted) onChanged;
 
   const SubmissionCounterWidget({
     super.key,
+    required this.initialRounds,
     required this.initialSuccessful,
     required this.initialAttempted,
     required this.initialTimesSubmitted,
@@ -19,6 +21,7 @@ class SubmissionCounterWidget extends StatefulWidget {
 }
 
 class _SubmissionCounterWidgetState extends State<SubmissionCounterWidget> {
+  late int rounds;
   late int submissions;
   late int attempted;
   late int timesSubmitted;
@@ -26,13 +29,28 @@ class _SubmissionCounterWidgetState extends State<SubmissionCounterWidget> {
   @override
   void initState() {
     super.initState();
+    rounds = widget.initialRounds;
     submissions = widget.initialSuccessful;
     attempted = widget.initialAttempted;
     timesSubmitted = widget.initialTimesSubmitted;
   }
 
   void _updateParent() {
-    widget.onChanged(submissions, attempted, timesSubmitted);
+    widget.onChanged(rounds, submissions, attempted, timesSubmitted);
+  }
+
+  void _incrementRounds() {
+    setState(() {
+      rounds++;
+      _updateParent();
+    });
+  }
+
+  void _decrementRounds() {
+    setState(() {
+      rounds--;
+      _updateParent();
+    });
   }
 
   void _incrementSubmissions() {
@@ -142,6 +160,17 @@ class _SubmissionCounterWidgetState extends State<SubmissionCounterWidget> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
+          'Rounds',
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 16),
+        // Number of Rounds trained
+        _buildCounter(label: 'Rounds', description: 'How many rounds you trained', value: rounds, onIncrement: _incrementRounds, onDecrement: _decrementRounds),
+        const SizedBox(height: 16),
+
+        Text(
           'Submissions',
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.bold,
@@ -153,7 +182,7 @@ class _SubmissionCounterWidgetState extends State<SubmissionCounterWidget> {
         _buildCounter(label: 'Submissions', description: 'Successful Submissions', value: submissions, onIncrement: _incrementSubmissions, onDecrement: _decrementSubmissions),
         const SizedBox(height: 16),
 
-        // Attempted Sumbissions
+        // Attempted Submissions
         _buildCounter(label: 'Attempted', description: 'Total Attempted Submissions', value: attempted, onIncrement: _incrementAttempted, onDecrement: _decrementAttempted),
         const SizedBox(height: 16),
 

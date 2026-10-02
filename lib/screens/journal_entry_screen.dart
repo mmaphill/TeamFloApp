@@ -50,6 +50,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
   String? _contentError;
 
   late TextEditingController _techniqueController;
+  late TextEditingController _roundController;
   late TextEditingController _submissionsController;
   late TextEditingController _submissionAttemptsController;
   late TextEditingController _timesSubmittedController;
@@ -81,6 +82,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
   void initState() {
     super.initState();
     _techniqueController = TextEditingController();
+    _roundController = TextEditingController();
     _submissionsController = TextEditingController();
     _submissionAttemptsController = TextEditingController();
     _timesSubmittedController = TextEditingController();
@@ -140,6 +142,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
       if (existing != null) {
         _entry = existing;
         _techniqueController.text = existing.techniques.toString();
+        _roundController.text = existing.techniques.toString();
         _submissionsController.text = existing.submissions.toString();
         _submissionAttemptsController.text = existing.submissionAttempts.toString();
         _timesSubmittedController.text = existing.timesSubmitted.toString();
@@ -152,6 +155,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
           createdAt: DateTime.now(),
         );
         _techniqueController.text = '';
+        _roundController.text = '0';
         _submissionsController.text = '0';
         _submissionAttemptsController.text = '0';
         _timesSubmittedController.text = '0';
@@ -198,6 +202,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
       position: _entry.position,
       types: _entry.types,
       techniques: _techniques,
+      rounds: ValidationService.validatePositiveNumber(_entry.rounds),
       submissions: ValidationService.validatePositiveNumber(_entry.submissions),
       submissionAttempts: ValidationService.validatePositiveNumber(_entry.submissionAttempts),
       timesSubmitted: ValidationService.validatePositiveNumber(_entry.timesSubmitted),
@@ -258,6 +263,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
 
   @override
   void dispose() {
+    _roundController.dispose();
     _submissionsController.dispose();
     _submissionAttemptsController.dispose();
     _timesSubmittedController.dispose();
@@ -372,6 +378,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
                 food: _entry.food,
                 position: _entry.position,
                 types: _entry.types,
+                rounds: _entry.rounds,
                 submissions: _entry.submissions,
                 timesSubmitted: _entry.timesSubmitted,
                 generalNotes: _entry.generalNotes,
@@ -393,6 +400,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
                 food: _entry.food,
                 position: _entry.position,
                 types: _entry.types,
+                rounds: _entry.rounds,
                 submissions: _entry.submissions,
                 timesSubmitted: _entry.timesSubmitted,
                 generalNotes: _entry.generalNotes,
@@ -414,6 +422,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
                 food: _entry.food,
                 position: _entry.position,
                 types: _entry.types,
+                rounds: _entry.rounds,
                 submissions: _entry.submissions,
                 timesSubmitted: _entry.timesSubmitted,
                 generalNotes: _entry.generalNotes,
@@ -435,6 +444,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
                 food: val,
                 position: _entry.position,
                 types: _entry.types,
+                rounds: _entry.rounds,
                 submissions: _entry.submissions,
                 timesSubmitted: _entry.timesSubmitted,
                 generalNotes: _entry.generalNotes,
@@ -473,6 +483,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
                   food: _entry.food,
                   position: val,
                   types: _entry.types,
+                  rounds: _entry.rounds,
                   submissions: _entry.submissions,
                   timesSubmitted: _entry.timesSubmitted,
                   generalNotes: _entry.generalNotes,
@@ -507,6 +518,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
                   food: _entry.food,
                   position: _entry.position,
                   types: val,
+                  rounds: _entry.rounds,
                   submissions: _entry.submissions,
                   timesSubmitted: _entry.timesSubmitted,
                   generalNotes: _entry.generalNotes,
@@ -582,10 +594,11 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
 
             // Submission Counter Widget
             SubmissionCounterWidget(
+              initialRounds: _entry.rounds,
               initialSuccessful: _entry.submissions,
               initialAttempted: _entry.submissionAttempts,
               initialTimesSubmitted: _entry.timesSubmitted,
-              onChanged: (successful, submissionAttempts, timesSubmitted) {
+              onChanged: (round, successful, submissionAttempts, timesSubmitted) {
                 setState(() => _entry = JournalEntry(
                   entryId: _entry.entryId,
                   userId: _entry.userId,
@@ -598,6 +611,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
                   food: _entry.food,
                   position: _entry.position,
                   types: _entry.types,
+                  rounds: round,
                   submissions: successful,
                   submissionAttempts: submissionAttempts,
                   timesSubmitted: timesSubmitted,
@@ -633,6 +647,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
                     food: _entry.food,
                     position: _entry.position,
                     types: _entry.types,
+                    rounds: _entry.rounds,
                     submissions: _entry.submissions,
                     timesSubmitted: _entry.timesSubmitted,
                     generalNotes: val,
@@ -729,6 +744,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
                     food: _entry.food,
                     position: _entry.position,
                     types: _entry.types,
+                    rounds: _entry.rounds,
                     submissions: _entry.submissions,
                     timesSubmitted: _entry.timesSubmitted,
                     generalNotes: _entry.generalNotes,
