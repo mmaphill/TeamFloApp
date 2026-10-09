@@ -233,6 +233,61 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  // ============ Edit Date of Birth ===========
+  Future<void> _showEditDobDialog() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _userData.dob ?? DateTime(2000, 1, 1),
+      firstDate: DateTime(1930),
+      lastDate: DateTime.now(),
+      helpText: 'Select your date of birth',
+    );
+
+    if (picked == null) return; // user cancelled
+
+    setState(() => _isLoading = true);
+
+    String? error = await _authService.updateProfileFields(
+      _currentUser.uid,
+      {'dob': picked},
+    );
+
+    if (!mounted) return;
+
+    if (error == null) {
+      setState(() {
+        _userData = UserModel(
+          uid: _userData.uid,
+          email: _userData.email,
+          name: _userData.name,
+          role: _userData.role,
+          createdAt: _userData.createdAt,
+          dob: picked,
+          beltRankHistory: _userData.beltRankHistory,
+          goals: _userData.goals,
+          competitionStats: _userData.competitionStats,
+          photoUrl: _userData.photoUrl,
+          photoCropData: _userData.photoCropData,
+          avatarColor: _userData.avatarColor,
+          currentBelt: _userData.currentBelt,
+          themeMode: _userData.themeMode,
+          notificationsEnabled: _userData.notificationsEnabled,
+          fcmToken: _userData.fcmToken,
+          showAge: _userData.showAge,
+        );
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Date of birth updated')),
+      );
+    } else {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $error')),
+      );
+    }
+  }
+
   // ============ Edit Email Dialog ============
   void _showEditEmailDialog() {
     final controller = TextEditingController(text: _userData.email);
@@ -1050,6 +1105,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 label: 'Email',
                 value: _userData.email,
                 onTap: _showEditEmailDialog,
+              ),
+              const SizedBox(height: 16),
+
+              // Date of Birth Section (editable)
+              _buildEditableField(
+                label: 'Date of Birth',
+                value: _userData.dob != null
+                  ? DateFormat('MMM d, yyyy').format(_userData.dob!)
+                  : '(No date of birth set)',
+                onTap: _showEditDobDialog,
               ),
               const SizedBox(height: 16),
 

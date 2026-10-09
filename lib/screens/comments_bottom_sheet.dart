@@ -7,6 +7,7 @@ import '../config/colors.dart';
 import '../widgets/mention_autocomplete_widget.dart';
 import '../config/mention_text_renderer.dart';
 import '../utils/log.dart';
+import 'member_profile_screen.dart';
 
 class CommentsBottomSheet extends StatefulWidget {
   final String postId;
@@ -291,46 +292,52 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
   }
 
   Widget _buildCommentTile(Map<String, dynamic> comment) {
+    final String commenterId = (comment['userId'] as String?) ?? '';
+    
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: Colors.grey[600],
-                child: Text(
-                  (comment['userName'] as String).isNotEmpty
-                      ? (comment['userName'] as String)[0].toUpperCase()
-                      : '?',
-                  style: const TextStyle(color: Colors.white),
+          InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: () => MemberProfileScreen.open(context, commenterId),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 20,
+                  backgroundColor: Colors.grey[600],
+                  child: Text(
+                    (comment['userName'] as String).isNotEmpty
+                        ? (comment['userName'] as String)[0].toUpperCase()
+                        : '?',
+                    style: const TextStyle(color: Colors.white),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      comment['userName'] ?? 'Anonymous',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        comment['userName'] ?? 'Anonymous',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
                       ),
-                    ),
-                    Text(
-                      _formatTime(
-                        (comment['createdAt'] as dynamic)?.toDate() ??
-                            DateTime.now(),
+                      Text(
+                        _formatTime(
+                          (comment['createdAt'] as dynamic)?.toDate() ??
+                              DateTime.now(),
+                        ),
+                        style: const TextStyle(fontSize: 12, color: Colors.grey),
                       ),
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           const SizedBox(height: 8),
           Padding(

@@ -258,4 +258,16 @@ class AuthService {
       return 'Error updating belt rank: $e';
     }
   }
+
+  Future<String?> updateProfileFields(
+      String uid,
+      Map<String, dynamic> fields,
+  ) async {
+    try {
+      await _firestore.collection('users').doc(uid).update(fields);
+      return null; // successful update
+    } catch (e) {
+      return e.toString();
+    }
+  }
 }

@@ -8,6 +8,7 @@ class UserModel {
   final String name;
   final String role;
   final DateTime createdAt;
+  final DateTime? dob;
   final List<BeltRank> beltRankHistory;
   final String goals;
   final List<CompetitionStats> competitionStats;
@@ -18,6 +19,8 @@ class UserModel {
   final String? themeMode;
   final bool notificationsEnabled;
   final String? fcmToken;
+  final bool showAge;
+  final bool showCompStats;
 
   UserModel({
     required this.uid,
@@ -25,6 +28,7 @@ class UserModel {
     required this.name,
     required this.role,
     required this.createdAt,
+    this.dob,
     this.beltRankHistory = const [],
     this.goals = '',
     this.competitionStats = const [],
@@ -35,6 +39,8 @@ class UserModel {
     this.themeMode,
     this.notificationsEnabled = false,
     this.fcmToken,
+    this.showAge = true,
+    this.showCompStats = false,
   });
 
   factory UserModel.fromMap(Map<String, dynamic> map) {
@@ -43,6 +49,7 @@ class UserModel {
       email: map['email'] ?? '',
       name: map['name'] ?? '',
       role: map['role'] ?? 'member',
+      dob: (map['dob'] as dynamic)?.toDate() ?? DateTime.now(),
       createdAt: (map['createdAt'] as dynamic)?.toDate() ?? DateTime.now(),
       beltRankHistory: (map['beltRankHistory'] as List?)
         ?.map((item) => BeltRank.fromMap(item as Map<String, dynamic>))
@@ -58,6 +65,8 @@ class UserModel {
       themeMode: map['themeMode'],
       notificationsEnabled: map['notificationsEnabled'] ?? false,
       fcmToken: map['fcmToken'],
+      showAge: map['showAge'] ?? true,
+      showCompStats: map['showCompStats'] ?? false,
     );
   }
 
@@ -67,6 +76,7 @@ class UserModel {
       'email': email,
       'name': name,
       'role': role,
+      'dob': dob,
       'createdAt': createdAt,
       'beltRankHistory': beltRankHistory.map((b) => b.toMap()).toList(),
       'goals': goals,
@@ -78,6 +88,8 @@ class UserModel {
       'themeMode': themeMode,
       'notificationsEnabled': notificationsEnabled,
       'fcmToken': fcmToken,
+      'showAge': showAge,
+      'showCompStats': showCompStats,
     };
   }
 }

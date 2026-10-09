@@ -94,9 +94,9 @@ class _VideoPlayerModalState extends State<VideoPlayerModal> with SingleTickerPr
               ),
             ),
             // Play/Pause Button with Fade (center)
-            FadeTransition(
-              opacity: _fadeAnimation,
-              child: Positioned(
+            Positioned(
+              child: FadeTransition(
+                opacity: _fadeAnimation,
                 child: GestureDetector(
                   onTap: () {
                     setState(() {

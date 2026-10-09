@@ -12,6 +12,7 @@ import '../config/mention_text_renderer.dart';
 import 'comments_bottom_sheet.dart';
 import 'likers_popup.dart';
 import '../utils/log.dart';
+import 'member_profile_screen.dart';
 
 class ChatScreen extends StatefulWidget {
   final String? postId;
@@ -150,57 +151,61 @@ class _ChatScreenState extends State<ChatScreen> {
                   children: [
                     // Avatar + Name + Timestamp
                     Expanded(
-                      child: Row(
-                        children: [
-                          // Avatar
-                          CircleAvatar(
-                            radius: 24,
-                            backgroundImage: (profile['photoUrl'] != null &&
-                                profile['photoUrl'].isNotEmpty)
-                                ? NetworkImage(profile['photoUrl'])
-                                : null,
-                            backgroundColor: profile['photoUrl'] == null ||
-                                profile['photoUrl'].isEmpty
-                                ? Colors.grey[400]
-                                : null,
-                            child: (profile['photoUrl'] == null ||
-                                profile['photoUrl'].isEmpty)
-                                ? Text(
-                              post.userName.isNotEmpty
-                                  ? post.userName[0].toUpperCase()
-                                  : '?',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            )
-                                : null,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  profile['name'] ?? post.userName,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(8),
+                        onTap: () => MemberProfileScreen.open(context, post.userId),
+                        child: Row(
+                          children: [
+                            // Avatar
+                            CircleAvatar(
+                              radius: 24,
+                              backgroundImage: (profile['photoUrl'] != null &&
+                                  profile['photoUrl'].isNotEmpty)
+                                  ? NetworkImage(profile['photoUrl'])
+                                  : null,
+                              backgroundColor: profile['photoUrl'] == null ||
+                                  profile['photoUrl'].isEmpty
+                                  ? Colors.grey[400]
+                                  : null,
+                              child: (profile['photoUrl'] == null ||
+                                  profile['photoUrl'].isEmpty)
+                                  ? Text(
+                                post.userName.isNotEmpty
+                                    ? post.userName[0].toUpperCase()
+                                    : '?',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
                                 ),
-                                Text(
-                                  _formatTime(post.createdAt),
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                              ],
+                              )
+                                  : null,
                             ),
-                          ),
-                        ],
-                      ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    profile['name'] ?? post.userName,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  Text(
+                                    _formatTime(post.createdAt),
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
                     ),
                     // Delete menu
                     if (post.userId == _currentUser.uid || _userRole == 'admin')
