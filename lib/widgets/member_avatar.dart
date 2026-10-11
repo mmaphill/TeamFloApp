@@ -36,6 +36,7 @@ class MemberAvatar extends StatelessWidget {
     );
   }
 
+  @override
   Widget build(BuildContext context) {
     final hasPhoto = user.photoUrl != null && user.photoUrl!.isNotEmpty;
     if (!hasPhoto) return _fallback();
@@ -43,6 +44,9 @@ class MemberAvatar extends StatelessWidget {
     final size = radius * 2;
     final crop = user.photoCropData;
     final ratio = size / _cropCircleSize;
+    final double dx = (crop?.offsetX ?? 0) * ratio;
+    final double dy = (crop?.offsetY ?? 0) * ratio;
+    final double zoom = crop?.scale ?? 1.0;
 
     return ClipOval(
       child: SizedBox(
@@ -50,12 +54,7 @@ class MemberAvatar extends StatelessWidget {
         height: size,
         child: Transform(
           alignment: Alignment.center,
-          transform: Matrix4.identity()
-            ..translate(
-                (crop?.offsetX ?? 0) * ratio,
-                (crop?.offsetY ?? 0) * ratio,
-            )
-            ..scale(crop?.scale ?? 1.0),
+          transform: Matrix4.translationValues(dx, dy, 0).multiplied(Matrix4.diagonal3Values(zoom, zoom, zoom)),
           child: Image.network(
             user.photoUrl!,
             width: size,

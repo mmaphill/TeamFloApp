@@ -153,7 +153,7 @@ class MemberProfileScreen extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: scheme.primary.withOpacity(0.12),
+        color: scheme.primary.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(

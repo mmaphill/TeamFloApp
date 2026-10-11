@@ -49,8 +49,14 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async => !widget.isFirstLogin, // Prevent back on first login
+    return PopScope(
+      canPop: !widget.isFirstLogin,
+      onPopInvokedWithResult: (didPop,result) {
+        if (didPop) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please review and accept the privacy policy to continue')),
+        );
+      },
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Privacy Policy'),

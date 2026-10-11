@@ -293,7 +293,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
 
   Widget _buildCommentTile(Map<String, dynamic> comment) {
     final String commenterId = (comment['userId'] as String?) ?? '';
-    
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Column(
