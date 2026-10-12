@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
@@ -16,6 +18,9 @@ class _VideoPlayerModalState extends State<VideoPlayerModal> with SingleTickerPr
   late Animation<double> _fadeAnimation;
   late Future<void> _initializeVideoPlayerFuture;
 
+  Timer? _fadeTimer; // time for fading play/pause button
+  double _dragDistance = 0; // track finger drag for closing when swiping
+
   @override
   void initState() {
     super.initState();
@@ -33,19 +38,36 @@ class _VideoPlayerModalState extends State<VideoPlayerModal> with SingleTickerPr
       CurvedAnimation(parent: _fadeController, curve: Curves.easeOut),
     );
 
-    // Start fade after 1.5 seconds
-    Future.delayed(const Duration(milliseconds: 1500), () {
+    _scheduleFadeOut();
+  }
+
+  @override
+  void dispose() {
+    _fadeTimer?.cancel();
+    _controller.dispose();
+    _fadeController.dispose();
+    super.dispose();
+  }
+
+  void _scheduleFadeOut() {
+    _fadeTimer?.cancel();
+    _fadeTimer = Timer(const Duration(milliseconds: 1500), () {
       if (mounted) {
         _fadeController.forward();
       }
     });
   }
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    _fadeController.dispose();
-    super.dispose();
+  void _handleTap() {
+    setState((){
+      if (_controller.value.isPlaying) {
+        _controller.pause();
+      } else {
+        _controller.play();
+      }
+    });
+    _fadeController.reverse();
+    _scheduleFadeOut();
   }
 
   @override
@@ -55,6 +77,19 @@ class _VideoPlayerModalState extends State<VideoPlayerModal> with SingleTickerPr
       insetPadding: const EdgeInsets.all(0),
       child: GestureDetector(
         onTap: () => Navigator.pop(context),
+        onVerticalDragStart: (_) {
+          _dragDistance = 0;
+        },
+        onVerticalDragUpdate: (details) {
+          _dragDistance += details.globalPosition.dy;
+        },
+        onVerticalDragEnd: (details) {
+          final speed = details.primaryVelocity ?? 0;
+          if (_dragDistance > 120 || speed > 1200) {
+            Navigator.pop(context);
+          }
+          _dragDistance = 0;
+        },
         child: Stack(
           alignment: Alignment.center,
           children: [
