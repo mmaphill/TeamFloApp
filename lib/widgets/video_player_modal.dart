@@ -81,7 +81,7 @@ class _VideoPlayerModalState extends State<VideoPlayerModal> with SingleTickerPr
           _dragDistance = 0;
         },
         onVerticalDragUpdate: (details) {
-          _dragDistance += details.globalPosition.dy;
+          _dragDistance += details.delta.dy;
         },
         onVerticalDragEnd: (details) {
           final speed = details.primaryVelocity ?? 0;
@@ -133,15 +133,7 @@ class _VideoPlayerModalState extends State<VideoPlayerModal> with SingleTickerPr
               child: FadeTransition(
                 opacity: _fadeAnimation,
                 child: GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      if (_controller.value.isPlaying) {
-                        _controller.pause();
-                      } else {
-                        _controller.play();
-                      }
-                    });
-                  },
+                  onTap: _handleTap,
                   child: Container(
                     decoration: BoxDecoration(
                       color: Colors.black54,

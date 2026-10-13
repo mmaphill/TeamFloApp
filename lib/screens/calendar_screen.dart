@@ -18,13 +18,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
   final User _currentUser = FirebaseAuth.instance.currentUser!;
 
   late DateTime _selectedMonth;
-  late Map<DateTime, JournalEntry?> _entriesByDate;
 
   @override
   void initState() {
     super.initState();
     _selectedMonth = DateTime.now();
-    _entriesByDate = {};
   }
 
   @override

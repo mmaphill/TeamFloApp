@@ -274,7 +274,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ProfileScreen(key: ProfileScreen.profileKey),
+        builder: (context) => ProfileScreen(),
       ),
     );
   }

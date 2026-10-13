@@ -2,11 +2,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-
 import '../models/belt_rank_model.dart';
 import '../models/user_model.dart';
 import '../widgets/belt_rank_badge.dart';
 import '../widgets/member_avatar.dart';
+import '../models/class_history_model.dart';
+import '../services/schedule_service.dart';
 
 /// Read-only view of another member's profile.
 ///
@@ -62,6 +63,17 @@ class MemberProfileScreen extends StatelessWidget {
     if (years > 0) parts.add('$years ${years == 1 ? 'yr' : 'yrs'}');
     if (rem > 0) parts.add('$rem ${rem == 1 ? 'mo' : 'mos'}');
     return parts.join(' ');
+  }
+
+  /// Short version for stat boxes: "3 yrs", "1 yr", "5 mos", "<1 mo"
+  String _shortDuration(DateTime from) {
+    final now = DateTime.now();
+    int months = (now.year - from.year) * 12 + (now.month - from.month);
+    if (now.day < from.day) months--;
+    if (months < 1) return '<1 mo';
+    if (months < 12) return '$months ${months == 1 ? 'mo' : 'mos'}';
+    final years = months ~/ 12;
+    return '$years ${years == 1 ? 'yr' : 'yrs'}';
   }
 
   /// "Blue" -> "Blue Belt"; leaves "Blue Belt" alone.
@@ -131,6 +143,8 @@ class MemberProfileScreen extends StatelessWidget {
               _header(context, user, currentRank),
               const SizedBox(height: 16),
               _currentBeltCard(context, currentBelt, currentRank),
+              const SizedBox(height: 16),
+              _trainingStatsCard(context, user, belts),
               if (belts.length > 1) ...[
                 const SizedBox(height: 16),
                 _beltJourneyCard(context, belts),
@@ -251,6 +265,45 @@ class MemberProfileScreen extends StatelessWidget {
     );
   }
 
+  Widget _trainingStatsCard(
+      BuildContext context,
+      UserModel user,
+      List<BeltRank> belts,
+      ) {
+    // belts is sorted newest first, so the last one is their earliest entry.
+    // If they have no belts listed, fall back to when they joined the app.
+    final trainingStart =
+    belts.isNotEmpty ? belts.last.promotionDate : user.createdAt;
+
+    // Count every belt above white as a promotion.
+    final promotions = belts
+        .where((b) => !b.rank.toLowerCase().contains('white'))
+        .length;
+
+    return _SectionCard(
+      title: 'Training Stats',
+      child: Row(
+        children: [
+          Expanded(
+            child: _StatBox(
+              label: 'Time training',
+              value: _shortDuration(trainingStart),
+            ),
+          ),
+          Expanded(
+            child: _StatBox(
+              label: 'Promotions',
+              value: '$promotions',
+            ),
+          ),
+          Expanded(
+            child: _ClassesAttendedBox(userId: userId),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _beltJourneyCard(BuildContext context, List<BeltRank> belts) {
     return _SectionCard(
       title: 'Belt Journey',
@@ -356,9 +409,51 @@ class _StatBox extends StatelessWidget {
         Text(
           value,
           style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+          textAlign: TextAlign.center,
         ),
-        Text(label, style: textTheme.bodySmall),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: textTheme.bodySmall,
+          textAlign: TextAlign.center,
+        ),
       ],
+    );
+  }
+}
+
+/// Live count of classes attended. Kept as its own StatefulWidget so the
+/// Firestore stream is created once, not every time the profile rebuilds.
+class _ClassesAttendedBox extends StatefulWidget {
+  final String userId;
+
+  const _ClassesAttendedBox({required this.userId});
+
+  @override
+  State<_ClassesAttendedBox> createState() => _ClassesAttendedBoxState();
+}
+
+class _ClassesAttendedBoxState extends State<_ClassesAttendedBox> {
+  late final Stream<List<ClassHistoryRecord>> _history;
+
+  @override
+  void initState() {
+    super.initState();
+    _history = ScheduleService().getUserHistoryStream(widget.userId);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<List<ClassHistoryRecord>>(
+      stream: _history,
+      builder: (context, snapshot) {
+        final value = snapshot.hasError
+            ? '–'
+            : !snapshot.hasData
+            ? '…'
+            : '${snapshot.data!.length}';
+        return _StatBox(label: 'Classes', value: value);
+      },
     );
   }
 }

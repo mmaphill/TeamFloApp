@@ -200,13 +200,13 @@ class _StatsScreenState extends State<StatsScreen> {
           });
           final topTechniquesRaw = (stats['topTechniques'] as List);
           final topTechniques = topTechniquesRaw.cast<Map<String, dynamic>>();
-          final metrics = stats['metrics'];
-          final submissionSuccessRate = stats['submissionSuccessRate'];
+          final metrics = stats['metrics'] as AverageMetrics;
+          final submissionSuccessRate = stats['submissionSuccessRate'] as double;
           // competitions
           final overallWinRate = stats['overallWinRate'] as double;
           final totalMatches = stats['totalMatches'] as int;
-          final winBreakdown = stats['winBreakdown'];
-          final lossBreakdown = stats['lossBreakdown'];
+          final winBreakdown = stats['winBreakdown'] as MethodBreakdown;
+          final lossBreakdown = stats['lossBreakdown'] as MethodBreakdown;
           final statsByFormat = stats['statsByFormat'] as Map<String, ({int wins, int losses})>;
           final statsByRank = stats['statsByRank'] as Map<String, ({int wins, int losses})>;
 
@@ -530,7 +530,7 @@ class _StatsScreenState extends State<StatsScreen> {
     );
   }
 
-  Widget _buildAverageMetrics(metrics) {
+  Widget _buildAverageMetrics(AverageMetrics metrics) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -584,7 +584,7 @@ class _StatsScreenState extends State<StatsScreen> {
     );
   }
 
-  Widget _buildWinBreakdown(winBreakdown) {
+  Widget _buildWinBreakdown(MethodBreakdown winBreakdown) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -607,7 +607,7 @@ class _StatsScreenState extends State<StatsScreen> {
     );
   }
 
-  Widget _buildLossBreakdown(lossBreakdown) {
+  Widget _buildLossBreakdown(MethodBreakdown lossBreakdown) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

@@ -19,8 +19,6 @@ import 'package:provider/provider.dart';
 import '../utils/log.dart';
 
 class ProfileScreen extends StatefulWidget {
-  static final GlobalKey<_ProfileScreenState> profileKey = GlobalKey<_ProfileScreenState>();
-
   const ProfileScreen({super.key});
 
   @override
@@ -955,74 +953,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  Future<void> _saveCompStats(
-      int statsIndex,
-      DateTime compDate,
-      String compName,
-      String format,
-      int submissionWins,
-      int submissionLosses,
-      int pointWins,
-      int pointLosses,
-      int refDecisionWins,
-      int refDecisionLosses,
-      int draws,
-      String rank,
-      ) async {
-    setState(() => _isLoading = true);
-
-    // Create updated stats list
-    List<CompetitionStats> updatedStats = List.from(_userData.competitionStats);
-    updatedStats[statsIndex] = CompetitionStats(
-      compDate: compDate,
-      compName: compName,
-      format: format,
-      submissionWins: submissionWins,
-      submissionLosses: submissionLosses,
-      pointWins: pointWins,
-      pointLosses: pointLosses,
-      refDecisionWins: refDecisionWins,
-      refDecisionLosses: refDecisionLosses,
-      draws: draws,
-      rank: rank,
-    );
-
-    String? currentBelt;
-    if (_userData.beltRankHistory.isNotEmpty) {
-      List<BeltRank> sorted = List.from(_userData.beltRankHistory);
-      sorted.sort((a, b) => b.promotionDate.compareTo(a.promotionDate));
-      currentBelt = sorted.first.rank;
-    }
-
-    String? error = await _authService.updateUserProfile(
-      uid: _currentUser.uid,
-      name: _userData.name,
-      goals: _userData.goals,
-      beltRankHistory: _userData.beltRankHistory,
-      competitionStats: updatedStats,
-      photoUrl: _userData.photoUrl,
-      avatarColor: _userData.avatarColor,
-      currentBelt: currentBelt,
-    );
-
-    setState(() => _isLoading = false);
-
-    if (error == null) {
-      await _loadUserData();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Competition stats updated!')),
-        );
-      }
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $error')),
-        );
-      }
-    }
-  }
-
   // ============ Build Widgets ============
   @override
   Widget build(BuildContext context) {
@@ -1036,6 +966,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
             onPressed: () => Navigator.pop(context),
           ),
           title: const Text('Profile'),
+          bottom: _isLoading
+            ? const PreferredSize(
+            preferredSize: Size.fromHeight(2),
+            child: LinearProgressIndicator(minHeight: 2),
+          )
+              : null,
         ),
         body: _userData.uid.isEmpty // Add this check
             ? const Center(child: CircularProgressIndicator())
@@ -1690,9 +1626,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     // Create new stats list with the new entry
     List<CompetitionStats> updatedStats = List.from(_userData.competitionStats);
-
-    // Get current belt rank
-    String currentRank = _userData.currentBelt ?? 'White';
 
     updatedStats.add(CompetitionStats(
       compName: compName,

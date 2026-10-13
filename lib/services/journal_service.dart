@@ -9,7 +9,7 @@ class JournalService {
     try {
       if (entry.entryId.isEmpty) {
         // New entry
-        DocumentReference docRef = await _firestore
+        await _firestore
             .collection('users')
             .doc(entry.userId)
             .collection('journal')

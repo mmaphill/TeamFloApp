@@ -34,7 +34,6 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
   bool _isSubmitting = false;
 
   final List<Mention> _mentions = [];
-  bool _showMentionSuggestions = false;
 
   @override
   void initState() {
@@ -275,11 +274,6 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                     MentionAutocomplete(
                       textController: _commentController,
                       onMentionSelected: _onMentionSelected,
-                      onShowSuggestions: (visible) {
-                        setState(() {
-                          _showMentionSuggestions = visible;
-                        });
-                      },
                     ),
                   ],
                 ),

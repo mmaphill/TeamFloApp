@@ -1,6 +1,17 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../utils/log.dart';
 
+/// Wins or losses split by how the match ended
+typedef MethodBreakdown = ({int submissions, int points, int refDecisions});
+
+/// Average Journal metics across all entries
+typedef AverageMetrics = ({
+  double avgEnergy,
+  double avgSleep,
+  double avgWater,
+  double avgFood,
+});
+
 class AnalyticsService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
@@ -357,7 +368,7 @@ class AnalyticsService {
       return preference?.cast<String>() ?? ['Classes', 'Submissions', 'SubmissionSuccessRate'];
     } catch (e) {
       log('Error fetching summary preference: $e');
-      return ['Classes', 'Submissions', 'Submission Success Rate'];
+      return ['Classes', 'Submissions', 'SubmissionSuccessRate'];
     }
   }
 
@@ -394,9 +405,9 @@ class AnalyticsService {
     // Get most used technique
     String? mostUsed;
     int maxCount = 0;
-    techniqueFrequency.forEach((technique, count) {
-      if (count > maxCount) {
-        maxCount = count;
+    techniqueFrequency.forEach((technique, techniqueCount) {
+      if (techniqueCount > maxCount) {
+        maxCount = techniqueCount;
         mostUsed = technique;
       }
     });

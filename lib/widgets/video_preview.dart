@@ -17,7 +17,6 @@ class VideoPreview extends StatefulWidget {
 
 class _VideoPreviewState extends State<VideoPreview> with SingleTickerProviderStateMixin {
   late VideoPlayerController _controller;
-  late AnimationController _fadeController;
 
   @override
   void initState() {

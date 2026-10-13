@@ -31,9 +31,6 @@ class ClassSchedule {
 
     final String currentSession = currentSessionDate(day, endTime);
 
-    final String storedSession = map['storedSession'] ?? '';
-    final List<String> storedAttendees = List<String>.from(map['attendees'] ?? []);
-
     return ClassSchedule(
       classId: classId,
       className: map['className'] ?? '',
@@ -72,11 +69,10 @@ class ClassSchedule {
     'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
   ];
 
-  /**
-   * Returns the date (yyyy-MM-dd) of the session that sign-ups currently
-   * apply to. A session stays "current" until its end time passes,
-   * then it rolls over to the same day next week
-   */
+  /// Returns the date (yyyy-MM-dd) of the session that sign-ups currently
+  /// apply to. A session stays "current" until its end time passes,
+  /// then it rolls over to the same day next week
+  
   static String currentSessionDate(String day, String endTime, {DateTime? now}) {
     final DateTime current = now ?? DateTime.now();
 

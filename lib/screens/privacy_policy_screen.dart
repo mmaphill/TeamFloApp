@@ -18,7 +18,6 @@ class PrivacyPolicyScreen extends StatefulWidget {
 class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
   final AuthService _authService = AuthService();
   bool _isLoading = false;
-  final bool _hasAgreed = false;
 
   Future<void> _acknowledgePolicy() async {
     setState(() => _isLoading = true);
