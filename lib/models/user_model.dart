@@ -49,7 +49,7 @@ class UserModel {
       email: map['email'] ?? '',
       name: map['name'] ?? '',
       role: map['role'] ?? 'member',
-      dob: (map['dob'] as dynamic)?.toDate() ?? DateTime.now(),
+      dob: (map['dob'] as dynamic)?.toDate(),
       createdAt: (map['createdAt'] as dynamic)?.toDate() ?? DateTime.now(),
       beltRankHistory: (map['beltRankHistory'] as List?)
         ?.map((item) => BeltRank.fromMap(item as Map<String, dynamic>))
@@ -67,6 +67,50 @@ class UserModel {
       fcmToken: map['fcmToken'],
       showAge: map['showAge'] ?? true,
       showCompStats: map['showCompStats'] ?? false,
+    );
+  }
+
+  /// Returns a copy of this user with only the given fields changed.
+  /// Every field you don't pass keeps its current value.
+  UserModel copyWith({
+    String? uid,
+    String? email,
+    String? name,
+    String? role,
+    DateTime? createdAt,
+    DateTime? dob,
+    List<BeltRank>? beltRankHistory,
+    String? goals,
+    List<CompetitionStats>? competitionStats,
+    String? photoUrl,
+    PhotoCropData? photoCropData,
+    String? avatarColor,
+    String? currentBelt,
+    String? themeMode,
+    bool? notificationsEnabled,
+    String? fcmToken,
+    bool? showAge,
+    bool? showCompStats,
+  }) {
+    return UserModel(
+      uid: uid ?? this.uid,
+      email: email ?? this.email,
+      name: name ?? this.name,
+      role: role ?? this.role,
+      createdAt: createdAt ?? this.createdAt,
+      dob: dob ?? this.dob,
+      beltRankHistory: beltRankHistory ?? this.beltRankHistory,
+      goals: goals ?? this.goals,
+      competitionStats: competitionStats ?? this.competitionStats,
+      photoUrl: photoUrl ?? this.photoUrl,
+      photoCropData: photoCropData ?? this.photoCropData,
+      avatarColor: avatarColor ?? this.avatarColor,
+      currentBelt: currentBelt ?? this.currentBelt,
+      themeMode: themeMode ?? this.themeMode,
+      notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
+      fcmToken: fcmToken ?? this.fcmToken,
+      showAge: showAge ?? this.showAge,
+      showCompStats: showCompStats ?? this.showCompStats,
     );
   }
 

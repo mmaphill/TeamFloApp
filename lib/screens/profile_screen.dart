@@ -86,21 +86,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
           setState(() {
             if (photoUrl != null) {
-              _userData = UserModel(
-                uid: _userData.uid,
-                email: _userData.email,
-                name: _userData.name,
-                role: _userData.role,
-                createdAt: _userData.createdAt,
-                beltRankHistory: _userData.beltRankHistory,
-                goals: _userData.goals,
-                competitionStats: _userData.competitionStats,
+              _userData = _userData.copyWith(
                 photoUrl: photoUrl,
-                avatarColor: _userData.avatarColor,
-                currentBelt: _userData.currentBelt,
                 photoCropData: PhotoCropData(),
-                notificationsEnabled: _userData.notificationsEnabled,
-                fcmToken: _userData.fcmToken,
               );
             }
             _isLoading = false;
@@ -124,21 +112,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
 
       setState(() {
-        _userData = UserModel(
-          uid: user.uid,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-          createdAt: user.createdAt,
-          beltRankHistory: user.beltRankHistory,
-          goals: user.goals,
-          competitionStats: user.competitionStats,
-          photoUrl: user.photoUrl,
-          avatarColor: user.avatarColor,
-          currentBelt: currentBelt,
-          notificationsEnabled: user.notificationsEnabled,
-          fcmToken: user.fcmToken,
-        );
+        _userData = _userData.copyWith(currentBelt: currentBelt);
         log('DEBUG: Loaded name="${_userData.name}", goals="${_userData.goals}"');
       });
     }
@@ -254,25 +228,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     if (error == null) {
       setState(() {
-        _userData = UserModel(
-          uid: _userData.uid,
-          email: _userData.email,
-          name: _userData.name,
-          role: _userData.role,
-          createdAt: _userData.createdAt,
-          dob: picked,
-          beltRankHistory: _userData.beltRankHistory,
-          goals: _userData.goals,
-          competitionStats: _userData.competitionStats,
-          photoUrl: _userData.photoUrl,
-          photoCropData: _userData.photoCropData,
-          avatarColor: _userData.avatarColor,
-          currentBelt: _userData.currentBelt,
-          themeMode: _userData.themeMode,
-          notificationsEnabled: _userData.notificationsEnabled,
-          fcmToken: _userData.fcmToken,
-          showAge: _userData.showAge,
-        );
+        _userData = _userData.copyWith(dob: picked);
         _isLoading = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
@@ -739,7 +695,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final stat = _userData.competitionStats[statsIndex];
     final compNameController = TextEditingController(text: stat.compName);
     String format = stat.format;
-    String rank = stat.rank;
+    const placeOptions = ['1st', '2nd', '3rd', 'N/A'];
+    String place = placeOptions.contains(stat.place) ? stat.place : 'N/A';
+    final rankOptions = format == 'Gi'
+      ? ['White', 'Blue', 'Purple', 'Brown', 'Black']
+      : ['Beginner', 'Intermediate', 'Advanced'];
+    String rank = rankOptions.contains(stat.place) ? stat.place : 'N/A';
     int submissionWins = stat.submissionWins;
     int submissionLosses = stat.submissionLosses;
     int pointWins = stat.pointWins;
@@ -800,6 +761,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       .toList(),
                   onChanged: (value) {
                     setDialogState(() => rank = value ?? rank);
+                  },
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  initialValue: place,
+                  decoration: const InputDecoration(
+                    labelText: 'Place',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: placeOptions
+                    .map((p) => DropdownMenuItem(value: p, child: Text(p)))
+                    .toList(),
+                  onChanged: (value) {
+                    setDialogState(() => place = value ?? 'NA');
                   },
                 ),
                 const SizedBox(height: 16),
@@ -868,6 +843,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   compNameController.text,
                   format,
                   rank,
+                  place,
                   selectedDate,
                   submissionWins,
                   submissionLosses,
@@ -891,6 +867,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       String compName,
       String format,
       String rank,
+      String place,
       DateTime compDate,
       int submissionWins,
       int submissionLosses,
@@ -907,6 +884,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       compName: compName,
       format: format,
       rank: rank,
+      place: place,
       compDate: compDate,
       submissionWins: submissionWins,
       submissionLosses: submissionLosses,
@@ -1402,19 +1380,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   (color) => GestureDetector(
                 onTap: () {
                   setState(() {
-                    _userData = UserModel(
-                      uid: _userData.uid,
-                      email: _userData.email,
-                      name: _userData.name,
-                      role: _userData.role,
-                      createdAt: _userData.createdAt,
-                      beltRankHistory: _userData.beltRankHistory,
-                      goals: _userData.goals,
-                      competitionStats: _userData.competitionStats,
-                      photoUrl: _userData.photoUrl,
-                      avatarColor: color,
-                      currentBelt: _userData.currentBelt,
-                    );
+                    _userData = _userData.copyWith(avatarColor: color);
                   });
                   Navigator.pop(context);
                   _saveAvatarColor(color);
@@ -1503,7 +1469,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       .map((r) => DropdownMenuItem(value: r, child: Text(r)))
                       .toList(),
                   onChanged: (value) {
-                    setDialogState(() => rank = value);
+                    setDialogState(() {
+                      format = value ?? 'Gi';
+                      rank = format == 'Gi' ? 'White' : 'Beginner';
+                    });
                   },
                 ),
                 const SizedBox(height: 16),
