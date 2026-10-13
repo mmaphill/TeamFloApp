@@ -99,22 +99,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _loadUserData() async {
-    final data = await _authService.getUserData(_currentUser.uid);
-    if (data != null) {
-      UserModel user = UserModel.fromMap(data);
+    try {
+      final data = await _authService.getUserData(_currentUser.uid);
+
+      if (data == null) {
+        debugPrint('PROFILE: no user document found for ${_currentUser.uid}');
+        if (mounted) {
+          setState(() => _errorMessage = 'Could not load your profile.');
+        }
+        return;
+      }
+
+      final user = UserModel.fromMap(data);
+      debugPrint('PROFILE: loaded uid="${user.uid}", name="${user.name}"');
 
       // Set currentBelt to the most recent belt rank
       String? currentBelt;
       if (user.beltRankHistory.isNotEmpty) {
-        List<BeltRank> sorted = List.from(user.beltRankHistory);
+        final sorted = List<BeltRank>.from(user.beltRankHistory);
         sorted.sort((a, b) => b.promotionDate.compareTo(a.promotionDate));
         currentBelt = sorted.first.rank;
       }
 
+      if (!mounted) return;
       setState(() {
-        _userData = _userData.copyWith(currentBelt: currentBelt);
-        log('DEBUG: Loaded name="${_userData.name}", goals="${_userData.goals}"');
+        _userData = user.copyWith(currentBelt: currentBelt);
       });
+    } catch (e, stack) {
+      debugPrint('PROFILE: error loading user data: $e\n$stack');
+      if (mounted) {
+        setState(() => _errorMessage = 'Error loading profile: $e');
+      }
     }
   }
 
