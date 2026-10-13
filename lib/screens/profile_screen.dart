@@ -16,7 +16,6 @@ import '../services/validation_service.dart';
 import 'crop_photo_screen.dart';
 import '../config/theme_provider.dart';
 import 'package:provider/provider.dart';
-import '../utils/log.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
