@@ -7,12 +7,17 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:221166539130:android:f00d26ba0c041a37d046c3",
+        "mobilesdk_app_id": "1:221166539130:android:25249249e5419d09d046c3",
         "android_client_info": {
-          "package_name": "com.example.team_flo_app"
+          "package_name": "com.teamflobjj.app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "221166539130-rhb35mi54sqn3vqdvni46vp0u29hjfjl.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDXzRQcS03n_ntuWB7-sy8Mgh1ibWW9yk8"
@@ -20,7 +25,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "221166539130-rhb35mi54sqn3vqdvni46vp0u29hjfjl.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "221166539130-1s2i6uu5srce9n6m3taghc763p9p4aj4.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.teamFloApp"
+              }
+            }
+          ]
         }
       }
     }

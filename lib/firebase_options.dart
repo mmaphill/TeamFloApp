@@ -51,18 +51,19 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyDXzRQcS03n_ntuWB7-sy8Mgh1ibWW9yk8',
-    appId: '1:221166539130:android:f00d26ba0c041a37d046c3',
+    appId: '1:221166539130:android:25249249e5419d09d046c3',
     messagingSenderId: '221166539130',
     projectId: 'teamfloapp',
     storageBucket: 'teamfloapp.firebasestorage.app',
   );
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyBNEijZGJALHVRzoEF9T0uS09dWoZcwaak',
-    appId: '1:221166539130:ios:5a9ecc9b60e9ceb2d046c3',
+    appId: '1:221166539130:ios:8dcb4905896c708fd046c3',
     messagingSenderId: '221166539130',
     projectId: 'teamfloapp',
     storageBucket: 'teamfloapp.firebasestorage.app',
-    iosBundleId: 'com.example.teamFloApp',
+    iosClientId: '221166539130-6a0o28nqm7nb63eb2qhnue7ect7hu3k1.apps.googleusercontent.com',
+    iosBundleId: 'com.teamflobjj.app',
   );
   static const FirebaseOptions macos = FirebaseOptions(
     apiKey: 'AIzaSyBNEijZGJALHVRzoEF9T0uS09dWoZcwaak',
