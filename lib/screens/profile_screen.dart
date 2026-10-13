@@ -256,6 +256,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
     }
   }
+  
+  // ============ Show Age Toggle ============
+  Future<void> _setShowAge(bool value) async {
+    final previous = _userData.showAge;
+
+    // Flip the switch right away so it feels instant
+    setState(() {
+      _userData = _userData.copyWith(showAge: value);
+      _isLoading = true;
+    });
+
+    String? error = await _authService.updateProfileFields(
+      _currentUser.uid,
+      {'showAge': value},
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _isLoading = false;
+      if (error != null) {
+        // Save failed, so put the switch back
+        _userData = _userData.copyWith(showAge: previous);
+      }
+    });
+
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $error')),
+      );
+    }
+  }
 
   // ============ Edit Email Dialog ============
   void _showEditEmailDialog() {
@@ -1044,6 +1076,49 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ? DateFormat('MMM d, yyyy').format(_userData.dob!)
                   : '(No date of birth set)',
                 onTap: _showEditDobDialog,
+              ),
+              const SizedBox(height: 16),
+              
+              // Show Age Toggle
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).cardColor,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.cake_outlined,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Show my age',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w500,
+                              fontSize: 14,
+                              color: Theme.of(context).textTheme.bodyMedium?.color,
+                            ),
+                          ),
+                          const Text(
+                            'Other members see your age on your profile',
+                            style: TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Switch(
+                      value: _userData.showAge,
+                      onChanged: _isLoading ? null : _setShowAge,
+                      activeThumbColor: Theme.of(context).colorScheme.primary,
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 16),
 
