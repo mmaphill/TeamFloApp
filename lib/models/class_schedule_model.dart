@@ -31,15 +31,20 @@ class ClassSchedule {
 
     final String currentSession = currentSessionDate(day, endTime);
 
+    final String storedSession = map['sessionDate'] ?? '';
+    final List<String> storedAttendees = List<String>.from(map['attendees'] ?? []);
+
+    final List<String> activeAttendees = storedSession == currentSession ? storedAttendees : <String>[];
+
     return ClassSchedule(
       classId: classId,
       className: map['className'] ?? '',
-      day: map['day'] ?? '',
+      day: day,
       startTime: map['startTime'] ?? '',
-      endTime: map['endTime'] ?? '',
+      endTime: endTime,
       classType: map['classType'] ?? '',
       capacity: map['capacity'] ?? 30,
-      attendees: List<String>.from(map['attendees'] ?? []),
+      attendees: activeAttendees,
       instructor: map['instructor'] ?? 'Coach',
       instructorUid: map['instructorUid'] ?? '',
       sessionDate: currentSession,
