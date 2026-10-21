@@ -1,0 +1,57 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // =================================================================================
+    // Helper Functions
+    // =================================================================================
+
+    // PHASE 1: reads the role claim set by the syncUserClaims Cloud Function.
+    // Before Phase 1 nothing set this claim, so admin deletes here never worked.
+    // 'admin' is kept for older accounts; the function writes it as 'owner'.
+    function isAdmin() {
+      return request.auth != null &&
+        (request.auth.token.role in ['owner', 'manager', 'admin'] || request.auth.token.admin == true);
+    }
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // =================================================================================
+    // Profile pictures - users can upload their own, admins can manage all
+    // =================================================================================
+    match /profiles/{userId}/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow create, update: if request.auth.uid == userId;
+      allow delete: if request.auth.uid == userId || isAdmin();
+    }
+
+    // =================================================================================
+    // Post images/videos - users upload their own, admins can moderate
+    // =================================================================================
+    match /posts/{userId}/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow create, update: if request.auth.uid == userId;
+      allow delete: if request.auth.uid == userId || isAdmin();
+    }
+
+    // =================================================================================
+    // Journal entry images - users upload their own, admins can access
+    // =================================================================================
+    match /journals/{userId}/{allPaths=**} {
+      allow read: if request.auth.uid == userId || isAdmin();
+      allow create, update: if request.auth.uid == userId;
+      allow delete: if request.auth.uid == userId || isAdmin();
+    }
+
+    // =================================================================================
+    // Instagram feed images - public read access
+    // PHASE 1: only owners and managers can upload (was any signed-in user)
+    // =================================================================================
+    match /instagram/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}

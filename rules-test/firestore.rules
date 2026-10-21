@@ -1,0 +1,240 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // =================================================================================
+    // Helper Functions
+    // =================================================================================
+
+    // PHASE 1: .get('role', 'member') so an account with no role reads as a
+    // member instead of causing an error.
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'member');
+    }
+
+    // PHASE 1: roles from the plan doc. 'admin' is the old name for owner and
+    // keeps working until existing accounts are moved to 'owner'.
+    //
+    //   isAdmin()      owner, manager        schedule, moderation, member edits
+    //   isInstructor() + instructor          promotions, class edits
+    //   isStaff()      + front desk          attendance and walk-ins
+    function isAdmin() { return getUserRole() in ['owner', 'manager', 'admin']; }
+
+    function isInstructor() { return getUserRole() in ['owner', 'manager', 'admin', 'instructor']; }
+
+    function isStaff() { return getUserRole() in ['owner', 'manager', 'admin', 'instructor', 'front_desk']; }
+
+    function isClassInstructor() { return resource.data.instructorUid == request.auth.uid; }
+
+    function isCreator() { return request.auth.uid == resource.data.userId; }
+
+    function isAuthenticated() { return request.auth != null; }
+
+    // PHASE 1: role and gym can only be changed by Cloud Functions
+    // (setUserRole, the migration). The Admin SDK skips these rules.
+    // Uses .get(key, null) so a field that is missing before and after
+    // counts as unchanged.
+    function protectedUserFieldsUnchanged() {
+      let before = resource.data;
+      let after = request.resource.data;
+      return after.get('role', null) == before.get('role', null) &&
+             after.get('gymId', null) == before.get('gymId', null) &&
+             after.get('roleUpdatedBy', null) == before.get('roleUpdatedBy', null) &&
+             after.get('roleUpdatedAt', null) == before.get('roleUpdatedAt', null);
+    }
+
+    // =================================================================================
+    // Validation Functions
+    // (Not called by any rule right now. Kept for later use.)
+    // =================================================================================
+    function validateUserData() {
+      let data = request.resource.data;
+      return data.keys().hasAll(['uid', 'name', 'email', 'beltRank', 'role', 'createdAt']) &&
+        data.uid is string &&
+        data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+        data.email is string && data.email.matches('.*@.*\\..*') &&
+        data.role is string && data.role in ['member', 'instructor', 'admin'] &&
+        data.createdAt is timestamp;
+    }
+
+    function onlyAllowedUserFields() {
+      let incomingData = request.resource.data;
+      let existingData = resource.data;
+      return incomingData.uid == existingData.uid &&
+             incomingData.role == existingData.role &&
+             incomingData.createdAt == existingData.createdAt;
+    }
+
+    function validateClassData() {
+      let data = request.resource.data;
+      return data.keys().hasAll(['className', 'time', 'instructor', 'day']) &&
+             data.className is string && data.className.size() > 0 &&
+             data.time is string &&
+             data.instructor is string &&
+             data.day is string;
+    }
+
+    function validatePostData() {
+      let data = request.resource.data;
+      return data.keys().hasAll(['userId', 'content', 'createdAt']) &&
+             data.content is string &&
+             data.content.size() > 0 && data.content.size() <= 2000 &&
+             data.createdAt is timestamp;
+    }
+
+    function validateCommentData() {
+      let data = request.resource.data;
+      return data.keys().hasAll(['userId', 'content', 'createdAt']) &&
+             data.content is string &&
+             data.content.size() > 0 &&
+             data.content.size() <= 2000 &&
+             data.createdAt is timestamp;
+    }
+
+    function validateJournalData() {
+      let data = request.resource.data;
+      return data.keys().hasAll(['userId', 'date']) &&
+        data.userId is string &&
+        data.date is timestamp &&
+        (!('technique') || data.technique is string) &&
+        (!('position') || data.position is string) &&
+        (!('submissions') || data.submissions is number) &&
+        (!('submissionAttempts') || data.submissionAttempts is number) &&
+        (!('timesSubmitted') || data.timesSubmitted is number) &&
+        (!('energy') || data.energy is number) &&
+        (!('sleep') || data.sleep is number) &&
+        (!('water') || data.water is number) &&
+        (!('food') || data.food is number) &&
+        (!('generalNotes') || data.generalNotes is string) &&
+        (!('classesAttended') || data.classesAttended is list) &&
+        (!('photoUrl') || data.photoUrl is string) &&
+        (!('createdAt') || data.createdAt is timestamp) &&
+        (!('updatedAt') || data.updatedAt is timestamp);
+    }
+
+    function validateAttendanceData() {
+      let data = request.resource.data;
+      return data.keys().hasAll(['userId', 'classId', 'timestamp']) &&
+             data.userId is string &&
+             data.classId is string &&
+             data.timestamp is timestamp;
+    }
+
+    // =================================================================================
+    // Collections
+    // =================================================================================
+
+    // PHASE 1: gym settings (name, plan, branding, modules)
+    match /gyms/{gymId} {
+      // Any signed-in user can read gym settings.
+      // Narrowed to "your own gym only" in step 4.
+      allow read: if isAuthenticated();
+      // Changed from the Firebase console or Cloud Functions for now.
+      allow write: if false;
+    }
+
+    // Instagram feed
+    match /instagram/{document=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Classes collection
+    match /classes/{classId} {
+      allow read: if isAuthenticated();
+      allow create, delete: if isAdmin();
+      allow update: if isAuthenticated() && (isAdmin() || isClassInstructor() || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['attendees', 'sessionDate']));
+    }
+
+    // Class attendance history
+    match /classHistory/{recordId} {
+      // Members can open their own records (even ones that don't exist yet,
+      // which the Join transaction needs). Staff can open any.
+      allow get: if isAuthenticated() &&
+        (recordId.matches('.*_' + request.auth.uid) || isStaff());
+
+      // Members can query only their own records. Staff can query any.
+      allow list: if isAuthenticated() &&
+        (resource.data.userId == request.auth.uid || isStaff());
+
+      // Members create their own sign-up only: correct ID, signedUp, not a walk-in.
+      // Staff can create anything (walk-ins).
+      allow create: if isAuthenticated() && (
+        isStaff() || (
+          request.resource.data.userId == request.auth.uid &&
+          request.resource.data.status == 'signedUp' &&
+          request.resource.data.walkIn == false &&
+          recordId == request.resource.data.classId + '_' +
+                      request.resource.data.sessionDate + '_' +
+                      request.auth.uid
+        )
+      );
+
+      // Only staff can confirm attendance or mark no-shows
+      allow update: if isStaff();
+
+      // Members can remove their own sign-up until it's confirmed
+      allow delete: if isAuthenticated() && (
+        isStaff() || (
+          resource.data.userId == request.auth.uid &&
+          resource.data.status == 'signedUp'
+        )
+      );
+    }
+
+    // Allow collectionGroup queries on journal
+    match /{path=**}/journal/{entryId} {
+      allow read: if isAuthenticated();
+      allow write: if isCreator() || isAdmin();
+    }
+
+    // Journal entries (subcollection under users)
+    match /users/{userId}/journal/{entryId} {
+      allow read: if isAuthenticated();
+      allow write: if request.auth.uid == userId || isAdmin();
+    }
+
+    // Posts collection
+    match /posts/{postId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && (isCreator() || isAdmin() || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likedBy', 'commentCount']));
+      allow delete: if isCreator() || isAdmin();
+
+      match /comments/{commentId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+        allow update: if isAuthenticated() && (isCreator() || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likedBy', 'commentCount']));
+        allow delete: if isCreator() || isAdmin();
+      }
+    }
+
+    // Users collection
+    match /users/{uid} {
+      allow read: if isAuthenticated();
+
+      // New accounts start as 'member' (or no role) with no gym.
+      // PHASE 1: the gym is set by a Cloud Function, never by the app.
+      allow create: if request.auth.uid == uid &&
+        request.resource.data.get('role', 'member') == 'member' &&
+        !('gymId' in request.resource.data);
+
+      // Users edit their own doc. PHASE 1: owners and managers can also
+      // edit other members (updateUserProfileAsAdmin). Nobody can change
+      // role or gym from the app.
+      allow update: if isAuthenticated() &&
+        protectedUserFieldsUnchanged() &&
+        (request.auth.uid == uid || isAdmin());
+
+      // Account deletion (GDPR)
+      allow delete: if request.auth.uid == uid;
+
+      match /journalEntries/{entryId} {
+        allow read: if request.auth.uid == uid;
+        allow create: if request.auth.uid == uid;
+        allow update: if request.auth.uid == uid;
+        allow delete: if request.auth.uid == uid;
+      }
+    }
+  }
+}

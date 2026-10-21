@@ -1,0 +1,12 @@
+{
+  "name": "teamflo-rules-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "firebase emulators:exec --config rules.json --only firestore,storage --project demo-teamflo \"node test.mjs\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^3.0.0",
+    "firebase": "^10.0.0"
+  }
+}

@@ -8,6 +8,7 @@ import 'firebase_options.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_home_screen.dart';
 import 'config/theme_data.dart';
+import 'services/gym_service.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -31,6 +32,9 @@ void main() async {
       NotificationService().saveCurrentToken();
     }
   });
+
+  // Load the signed-in user's gym and role, and keep them up to date
+  GymService.instance.start();
 
   runApp(const TeamFloApp());
 }
@@ -63,7 +67,7 @@ class _TeamFloAppState extends State<TeamFloApp> {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider.value(value: _themeProvider),
-        // Add your other providers here in the future
+        ChangeNotifierProvider.value(value: GymService.instance),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, child) {
@@ -97,17 +101,76 @@ class _TeamFloAppState extends State<TeamFloApp> {
             home: StreamBuilder<User?>(
               stream: FirebaseAuth.instance.authStateChanges(),
               builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.active) {
-                  return snapshot.data != null ? const MainHomeScreen() : const LoginScreen();
+                if (snapshot.connectionState != ConnectionState.active) {
+                  return const _LoadingScreen();
                 }
-                return const Scaffold(
-                  body: Center(child: CircularProgressIndicator()),
-                );
+                if (snapshot.data == null) {
+                  return const LoginScreen();
+                }
+                // Signed in: wait for the gym before showing the app,
+                // so every screen can rely on GymService being ready.
+                return const _GymGate(child: MainHomeScreen());
               },
             ),
           );
         },
       ),
+    );
+  }
+}
+
+/// Shows [child] once the user's gym has loaded.
+/// Shows a spinner while loading, and an error with a sign-out button
+/// if the gym could not be loaded.
+class _GymGate extends StatelessWidget {
+  final Widget child;
+  const _GymGate({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final gymService = context.watch<GymService>();
+
+    if (!gymService.isLoaded) {
+      return const _LoadingScreen();
+    }
+
+    if (gymService.error != null) {
+      return Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.error_outline, size: 48),
+                const SizedBox(height: 16),
+                Text(
+                  gymService.error!,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                TextButton(
+                  onPressed: () => FirebaseAuth.instance.signOut(),
+                  child: const Text('Sign out'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return child;
+  }
+}
+
+class _LoadingScreen extends StatelessWidget {
+  const _LoadingScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      body: Center(child: CircularProgressIndicator()),
     );
   }
 }

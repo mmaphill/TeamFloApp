@@ -1,3 +1,4 @@
+import 'app_roles.dart';
 import 'belt_rank_model.dart';
 import 'competition_stats_model.dart';
 import 'photo_crop_model.dart';
@@ -7,6 +8,7 @@ class UserModel {
   final String email;
   final String name;
   final String role;
+  final String? gymId;
   final DateTime createdAt;
   final DateTime? dob;
   final List<BeltRank> beltRankHistory;
@@ -27,6 +29,7 @@ class UserModel {
     required this.email,
     required this.name,
     required this.role,
+    this.gymId,
     required this.createdAt,
     this.dob,
     this.beltRankHistory = const [],
@@ -49,6 +52,7 @@ class UserModel {
       email: map['email'] ?? '',
       name: map['name'] ?? '',
       role: map['role'] ?? 'member',
+      gymId: map['gymId'],
       dob: (map['dob'] as dynamic)?.toDate(),
       createdAt: (map['createdAt'] as dynamic)?.toDate() ?? DateTime.now(),
       beltRankHistory: (map['beltRankHistory'] as List?)
@@ -77,6 +81,7 @@ class UserModel {
     String? email,
     String? name,
     String? role,
+    String? gymId,
     DateTime? createdAt,
     DateTime? dob,
     List<BeltRank>? beltRankHistory,
@@ -97,6 +102,7 @@ class UserModel {
       email: email ?? this.email,
       name: name ?? this.name,
       role: role ?? this.role,
+      gymId: gymId ?? this.gymId,
       createdAt: createdAt ?? this.createdAt,
       dob: dob ?? this.dob,
       beltRankHistory: beltRankHistory ?? this.beltRankHistory,
@@ -114,12 +120,17 @@ class UserModel {
     );
   }
 
+  String get normalizedRole => AppRoles.normalize(role);
+
+  bool get isStaff => AppRoles.isStaff(role);
+
   Map<String, dynamic> toMap() {
     return {
       'uid': uid,
       'email': email,
       'name': name,
       'role': role,
+      if (gymId != null) 'gymId': gymId,
       'dob': dob,
       'createdAt': createdAt,
       'beltRankHistory': beltRankHistory.map((b) => b.toMap()).toList(),

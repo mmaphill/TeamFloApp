@@ -94,8 +94,9 @@ class _LoginScreenState extends State<LoginScreen> {
       email: ValidationService.sanitizeEmail(_emailController.text.trim()),
       password: _passwordController.text,
       name: ValidationService.sanitizeName(_nameController.text),
-      role: 'member', // New users are members by default
     );
+
+    if (!mounted) return;
 
     setState(() => _isLoading = false);
 

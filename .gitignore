@@ -71,3 +71,8 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Phase 1
+*.jks
+node_modules/
+*-debug.log

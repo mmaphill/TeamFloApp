@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 
+import '../models/app_roles.dart';
 import '../models/belt_rank_model.dart';
 import '../models/competition_stats_model.dart';
 
@@ -21,7 +22,6 @@ class AuthService {
     required String email,
     required String password,
     required String name,
-    required String role, // 'member' or 'admin'
   }) async {
     try {
       // Create user in Firebase Auth
@@ -36,7 +36,7 @@ class AuthService {
         'uid': userCredential.user!.uid,
         'email': email,
         'name': name,
-        'role': role,
+        'role': AppRoles.member,
         'createdAt': DateTime.now(),
         'privacyPolicyAcknowledged': false,
       });
