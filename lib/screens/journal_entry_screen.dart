@@ -16,6 +16,7 @@ import '../models/class_schedule_model.dart';
 import '../config/colors.dart';
 import '../services/validation_service.dart';
 import '../widgets/belt_rank_badge.dart';
+import '../widgets/submission_list_input.dart';
 import '../utils/log.dart';
 
 class JournalEntryScreen extends StatefulWidget {
@@ -49,7 +50,9 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
   String? _notesError;
   String? _contentError;
 
-  late TextEditingController _techniqueController;
+  // Owned by the Autocomplete widget — we only keep a reference, never dispose it
+  TextEditingController? _techniqueController;
+
   late TextEditingController _roundController;
   late TextEditingController _submissionsController;
   late TextEditingController _submissionAttemptsController;
@@ -81,7 +84,6 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
   @override
   void initState() {
     super.initState();
-    _techniqueController = TextEditingController();
     _roundController = TextEditingController();
     _submissionsController = TextEditingController();
     _submissionAttemptsController = TextEditingController();
@@ -117,6 +119,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
         currentBelt = sorted.first.rank;
       }
 
+      if (!mounted) return;
       setState(() {
         _userData = UserModel(
           uid: user.uid,
@@ -138,11 +141,18 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
   Future<void> _loadEntry() async {
     final existing = await _journalService.getJournalEntry(widget.userId, widget.date);
 
+    if (!mounted) return;
     setState(() {
       if (existing != null) {
         _entry = existing;
-        _techniqueController.text = existing.techniques.toString();
-        _roundController.text = existing.techniques.toString();
+
+        // Load saved techniques so they aren't lost on re-save
+        _techniques.clear();
+        existing.techniques.forEach((type, list) {
+          _techniques[type] = List<String>.from(list);
+        });
+
+        _roundController.text = existing.rounds.toString();
         _submissionsController.text = existing.submissions.toString();
         _submissionAttemptsController.text = existing.submissionAttempts.toString();
         _timesSubmittedController.text = existing.timesSubmitted.toString();
@@ -154,7 +164,6 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
           date: widget.date,
           createdAt: DateTime.now(),
         );
-        _techniqueController.text = '';
         _roundController.text = '0';
         _submissionsController.text = '0';
         _submissionAttemptsController.text = '0';
@@ -189,42 +198,41 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
       photoUrl = await _storageService.uploadJournalImage(_selectedPhoto!, widget.userId);
     }
 
-    _entry = JournalEntry(
-      entryId: _entry.entryId,
+    _entry = _entry.copyWith(
       userId: widget.userId,
       date: widget.date,
       photoUrl: photoUrl,
-      classesAttended: _entry.classesAttended,
-      energy: _entry.energy,
-      sleep: _entry.sleep,
-      water: _entry.water,
-      food: _entry.food,
-      position: _entry.position,
-      types: _entry.types,
       techniques: _techniques,
       rounds: ValidationService.validatePositiveNumber(_entry.rounds),
       submissions: ValidationService.validatePositiveNumber(_entry.submissions),
       submissionAttempts: ValidationService.validatePositiveNumber(_entry.submissionAttempts),
       timesSubmitted: ValidationService.validatePositiveNumber(_entry.timesSubmitted),
+      madeSubmissions: _entry.madeSubmissions
+          .map((s) => ValidationService.sanitizeContent(s))
+          .toList(),
       generalNotes: ValidationService.sanitizeContent(_entry.generalNotes),
-      createdAt: _entry.createdAt,
       updatedAt: DateTime.now(),
     );
 
     String? error = await _journalService.saveJournalEntry(_entry);
 
+    if (!mounted) return;
     setState(() => _isLoading = false);
 
-    if (error == null && mounted) {
+    if (error == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Entry saved successfully!')),
       );
       Navigator.pop(context);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error saving entry: $error')),
+      );
     }
   }
 
   void _addTechnique(String typeSelected, String techniqueName) {
-    if (techniqueName.isEmpty) return;
+    if (techniqueName.trim().isEmpty) return;
 
     final normalized = techniqueName.trim().toLowerCase();
 
@@ -235,7 +243,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
       if (!_techniques[typeSelected]!.contains(normalized)) {
         _techniques[typeSelected]!.add(normalized);
       }
-      _techniqueController.clear();
+      _techniqueController?.clear();
     });
   }
 
@@ -253,6 +261,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
       final techniques = await _analyticsService.getAllTechniquesFromGym();
       log('Loaded ${techniques.length} gym techniques');
       log('Techniques: $techniques');
+      if (!mounted) return;
       setState(() {
         _allTechniques = techniques;
       });
@@ -268,7 +277,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
     _submissionAttemptsController.dispose();
     _timesSubmittedController.dispose();
     _notesController.dispose();
-    _techniqueController.dispose();
+    // _techniqueController is owned by Autocomplete — don't dispose it here
     super.dispose();
   }
 
@@ -364,92 +373,17 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
                 style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
 
-            // Energy slider
             _buildMetricSlider('Energy', _entry.energy, (val) {
-              setState(() => _entry = JournalEntry(
-                entryId: _entry.entryId,
-                userId: _entry.userId,
-                date: _entry.date,
-                photoUrl: _entry.photoUrl,
-                classesAttended: _entry.classesAttended,
-                energy: val,
-                sleep: _entry.sleep,
-                water: _entry.water,
-                food: _entry.food,
-                position: _entry.position,
-                types: _entry.types,
-                rounds: _entry.rounds,
-                submissions: _entry.submissions,
-                timesSubmitted: _entry.timesSubmitted,
-                generalNotes: _entry.generalNotes,
-                createdAt: _entry.createdAt,
-              ));
+              setState(() => _entry = _entry.copyWith(energy: val));
             }),
-
-            // Sleep Slider
             _buildMetricSlider('Sleep', _entry.sleep, (val) {
-              setState(() => _entry = JournalEntry(
-                entryId: _entry.entryId,
-                userId: _entry.userId,
-                date: _entry.date,
-                photoUrl: _entry.photoUrl,
-                classesAttended: _entry.classesAttended,
-                energy: _entry.energy,
-                sleep: val,
-                water: _entry.water,
-                food: _entry.food,
-                position: _entry.position,
-                types: _entry.types,
-                rounds: _entry.rounds,
-                submissions: _entry.submissions,
-                timesSubmitted: _entry.timesSubmitted,
-                generalNotes: _entry.generalNotes,
-                createdAt: _entry.createdAt,
-              ));
+              setState(() => _entry = _entry.copyWith(sleep: val));
             }),
-
-            // Water Slider
             _buildMetricSlider('Water', _entry.water, (val) {
-              setState(() => _entry = JournalEntry(
-                entryId: _entry.entryId,
-                userId: _entry.userId,
-                date: _entry.date,
-                photoUrl: _entry.photoUrl,
-                classesAttended: _entry.classesAttended,
-                energy: _entry.energy,
-                sleep: _entry.sleep,
-                water: val,
-                food: _entry.food,
-                position: _entry.position,
-                types: _entry.types,
-                rounds: _entry.rounds,
-                submissions: _entry.submissions,
-                timesSubmitted: _entry.timesSubmitted,
-                generalNotes: _entry.generalNotes,
-                createdAt: _entry.createdAt,
-              ));
+              setState(() => _entry = _entry.copyWith(water: val));
             }),
-
-            // Food Slider
             _buildMetricSlider('Food', _entry.food, (val) {
-              setState(() => _entry = JournalEntry(
-                entryId: _entry.entryId,
-                userId: _entry.userId,
-                date: _entry.date,
-                photoUrl: _entry.photoUrl,
-                classesAttended: _entry.classesAttended,
-                energy: _entry.energy,
-                sleep: _entry.sleep,
-                water: _entry.water,
-                food: val,
-                position: _entry.position,
-                types: _entry.types,
-                rounds: _entry.rounds,
-                submissions: _entry.submissions,
-                timesSubmitted: _entry.timesSubmitted,
-                generalNotes: _entry.generalNotes,
-                createdAt: _entry.createdAt,
-              ));
+              setState(() => _entry = _entry.copyWith(food: val));
             }),
             const SizedBox(height: 24),
 
@@ -471,24 +405,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
                   .map((p) => DropdownMenuItem(value: p, child: Text(p)))
                   .toList(),
               onChanged: (val) {
-                setState(() => _entry = JournalEntry(
-                  entryId: _entry.entryId,
-                  userId: _entry.userId,
-                  date: _entry.date,
-                  photoUrl: _entry.photoUrl,
-                  classesAttended: _entry.classesAttended,
-                  energy: _entry.energy,
-                  sleep: _entry.sleep,
-                  water: _entry.water,
-                  food: _entry.food,
-                  position: val,
-                  types: _entry.types,
-                  rounds: _entry.rounds,
-                  submissions: _entry.submissions,
-                  timesSubmitted: _entry.timesSubmitted,
-                  generalNotes: _entry.generalNotes,
-                  createdAt: _entry.createdAt,
-                ));
+                setState(() => _entry = _entry.copyWith(position: val));
               },
             ),
             const SizedBox(height: 12),
@@ -506,24 +423,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
                   .map((t) => DropdownMenuItem(value: t, child: Text(t)))
                   .toList(),
               onChanged: (val) {
-                setState(() => _entry = JournalEntry(
-                  entryId: _entry.entryId,
-                  userId: _entry.userId,
-                  date: _entry.date,
-                  photoUrl: _entry.photoUrl,
-                  classesAttended: _entry.classesAttended,
-                  energy: _entry.energy,
-                  sleep: _entry.sleep,
-                  water: _entry.water,
-                  food: _entry.food,
-                  position: _entry.position,
-                  types: val,
-                  rounds: _entry.rounds,
-                  submissions: _entry.submissions,
-                  timesSubmitted: _entry.timesSubmitted,
-                  generalNotes: _entry.generalNotes,
-                  createdAt: _entry.createdAt,
-                ));
+                setState(() => _entry = _entry.copyWith(types: val));
               },
             ),
             const SizedBox(height: 12),
@@ -542,6 +442,12 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
                       );
                     },
                     onSelected: (String selection) {
+                      if (_entry.types == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Pick a Type first')),
+                        );
+                        return;
+                      }
                       _addTechnique(_entry.types!, selection);
                     },
                     fieldViewBuilder: (context, textEditingController, focusNode, onFieldSubmitted) {
@@ -560,7 +466,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
                 const SizedBox(width: 8),
                 ElevatedButton(
                   onPressed: _entry.types != null
-                      ? () => _addTechnique(_entry.types!, _techniqueController.text)
+                      ? () => _addTechnique(_entry.types!, _techniqueController?.text ?? '')
                       : null,
                   child: const Text('Add'),
                 ),
@@ -596,30 +502,25 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
             SubmissionCounterWidget(
               initialRounds: _entry.rounds,
               initialSuccessful: _entry.submissions,
+              afterSuccessful: SubmissionListInput(
+                count: _entry.submissions,
+                initialValues: _entry.madeSubmissions,
+                onChanged: (values) {
+                  setState(() => _entry = _entry.copyWith(madeSubmissions: values));
+                },
+              ),
               initialAttempted: _entry.submissionAttempts,
               initialTimesSubmitted: _entry.timesSubmitted,
               onChanged: (round, successful, submissionAttempts, timesSubmitted) {
-                setState(() => _entry = JournalEntry(
-                  entryId: _entry.entryId,
-                  userId: _entry.userId,
-                  date: _entry.date,
-                  photoUrl: _entry.photoUrl,
-                  classesAttended: _entry.classesAttended,
-                  energy: _entry.energy,
-                  sleep: _entry.sleep,
-                  water: _entry.water,
-                  food: _entry.food,
-                  position: _entry.position,
-                  types: _entry.types,
+                setState(() => _entry = _entry.copyWith(
                   rounds: round,
                   submissions: successful,
                   submissionAttempts: submissionAttempts,
                   timesSubmitted: timesSubmitted,
-                  generalNotes: _entry.generalNotes,
-                  createdAt: _entry.createdAt,
                 ));
               },
             ),
+            const SizedBox(height: 12),
 
             // General notes
             const Text('General Notes', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -635,25 +536,8 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
                 setState(() {
                   _notesError = ValidationService.validateLength(val, 0, 1000, 'Notes');
                   _contentError = ValidationService.validateContent(val);
-                  _entry = JournalEntry(
-                    entryId: _entry.entryId,
-                    userId: _entry.userId,
-                    date: _entry.date,
-                    photoUrl: _entry.photoUrl,
-                    classesAttended: _entry.classesAttended,
-                    energy: _entry.energy,
-                    sleep: _entry.sleep,
-                    water: _entry.water,
-                    food: _entry.food,
-                    position: _entry.position,
-                    types: _entry.types,
-                    rounds: _entry.rounds,
-                    submissions: _entry.submissions,
-                    timesSubmitted: _entry.timesSubmitted,
-                    generalNotes: val,
-                    createdAt: _entry.createdAt,);
-                  }
-                );
+                  _entry = _entry.copyWith(generalNotes: val);
+                });
               },
             ),
             const SizedBox(height: 24),
@@ -708,8 +592,8 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
 
         List<ClassSchedule> classes = snapshot.data!;
 
-        // Remove duplicates by classId
-        final Map<String, ClassSchedule> uniqueClasses ={};
+        // Remove duplicates by class name
+        final Map<String, ClassSchedule> uniqueClasses = {};
         for (var classSchedule in classes) {
           uniqueClasses[classSchedule.className] = classSchedule;
         }
@@ -732,24 +616,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
                   } else {
                     updated.remove(classSchedule.classId);
                   }
-                  _entry = JournalEntry(
-                    entryId: _entry.entryId,
-                    userId: _entry.userId,
-                    date: _entry.date,
-                    photoUrl: _entry.photoUrl,
-                    classesAttended: updated,
-                    energy: _entry.energy,
-                    sleep: _entry.sleep,
-                    water: _entry.water,
-                    food: _entry.food,
-                    position: _entry.position,
-                    types: _entry.types,
-                    rounds: _entry.rounds,
-                    submissions: _entry.submissions,
-                    timesSubmitted: _entry.timesSubmitted,
-                    generalNotes: _entry.generalNotes,
-                    createdAt: _entry.createdAt,
-                  );
+                  _entry = _entry.copyWith(classesAttended: updated);
                 });
               },
             );
@@ -790,14 +657,15 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
       _entry.entryId,
     );
 
+    if (!mounted) return;
     setState(() => _isLoading = false);
 
-    if (error == null && mounted) {
+    if (error == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Entry deleted')),
       );
       Navigator.pop(context);
-    } else if (mounted) {
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $error')),
       );

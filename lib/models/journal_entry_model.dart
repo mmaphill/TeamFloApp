@@ -19,6 +19,7 @@ class JournalEntry {
   final Map<String, List<String>> techniques; // User entered field
   final int rounds; // Number of rounds training
   final int submissions; // Number of submissions
+  final List<String> madeSubmissions; // One optional entry per submission (e.g. "Armbar", "RNC")
   final int submissionAttempts; // Total number of submissions attempted
   final int timesSubmitted; // Number of times submitted
   final String generalNotes; // Notes about training
@@ -42,12 +43,61 @@ class JournalEntry {
     this.techniques = const {},
     this.rounds = 0,
     this.submissions = 0,
+    this.madeSubmissions = const [],
     this.submissionAttempts = 0,
     this.timesSubmitted = 0,
     this.generalNotes = '',
     required this.createdAt,
     this.updatedAt,
   });
+
+  /// Returns a copy of this entry with only the given fields changed.
+  /// Any field you don't pass keeps its current value.
+  JournalEntry copyWith({
+    String? entryId,
+    String? userId,
+    DateTime? date,
+    String? photoUrl,
+    List<String>? classesAttended,
+    int? energy,
+    int? sleep,
+    int? water,
+    int? food,
+    String? position,
+    String? types,
+    Map<String, List<String>>? techniques,
+    int? rounds,
+    int? submissions,
+    List<String>? madeSubmissions,
+    int? submissionAttempts,
+    int? timesSubmitted,
+    String? generalNotes,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    return JournalEntry(
+      entryId: entryId ?? this.entryId,
+      userId: userId ?? this.userId,
+      date: date ?? this.date,
+      photoUrl: photoUrl ?? this.photoUrl,
+      classesAttended: classesAttended ?? this.classesAttended,
+      energy: energy ?? this.energy,
+      sleep: sleep ?? this.sleep,
+      water: water ?? this.water,
+      food: food ?? this.food,
+      position: position ?? this.position,
+      types: types ?? this.types,
+      techniques: techniques ?? this.techniques,
+      rounds: rounds ?? this.rounds,
+      submissions: submissions ?? this.submissions,
+      madeSubmissions: madeSubmissions ?? this.madeSubmissions,
+      submissionAttempts: submissionAttempts ?? this.submissionAttempts,
+      timesSubmitted: timesSubmitted ?? this.timesSubmitted,
+      generalNotes: generalNotes ?? this.generalNotes,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
 
   factory JournalEntry.fromMap(Map<String, dynamic> map, String entryId) {
     return JournalEntry(
@@ -65,6 +115,7 @@ class JournalEntry {
       techniques: _parseTechniques(map['techniques']),
       rounds: map['rounds'] ?? 0,
       submissions: map['submissions'] ?? 0,
+      madeSubmissions: _parseSubmissions(map['madeSubmissions']),
       submissionAttempts: map['submissionAttempts'] ?? 0,
       timesSubmitted: map['timesSubmitted'] ?? 0,
       generalNotes: map['generalNotes'] ?? '',
@@ -74,6 +125,13 @@ class JournalEntry {
   }
 
   Map<String, dynamic> toMap() {
+    // Drop blank boxes and never store more entries than the submission count
+    final cleanedSubmissions = madeSubmissions
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .take(submissions)
+        .toList();
+
     return {
       'userId': userId,
       'date': date,
@@ -88,12 +146,34 @@ class JournalEntry {
       'techniques': techniques.isEmpty ? null : techniques,
       'rounds': rounds,
       'submissions': submissions,
+      'madeSubmissions': cleanedSubmissions.isEmpty ? null : cleanedSubmissions,
       'submissionAttempts': submissionAttempts,
       'timesSubmitted': timesSubmitted,
       'generalNotes': generalNotes,
       'createdAt': createdAt,
       'updatedAt': updatedAt ?? DateTime.now(),
     };
+  }
+
+  /// Reads madeSubmissions as a flat list.
+  /// Also accepts the old Map<String, List<String>> format so older
+  /// entries still load (their values get flattened into one list).
+  static List<String> _parseSubmissions(dynamic data) {
+    if (data == null) return [];
+
+    if (data is List) {
+      return data.map((e) => e?.toString() ?? '').toList();
+    }
+
+    if (data is Map) {
+      return data.values
+          .whereType<List>()
+          .expand((list) => list)
+          .map((e) => e?.toString() ?? '')
+          .toList();
+    }
+
+    return [];
   }
 
   static Map<String, List<String>> _parseTechniques(dynamic data) {

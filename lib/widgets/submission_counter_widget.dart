@@ -5,6 +5,7 @@ class SubmissionCounterWidget extends StatefulWidget {
   final int initialSuccessful;
   final int initialAttempted;
   final int initialTimesSubmitted;
+  final Widget? afterSuccessful;
   final Function(int rounds, int submissions, int submissionAttempts, int timesSubmitted) onChanged;
 
   const SubmissionCounterWidget({
@@ -13,6 +14,7 @@ class SubmissionCounterWidget extends StatefulWidget {
     required this.initialSuccessful,
     required this.initialAttempted,
     required this.initialTimesSubmitted,
+    this.afterSuccessful,
     required this.onChanged,
   });
 
@@ -180,7 +182,10 @@ class _SubmissionCounterWidgetState extends State<SubmissionCounterWidget> {
 
         // Successful Submissions
         _buildCounter(label: 'Submissions', description: 'Successful Submissions', value: submissions, onIncrement: _incrementSubmissions, onDecrement: _decrementSubmissions),
-        const SizedBox(height: 16),
+        const SizedBox(height: 8),
+
+        // Successful Submissions List
+        widget.afterSuccessful!,
 
         // Attempted Submissions
         _buildCounter(label: 'Attempted', description: 'Total Attempted Submissions', value: attempted, onIncrement: _incrementAttempted, onDecrement: _decrementAttempted),
