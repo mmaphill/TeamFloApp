@@ -6,6 +6,7 @@ class SubmissionCounterWidget extends StatefulWidget {
   final int initialAttempted;
   final int initialTimesSubmitted;
   final Widget? afterSuccessful;
+  final Widget? afterTimesSubmitted;
   final Function(int rounds, int submissions, int submissionAttempts, int timesSubmitted) onChanged;
 
   const SubmissionCounterWidget({
@@ -15,6 +16,7 @@ class SubmissionCounterWidget extends StatefulWidget {
     required this.initialAttempted,
     required this.initialTimesSubmitted,
     this.afterSuccessful,
+    this.afterTimesSubmitted,
     required this.onChanged,
   });
 
@@ -194,6 +196,9 @@ class _SubmissionCounterWidgetState extends State<SubmissionCounterWidget> {
         // Times Submitted
         _buildCounter(label: 'Submitted', description: 'Times Submitted by Opponent', value: timesSubmitted, onIncrement: _incrementTimesSubmitted, onDecrement: _decrementTimesSubmitted),
         const SizedBox(height: 16),
+
+        // Submissions you got Caught with
+        widget.afterTimesSubmitted!,
       ],
     );
   }

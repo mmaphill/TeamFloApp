@@ -22,6 +22,7 @@ class JournalEntry {
   final List<String> madeSubmissions; // One optional entry per submission (e.g. "Armbar", "RNC")
   final int submissionAttempts; // Total number of submissions attempted
   final int timesSubmitted; // Number of times submitted
+  final List<String> caughtSubmitted; // Submissions you got caught in
   final String generalNotes; // Notes about training
 
   // Metadata
@@ -46,6 +47,7 @@ class JournalEntry {
     this.madeSubmissions = const [],
     this.submissionAttempts = 0,
     this.timesSubmitted = 0,
+    this.caughtSubmitted = const [],
     this.generalNotes = '',
     required this.createdAt,
     this.updatedAt,
@@ -71,6 +73,7 @@ class JournalEntry {
     List<String>? madeSubmissions,
     int? submissionAttempts,
     int? timesSubmitted,
+    List<String>? caughtSubmitted,
     String? generalNotes,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -93,6 +96,7 @@ class JournalEntry {
       madeSubmissions: madeSubmissions ?? this.madeSubmissions,
       submissionAttempts: submissionAttempts ?? this.submissionAttempts,
       timesSubmitted: timesSubmitted ?? this.timesSubmitted,
+      caughtSubmitted: caughtSubmitted ?? this.caughtSubmitted,
       generalNotes: generalNotes ?? this.generalNotes,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -118,6 +122,7 @@ class JournalEntry {
       madeSubmissions: _parseSubmissions(map['madeSubmissions']),
       submissionAttempts: map['submissionAttempts'] ?? 0,
       timesSubmitted: map['timesSubmitted'] ?? 0,
+      caughtSubmitted: _parseSubmissions(map['caughtSubmitted']),
       generalNotes: map['generalNotes'] ?? '',
       createdAt: (map['createdAt'] as dynamic)?.toDate() ?? DateTime.now(),
       updatedAt: (map['updatedAt'] as dynamic)?.toDate(),
@@ -127,6 +132,12 @@ class JournalEntry {
   Map<String, dynamic> toMap() {
     // Drop blank boxes and never store more entries than the submission count
     final cleanedSubmissions = madeSubmissions
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .take(submissions)
+        .toList();
+
+    final cleanedSubmitted = caughtSubmitted
         .map((s) => s.trim())
         .where((s) => s.isNotEmpty)
         .take(submissions)
@@ -149,6 +160,7 @@ class JournalEntry {
       'madeSubmissions': cleanedSubmissions.isEmpty ? null : cleanedSubmissions,
       'submissionAttempts': submissionAttempts,
       'timesSubmitted': timesSubmitted,
+      'caughtSubmitted': cleanedSubmitted.isEmpty ? null : cleanedSubmitted,
       'generalNotes': generalNotes,
       'createdAt': createdAt,
       'updatedAt': updatedAt ?? DateTime.now(),

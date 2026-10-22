@@ -277,7 +277,6 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
     _submissionAttemptsController.dispose();
     _timesSubmittedController.dispose();
     _notesController.dispose();
-    // _techniqueController is owned by Autocomplete — don't dispose it here
     super.dispose();
   }
 
@@ -511,6 +510,13 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
               ),
               initialAttempted: _entry.submissionAttempts,
               initialTimesSubmitted: _entry.timesSubmitted,
+              afterTimesSubmitted: SubmissionListInput(
+                count: _entry.timesSubmitted,
+                initialValues: _entry.caughtSubmitted,
+                onChanged: (values) {
+                  setState(() => _entry = _entry.copyWith(caughtSubmitted: values));
+                },
+              ),
               onChanged: (round, successful, submissionAttempts, timesSubmitted) {
                 setState(() => _entry = _entry.copyWith(
                   rounds: round,
