@@ -167,8 +167,9 @@ class AuthService {
         return 'No user logged in';
       }
 
-      // Delete user document from Firestore
-      await _firestore.collection('users').doc(uid).delete();
+      // PHASE 1 STEP 4: the user document is now deleted LAST (below).
+      // The security rules read it to know which gym the user is in, so
+      // the posts and journal cleanup must happen while it still exists.
 
       // Delete user's posts
       // PHASE 1 STEP 3: from this gym's posts (GymScope).
@@ -188,6 +189,9 @@ class AuthService {
       for (var doc in journalQuery.docs) {
         await doc.reference.delete();
       }
+
+      // Delete user document from Firestore (last, see note above)
+      await _firestore.collection('users').doc(uid).delete();
 
       // Delete user files from Storage
       final profilePath = 'profiles/$uid';
