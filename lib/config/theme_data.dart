@@ -1,12 +1,20 @@
 import 'package:flutter/material.dart';
 import 'colors.dart';
 
+/// PHASE 1 STEP 6: themes are built from the gym's main color.
+/// Gyms with no primaryColor set get Team Flo red (AppColors.primary),
+/// so Team Flo looks exactly the same as before.
 class AppThemes {
+  // Kept so any older code that uses AppThemes.darkTheme / lightTheme
+  // still works. Both use the default (Team Flo) color.
+  static ThemeData get darkTheme => dark();
+  static ThemeData get lightTheme => light();
+
   // Dark Theme (default)
-  static ThemeData darkTheme = ThemeData(
+  static ThemeData dark([Color primary = AppColors.primary]) => ThemeData(
     useMaterial3: false,
     brightness: Brightness.dark,
-    primaryColor: AppColors.primary,
+    primaryColor: primary,
     scaffoldBackgroundColor: AppColors.darkBg,
     appBarTheme: AppBarTheme(
       backgroundColor: AppColors.darkBg,
@@ -16,10 +24,10 @@ class AppThemes {
     cardColor: AppColors.darkSurface,
     canvasColor: AppColors.darkBg,
     colorScheme: ColorScheme.dark(
-      primary: AppColors.primary,
+      primary: primary,
       secondary: AppColors.success,
       surface: AppColors.darkSurface,
-      error: AppColors.primary,
+      error: AppColors.primary, // errors stay red whatever the gym color
       onPrimary: Colors.white,
       onSecondary: Colors.white,
       onSurface: AppColors.darkText,
@@ -46,34 +54,34 @@ class AppThemes {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: AppColors.primary),
+        borderSide: BorderSide(color: primary),
       ),
       hintStyle: TextStyle(color: AppColors.darkText.withAlpha(150)),
     ),
     bottomNavigationBarTheme: BottomNavigationBarThemeData(
       backgroundColor: AppColors.darkSurface,
-      selectedItemColor: AppColors.primary,
+      selectedItemColor: primary,
       unselectedItemColor: AppColors.darkText.withAlpha(150),
     ),
     floatingActionButtonTheme: FloatingActionButtonThemeData(
-      backgroundColor: AppColors.primary,
+      backgroundColor: primary,
       foregroundColor: Colors.white,
     ),
     sliderTheme: SliderThemeData(
       trackHeight: 4,
-      activeTrackColor: AppColors.primary,
+      activeTrackColor: primary,
       inactiveTrackColor: AppColors.darkSurfaceVariant,
-      thumbColor: AppColors.primary,
-      overlayColor: AppColors.primary.withAlpha(100),
-      valueIndicatorColor: AppColors.primary,
+      thumbColor: primary,
+      overlayColor: primary.withAlpha(100),
+      valueIndicatorColor: primary,
     ), dialogTheme: DialogThemeData(backgroundColor: AppColors.darkSurface),
   );
 
   // Light Theme
-  static ThemeData lightTheme = ThemeData(
+  static ThemeData light([Color primary = AppColors.primary]) => ThemeData(
     useMaterial3: false,
     brightness: Brightness.light,
-    primaryColor: AppColors.primary,
+    primaryColor: primary,
     scaffoldBackgroundColor: AppColors.lightBg,
     appBarTheme: AppBarTheme(
       backgroundColor: AppColors.lightSurface,
@@ -83,10 +91,10 @@ class AppThemes {
     cardColor: AppColors.lightSurface,
     canvasColor: AppColors.lightBg,
     colorScheme: ColorScheme.light(
-      primary: AppColors.primary,
+      primary: primary,
       secondary: AppColors.success,
       surface: AppColors.lightSurface,
-      error: AppColors.primary,
+      error: AppColors.primary, // errors stay red whatever the gym color
       onPrimary: Colors.white,
       onSecondary: Colors.white,
       onSurface: AppColors.lightText,
@@ -113,26 +121,26 @@ class AppThemes {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: AppColors.primary),
+        borderSide: BorderSide(color: primary),
       ),
       hintStyle: TextStyle(color: AppColors.lightText.withAlpha(100)),
     ),
     bottomNavigationBarTheme: BottomNavigationBarThemeData(
       backgroundColor: AppColors.lightSurface,
-      selectedItemColor: AppColors.primary,
+      selectedItemColor: primary,
       unselectedItemColor: AppColors.lightText.withAlpha(100),
     ),
     floatingActionButtonTheme: FloatingActionButtonThemeData(
-      backgroundColor: AppColors.primary,
+      backgroundColor: primary,
       foregroundColor: Colors.white,
     ),
     sliderTheme: SliderThemeData(
       trackHeight: 4,
-      activeTrackColor: AppColors.primary,
+      activeTrackColor: primary,
       inactiveTrackColor: AppColors.lightSurfaceVariant,
-      thumbColor: AppColors.primary,
-      overlayColor: AppColors.primary.withAlpha(100),
-      valueIndicatorColor: AppColors.primary,
+      thumbColor: primary,
+      overlayColor: primary.withAlpha(100),
+      valueIndicatorColor: primary,
     ), dialogTheme: DialogThemeData(backgroundColor: AppColors.lightSurface),
   );
 }

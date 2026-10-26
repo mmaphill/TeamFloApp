@@ -81,7 +81,7 @@ class _StaffPortalScreenState extends State<StaffPortalScreen> {
         child: Padding(
           padding: EdgeInsets.all(24),
           child: Text(
-            'Could not load the staff portal. Check that your account has the instructor or admin role.',
+            'Could not load the staff portal. Check that your account has a staff role (owner, manager, instructor or front desk).',
             textAlign: TextAlign.center,
           ),
         ),

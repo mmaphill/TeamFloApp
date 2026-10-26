@@ -1,10 +1,13 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:team_flo_app/widgets/home_attendance_card.dart';
 import 'package:team_flo_app/widgets/instagram_feed_widget.dart';
 import '../models/belt_rank_model.dart';
+import '../models/gym_model.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
+import '../services/gym_service.dart';
 import '../widgets/stats_highlights.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -25,7 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    
+
     _goalsController = TextEditingController();
 
     _userData = UserModel(
@@ -38,7 +41,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     _loadUserData();
   }
-  
+
   @override
   void dispose() {
     _goalsController.dispose();
@@ -81,25 +84,30 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final gym = context.watch<GymService>();
+
     return Scaffold(
       body: SingleChildScrollView(
         child: Column(
           children: [
             // Welcome Content
+            // PHASE 1 STEP 6: the gym's name from its gym document
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Text(
-                'Team Flo BJJ',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                gym.gym?.name ?? 'Team Flo BJJ',
+                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
             ),
             const SizedBox(height: 20),
 
             // instagram feed
-            InstagramFeedWidget(),
+            // PHASE 1 STEP 5: only if the gym's plan includes it
+            if (gym.hasModule(GymModules.instagram)) InstagramFeedWidget(),
 
             // attendance feed
-            const HomeAttendanceCard(),
+            // PHASE 1 STEP 5: attendance needs the class schedule module
+            if (gym.hasModule(GymModules.schedule)) const HomeAttendanceCard(),
 
             // Stats widget
             const StatsHighlightsWidget(),

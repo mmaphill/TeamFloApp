@@ -1,12 +1,14 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:team_flo_app/models/instagram_post.dart';
+import 'gym_scope.dart';
 
 class InstagramService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
+  /// The gym's latest Instagram post.
+  ///
+  /// PHASE 1 STEP 6: each gym has its own. GymScope picks the location:
+  ///   instagram/latestPost                (Team Flo, before migration)
+  ///   gyms/{gymId}/instagram/latestPost   (scoped gyms)
   Stream<InstagramPost?> getLatestPostStream() {
-    return _firestore
-        .collection('instagram')
+    return GymScope.col('instagram')
         .doc('latestPost')
         .snapshots()
         .map((snapshot) {

@@ -115,6 +115,12 @@ await t('gym: Team Flo manager creates other gym class blocked', assertFails(set
 await t('gym: member signs up for own gym class', assertSucceeds(setDoc(doc(as('ozzy'), 'gyms/othergym/classHistory/oc1_2026-10-26_ozzy'), { userId: 'ozzy', classId: 'oc1', sessionDate: '2026-10-26', status: 'signedUp', walkIn: false })));
 await t('gym: other gym opens Team Flo attendance blocked', assertFails(getDoc(doc(as('omgr'), 'classHistory/c1_2026-10-16_alice'))));
 
+// Instagram card (step 6)
+await t('gym: member reads own gym Instagram card', assertSucceeds(getDoc(doc(as('ozzy'), 'gyms/othergym/instagram/latestPost'))));
+await t('gym: Team Flo member reads other gym Instagram card blocked', assertFails(getDoc(doc(as('alice'), 'gyms/othergym/instagram/latestPost'))));
+await t('gym: manager updates own gym Instagram card', assertSucceeds(setDoc(doc(as('omgr'), 'gyms/othergym/instagram/latestPost'), { caption: 'hi' })));
+await t('gym: member updates Instagram card blocked', assertFails(setDoc(doc(as('ozzy'), 'gyms/othergym/instagram/latestPost'), { caption: 'hax' })));
+
 // Profiles and member lists
 await t('gym: member opens gym-mate profile', assertSucceeds(getDoc(doc(as('ozzy'), 'users/omgr'))));
 await t('gym: opening a deleted profile returns not found', assertSucceeds(getDoc(doc(as('alice'), 'users/ghost'))));

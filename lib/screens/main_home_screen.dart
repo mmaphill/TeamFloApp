@@ -1,12 +1,16 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:team_flo_app/screens/privacy_policy_screen.dart';
 import 'package:team_flo_app/screens/stats_screen.dart';
 import 'package:team_flo_app/widgets/belt_rank_badge.dart';
 import '../config/colors.dart';
+import '../models/app_roles.dart';
+import '../models/gym_model.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
+import '../services/gym_service.dart';
 import 'create_post_screen.dart';
 import 'chat_screen.dart';
 import 'calendar_screen.dart';
@@ -17,7 +21,15 @@ import 'profile_screen.dart';
 import 'staff_portal_screen.dart';
 import '../utils/log.dart';
 
+/// The bottom navigation tabs. PHASE 1 STEP 5: which ones show depends on
+/// the gym's plan (see _visibleTabs).
+enum _AppTab { home, chat, calendar, schedule, stats }
+
 class MainHomeScreen extends StatefulWidget {
+  /// Tab to open first, by its position in the FULL tab list:
+  /// 0 Home, 1 Chat, 2 Calendar, 3 Schedule, 4 Stats.
+  /// Notifications use 1 (Chat) and 2 (Calendar). If that tab is hidden
+  /// for this gym, Home opens instead.
   final int? initialIndex;
   final String? postId;
   final String? classId;
@@ -36,22 +48,35 @@ class MainHomeScreen extends StatefulWidget {
 class _MainHomeScreenState extends State<MainHomeScreen> {
   final AuthService _authService = AuthService();
   final User _currentUser = FirebaseAuth.instance.currentUser!;
-  late int _selectedIndex;
+  late _AppTab _selectedTab;
   UserModel? _userData;
 
-  late List<Widget> _screens;
+  /// PHASE 1 STEP 5: owners, managers, instructors and front desk see the
+  /// Staff Portal, if the gym's plan includes it. (was: instructor or admin
+  /// only.) Firestore rules enforce this too; hiding the menu is for tidiness.
+  bool _showStaffPortal(GymService gym) =>
+      AppRoles.isStaff(_userData?.role) && gym.hasModule(GymModules.staffPortal);
 
-  /// Instructors and admins see the Staff Portal.
-  /// (Firestore rules enforce this too, so hiding the menu is just for tidiness.)
-  bool get _isStaff =>
-      _userData?.role == 'instructor' || _userData?.role == 'admin';
+  /// PHASE 1 STEP 5: tabs the gym's plan includes, in display order.
+  /// Home and Stats are always there (a bottom bar needs at least two tabs).
+  List<_AppTab> _visibleTabs(GymService gym) => [
+    _AppTab.home,
+    if (gym.hasModule(GymModules.community)) _AppTab.chat,
+    if (gym.hasModule(GymModules.journal)) _AppTab.calendar,
+    if (gym.hasModule(GymModules.schedule)) _AppTab.schedule,
+    _AppTab.stats,
+  ];
 
   @override
   void initState() {
     super.initState();
     _checkPrivacyPolicy();
-    _selectedIndex = widget.initialIndex ?? 0;
-    _buildScreens();
+
+    // Translate the old number-based index (used by notifications) to a tab
+    final int start = widget.initialIndex ?? 0;
+    _selectedTab = (start >= 0 && start < _AppTab.values.length)
+        ? _AppTab.values[start]
+        : _AppTab.home;
 
     // Initialize with default/empty value
     _userData = UserModel(
@@ -63,14 +88,34 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
     );
   }
 
-  void _buildScreens() {
-    _screens = [
-      const HomeScreen(),
-      ChatScreen(postId: widget.postId),
-      const CalendarScreen(),
-      const ScheduleScreen(),
-      const StatsScreen(),
-    ];
+  Widget _screenFor(_AppTab tab) {
+    switch (tab) {
+      case _AppTab.home:
+        return const HomeScreen();
+      case _AppTab.chat:
+        return ChatScreen(postId: widget.postId);
+      case _AppTab.calendar:
+        return const CalendarScreen();
+      case _AppTab.schedule:
+        return const ScheduleScreen();
+      case _AppTab.stats:
+        return const StatsScreen();
+    }
+  }
+
+  BottomNavigationBarItem _navItemFor(_AppTab tab) {
+    switch (tab) {
+      case _AppTab.home:
+        return const BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home');
+      case _AppTab.chat:
+        return const BottomNavigationBarItem(icon: Icon(Icons.feed), label: 'Chat');
+      case _AppTab.calendar:
+        return const BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: 'Calendar');
+      case _AppTab.schedule:
+        return const BottomNavigationBarItem(icon: Icon(Icons.schedule), label: 'Schedule');
+      case _AppTab.stats:
+        return const BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Stats');
+    }
   }
 
   Future<void> _checkPrivacyPolicy() async {
@@ -90,6 +135,23 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final gym = context.watch<GymService>();
+    final tabs = _visibleTabs(gym);
+
+    // If the selected tab isn't in this gym's plan, fall back to Home
+    final _AppTab currentTab = tabs.contains(_selectedTab) ? _selectedTab : _AppTab.home;
+    final String? logoUrl = gym.gym?.logoUrl;
+    final Color? brandColor = gym.gym?.primaryColorValue;
+
+    // PHASE 1 STEP 6: the gym's logo, or Team Flo's if none is set.
+    // Typed as ImageProvider so Dart knows both choices are images.
+    final ImageProvider logoImage;
+    if (logoUrl != null) {
+      logoImage = NetworkImage(logoUrl);
+    } else {
+      logoImage = const AssetImage('lib/assets/images/TeamFlo.png');
+    }
+
     return StreamBuilder<Map<String, dynamic>?>(
         stream: _getUserDataStream(),  // ← Real-time stream
         builder: (context, snapshot) {
@@ -109,10 +171,11 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
                   padding: const EdgeInsets.all(8.0),
                   child: GestureDetector(
                     onTap: () {
-                      setState(() => _selectedIndex = 0);  // Always go to home
+                      setState(() => _selectedTab = _AppTab.home);  // Always go to home
                     },
+                    // PHASE 1 STEP 6: the gym's logo, or Team Flo's if none is set
                     child: CircleAvatar(
-                      backgroundImage: AssetImage('lib/assets/images/TeamFlo.png'),
+                      backgroundImage: logoImage,
                       radius: 20,
                     ),
                   )
@@ -128,7 +191,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
                   ),
                 ),
                 // Custom actions based on selected screen
-                if (_selectedIndex == 1) // ChatScreen
+                if (currentTab == _AppTab.chat)
                   IconButton(
                     icon: const Icon(Icons.add),
                     onPressed: () {
@@ -139,7 +202,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
                       );
                     },
                   ),
-                if (_selectedIndex == 2) // CalendarScreen
+                if (currentTab == _AppTab.calendar)
                   IconButton(
                     icon: const Icon(Icons.add),
                     onPressed: () => _openJournalEntry(DateTime.now()),
@@ -171,7 +234,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
                         ],
                       ),
                     ),
-                    if (_isStaff)
+                    if (_showStaffPortal(gym))
                       const PopupMenuItem(
                         value: 'staff',
                         child: Row(
@@ -197,35 +260,24 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
                 ),
               ],
             ),
-            body: _buildBody(),
+            body: _screenFor(currentTab),
             bottomNavigationBar: BottomNavigationBar(
+              // fixed: keeps labels and colors steady for 2 to 5 tabs
+              type: BottomNavigationBarType.fixed,
               backgroundColor: const Color(0xFF3A3A3A),
-              selectedItemColor: const Color(0xFFFFB2B3),
+              // PHASE 1 STEP 6: the gym's color, or Team Flo's pink if none is set
+              selectedItemColor: brandColor ?? const Color(0xFFFFB2B3),
               unselectedItemColor: AppColors.light,
               elevation: 16.0,
-              currentIndex: _selectedIndex,
-              onTap: (index) async {
-                setState(() => _selectedIndex = index);
+              currentIndex: tabs.indexOf(currentTab),
+              onTap: (index) {
+                setState(() => _selectedTab = tabs[index]);
               },
-              items: const [
-                BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-                BottomNavigationBarItem(icon: Icon(Icons.feed), label: 'Chat'),
-                BottomNavigationBarItem(
-                    icon: Icon(Icons.calendar_today), label: 'Calendar'),
-                BottomNavigationBarItem(
-                    icon: Icon(Icons.schedule), label: 'Schedule'),
-                BottomNavigationBarItem(
-                    icon: Icon(Icons.bar_chart), label: 'Stats'),
-              ],
+              items: tabs.map(_navItemFor).toList(),
             ),
           );
         }
     );
-  }
-
-  Widget _buildBody() {
-    _buildScreens();
-    return _screens[_selectedIndex];
   }
 
   Future<void> _logout() async {

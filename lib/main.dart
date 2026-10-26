@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:team_flo_app/services/notification_service.dart';
+import 'config/colors.dart';
 import 'config/theme_provider.dart';
 import 'firebase_options.dart';
 import 'screens/login_screen.dart';
@@ -69,13 +70,18 @@ class _TeamFloAppState extends State<TeamFloApp> {
         ChangeNotifierProvider.value(value: _themeProvider),
         ChangeNotifierProvider.value(value: GymService.instance),
       ],
-      child: Consumer<ThemeProvider>(
-        builder: (context, themeProvider, child) {
+      // PHASE 1 STEP 6: also rebuilds when the gym loads, so the theme
+      // uses the gym's main color (Team Flo red when none is set).
+      child: Consumer2<ThemeProvider, GymService>(
+        builder: (context, themeProvider, gymService, child) {
+          final Color brandColor =
+              gymService.gym?.primaryColorValue ?? AppColors.primary;
+
           return MaterialApp(
             navigatorKey: navigatorKey,
             title: 'Team Flo BJJ',
-            theme: AppThemes.lightTheme,
-            darkTheme: AppThemes.darkTheme,
+            theme: AppThemes.light(brandColor),
+            darkTheme: AppThemes.dark(brandColor),
             themeMode: themeProvider.themeMode,
             onGenerateRoute: (settings) {
               if (settings.name == '/chat') {

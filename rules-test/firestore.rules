@@ -255,6 +255,12 @@ service cloud.firestore {
         allow update: if canUpdateClass(gymId);
       }
 
+      // PHASE 1 STEP 6: the gym's Instagram card (latest post)
+      match /instagram/{docId} {
+        allow read: if inGym(gymId);
+        allow write: if inGym(gymId) && isAdmin();
+      }
+
       match /classHistory/{recordId} {
         allow get: if canGetHistory(gymId, recordId);
         allow list: if canListHistory(gymId);
