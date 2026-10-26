@@ -47,7 +47,7 @@ class AppRoles {
   static bool canAddStudentNotes(String? role) => _isOneOf(role, [owner, manager, instructor]);
   static bool canSendAnnouncements(String? role) => _isOneOf(role, [owner, manager, frontDesk]);
   static bool canAddLeads(String? role) => _isOneOf(role, [owner, manager, frontDesk]);
-  static bool canManagerMembers(String? role) => _isOneOf(role, [owner, manager]);
+  static bool canManageMembers(String? role) => _isOneOf(role, [owner, manager]);
   static bool canViewDashboard(String? role) => _isOneOf(role, [owner, manager]);
   static bool _isOneOf(String? role, List<String> roles) => roles.contains(normalize(role));
 }

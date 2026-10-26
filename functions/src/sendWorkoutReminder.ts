@@ -64,6 +64,26 @@ function parseTimeToMinutes(time: string): number | null {
     return hour * 60 + Number(match[2]);
 }
 
+// PHASE 1 STEP 3: class records live in the shared "classHistory" collection
+// (Team Flo before migration) and under each scoped gym. Returns all of
+// today's records from both places.
+async function todaysClassRecords(
+    db: admin.firestore.Firestore,
+    today: string
+): Promise<admin.firestore.QueryDocumentSnapshot[]> {
+    const collections: admin.firestore.CollectionReference[] = [db.collection("classHistory")];
+
+    const scopedGyms = await db.collection("gyms").where("dataScoped", "==", true).get();
+    for (const gym of scopedGyms.docs) {
+        collections.push(gym.ref.collection("classHistory"));
+    }
+
+    const snapshots = await Promise.all(
+        collections.map((c) => c.where("sessionDate", "==", today).get())
+    );
+    return snapshots.flatMap((snap) => snap.docs);
+}
+
 // Most recent journal entry
 function journalSavedAt(entry: admin.firestore.DocumentData): Date | null {
     const stamp = entry.updatedAt ?? entry.createdAt;
@@ -81,21 +101,20 @@ export const sendWorkoutReminder = onSchedule(
         const today = easternDateString(now);
         const nowMinutes = easternMinutesNow(now);
 
-        // Everyone with a class record for today's sessions
-        const historySnapshot = await db
-            .collection("classHistory")
-            .where("sessionDate", "==", today)
-            .get();
+        // Everyone with a class record for today's sessions, in every gym
+        const records = await todaysClassRecords(db, today);
 
-        if (historySnapshot.empty) return;
+        if (records.length === 0) return;
 
         // Records whose class ended at least 10 minutes ago and hasn't been handled
         const due: admin.firestore.QueryDocumentSnapshot[] = [];
-        for (const doc of historySnapshot.docs) {
+        for (const doc of records) {
             const record = doc.data();
             if (!record.userId) continue;
 
-            if (record.remnderCheckAt) continue; // already got their reminder for said class
+            // FIX: was "remnderCheckAt" (typo), so this never matched and the
+            // same person could be reminded every 5 minutes for an hour.
+            if (record.reminderCheckAt) continue; // already checked for this class
 
             if (record.status === 'noShow') continue; // signed up but didn't show up
 
@@ -113,9 +132,12 @@ export const sendWorkoutReminder = onSchedule(
 
         console.log(`${due.length} class records due for a reminder check on ${today}`);
 
-        // Today's date range in Easter time
+        // Today's date range in Eastern time
         const dayStart = easternMidnight(today, now);
-        const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 1000);
+        // FIX: was 24 * 60 * 1000 (24 minutes, not 24 hours), so journal
+        // entries after 12:24 AM were never found and people who had
+        // already logged still got reminded.
+        const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
         const startStamp = admin.firestore.Timestamp.fromDate(dayStart);
         const endStamp = admin.firestore.Timestamp.fromDate(dayEnd);
 
@@ -149,7 +171,9 @@ export const sendWorkoutReminder = onSchedule(
                     await sendToUser(
                         userId,
                         "Log your workout",
-                        `Don't forget to log your session from ${record.className} || "class"`,
+                        // FIX: the || "class" fallback was inside the text, so it
+                        // showed up in the notification itself.
+                        `Don't forget to log your session from ${record.className || "class"}`,
                         {type: "workout_reminder", classId: record.classId}
                     );
                     sentNow = true;

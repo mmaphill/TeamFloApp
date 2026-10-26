@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/class_history_model.dart';
 import '../models/class_schedule_model.dart';
 import '../utils/log.dart';
+import 'gym_scope.dart';
 
 /// A member as shown in the staff portal.
 class StaffMember {
@@ -47,8 +48,9 @@ class PortalSession {
 class StaffService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+  // PHASE 1 STEP 3: attendance belongs to a gym.
   CollectionReference<Map<String, dynamic>> get _history =>
-      _firestore.collection('classHistory');
+      GymScope.col('classHistory');
 
   static const List<String> _days = [
     'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
@@ -204,9 +206,10 @@ class StaffService {
     }
   }
 
-  /// All members, sorted by name. Fine for a gym-sized member list.
+  /// All members of this gym, sorted by name. Fine for a gym-sized list.
+  /// PHASE 1 STEP 3: only this gym's members once the gym is scoped.
   Future<List<StaffMember>> loadMembers() async {
-    final snapshot = await _firestore.collection('users').get();
+    final snapshot = await GymScope.members().get();
     final members = snapshot.docs.map((doc) {
       final data = doc.data();
       final String name = (data['name'] ?? '').toString().trim();

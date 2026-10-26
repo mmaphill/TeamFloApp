@@ -1,12 +1,21 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:team_flo_app/services/auth_service.dart';
+import '../models/app_roles.dart';
 import '../models/post_model.dart';
 import '../models/mention_model.dart';
 import '../utils/log.dart';
+import 'gym_scope.dart';
+import 'gym_service.dart';
 
 class ChatService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  // PHASE 1 STEP 3: posts belong to a gym. GymScope decides whether that's
+  // the shared 'posts' collection or gyms/{gymId}/posts.
+  CollectionReference<Map<String, dynamic>> get _posts => GymScope.col('posts');
+
+  // PHASE 1 STEP 3: owners and managers can remove anyone's post or comment
+  // (was: role == 'admin' only, which missed the new roles).
+  bool get _canModerate => AppRoles.canManageMembers(GymService.instance.role);
 
   // Create a new post
   Future<String?> createPost({
@@ -24,7 +33,7 @@ class ChatService {
       log('  mediaTypes: ${mediaTypes.length} items → $mediaTypes');
       log('  mentions: ${mentions.length} items');
 
-      await _firestore.collection('posts').add({
+      await _posts.add({
         'userId': userId,
         'userName': userName,
         'content': content,
@@ -77,8 +86,7 @@ class ChatService {
 
   // Get all posts as a stream (real-time updates)
   Stream<List<PostModel>> getPostsStream() {
-    return _firestore
-        .collection('posts')
+    return _posts
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) {
@@ -91,7 +99,7 @@ class ChatService {
   // Toggle likes for a post
   Future<String?> likePost(String postId, String userId) async {
     try {
-      DocumentSnapshot doc = await _firestore.collection('posts').doc(postId).get();
+      DocumentSnapshot doc = await _posts.doc(postId).get();
       List<String> likedBy = List<String>.from(doc['likedBy'] ?? []);
 
       if (likedBy.contains(userId)) {
@@ -102,37 +110,27 @@ class ChatService {
         likedBy.add(userId);
       }
 
-      await _firestore.collection('posts').doc(postId).update({
+      await _posts.doc(postId).update({
         'likedBy': likedBy,
       });
       return null;
     } catch (e) {
-    return e.toString();
+      return e.toString();
     }
   }
 
   // Delete a post (only author can delete)
   Future<String?> deletePost(String postId, String userId) async {
     try {
-      DocumentSnapshot doc = await _firestore
-          .collection('posts')
+      DocumentSnapshot doc = await _posts
           .doc(postId)
           .get();
 
-      final authService = AuthService();
-      final currentUserRole = await authService.getUserRole(
-          FirebaseAuth.instance.currentUser!.uid);
-
-      if (doc['userId'] != userId && currentUserRole != 'admin') {
+      if (doc['userId'] != userId && !_canModerate) {
         return 'Would you like to report this post?';
       }
 
-      await _firestore
-          .collection('posts')
-          .doc(postId)
-          .delete();
-
-      await _firestore.collection('posts').doc(postId).delete();
+      await _posts.doc(postId).delete();
 
       return null;
     } catch (e) {
@@ -149,8 +147,7 @@ class ChatService {
     List<Mention> mentions = const [],
   }) async {
     try {
-      await _firestore
-          .collection('posts')
+      await _posts
           .doc(postId)
           .collection('comments')
           .add({
@@ -163,7 +160,7 @@ class ChatService {
       });
 
       // Increase comment count
-      await _firestore.collection('posts').doc(postId).update({
+      await _posts.doc(postId).update({
         'commentCount': FieldValue.increment(1),
       });
 
@@ -175,47 +172,40 @@ class ChatService {
 
   // Get comments for a post
   Stream<List<Map<String, dynamic>>> getCommentStream(String postId) {
-    return _firestore
-        .collection('posts')
+    return _posts
         .doc(postId)
         .collection('comments')
         .orderBy('createdAt', descending: false)
         .snapshots()
         .map((snapshot) {
-          return snapshot.docs
-              .map((doc) => {...doc.data(), 'commentId': doc.id})
-              .toList();
+      return snapshot.docs
+          .map((doc) => {...doc.data(), 'commentId': doc.id})
+          .toList();
     });
   }
 
   // Delete a comment (author or admin can delete)
   Future<String?> deleteComment(String postId, String commentId, String userId) async {
     try {
-      DocumentSnapshot doc = await _firestore
-          .collection('posts')
+      DocumentSnapshot doc = await _posts
           .doc(postId)
           .collection('comments')
           .doc(commentId)
           .get();
 
-      // Get current user's role
-      final authService = AuthService();
-      final currentUserRole = await authService.getUserRole(FirebaseAuth.instance.currentUser!.uid);
-
-      // Allow if user is the author OR admin
-      if(doc['userId'] != userId && currentUserRole != 'admin') {
+      // Allow if user is the author, an owner or a manager
+      if (doc['userId'] != userId && !_canModerate) {
         return 'Would you like to report this comment?';
       }
 
-      await _firestore
-          .collection('posts')
+      await _posts
           .doc(postId)
           .collection('comments')
           .doc(commentId)
           .delete();
 
       // Decrease comment count
-      await _firestore.collection('posts').doc(postId).update({
+      await _posts.doc(postId).update({
         'commentCount': FieldValue.increment(-1),
       });
 
@@ -229,8 +219,7 @@ class ChatService {
   Future<String?> likeComment(String postId, String commentId, String userId) async {
     try {
       log('Liking comment: $commentId');
-      DocumentSnapshot doc = await _firestore
-          .collection('posts')
+      DocumentSnapshot doc = await _posts
           .doc(postId)
           .collection('comments')
           .doc(commentId)
@@ -255,8 +244,7 @@ class ChatService {
         log('Liked comment');
       }
 
-      await _firestore
-          .collection('posts')
+      await _posts
           .doc(postId)
           .collection('comments')
           .doc(commentId)

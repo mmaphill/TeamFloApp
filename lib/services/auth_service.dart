@@ -5,6 +5,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import '../models/app_roles.dart';
 import '../models/belt_rank_model.dart';
 import '../models/competition_stats_model.dart';
+import 'gym_scope.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -17,7 +18,10 @@ class AuthService {
   // Get current user
   User? get currentUser => _auth.currentUser;
 
-  // Sign up with email and password
+  // Sign up with email and password.
+  // Every new account starts as a member. Staff roles are given later by
+  // an owner or manager through the setUserRole Cloud Function, so the app
+  // can never be used to sign yourself up as staff.
   Future<String?> signup({
     required String email,
     required String password,
@@ -124,10 +128,11 @@ class AuthService {
     required List<CompetitionStats> competitionStats,
   }) async {
     try {
-      // Check if current user is admin
+      // Only owners and managers may edit other members.
+      // ('admin' on older Team Flo accounts counts as owner.)
       String? currentRole = await getUserRole(_auth.currentUser!.uid);
-      if (currentRole != 'admin') {
-        return 'Only admins can edit other users';
+      if (!AppRoles.canManageMembers(currentRole)) {
+        return 'Only owners and managers can edit other members';
       }
 
       await _firestore.collection('users').doc(targetUid).update({
@@ -166,8 +171,8 @@ class AuthService {
       await _firestore.collection('users').doc(uid).delete();
 
       // Delete user's posts
-      final postsQuery = await _firestore
-          .collection('posts')
+      // PHASE 1 STEP 3: from this gym's posts (GymScope).
+      final postsQuery = await GymScope.col('posts')
           .where('userId', isEqualTo: uid)
           .get();
       for (var doc in postsQuery.docs) {
@@ -262,7 +267,7 @@ class AuthService {
   Future<String?> updateProfileFields(
       String uid,
       Map<String, dynamic> fields,
-  ) async {
+      ) async {
     try {
       await _firestore.collection('users').doc(uid).update(fields);
       return null; // successful update

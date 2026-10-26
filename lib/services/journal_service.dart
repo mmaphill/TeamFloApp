@@ -1,8 +1,17 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/journal_entry_model.dart';
+import 'gym_scope.dart';
 
 class JournalService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  // PHASE 1 STEP 3: journals stay under users/{uid}/journal (each person
+  // belongs to one gym). Each entry is tagged with its gym so the
+  // gym-wide technique list can be limited to this gym.
+  Map<String, dynamic> _withGym(JournalEntry entry) => {
+    ...entry.toMap(),
+    'gymId': GymScope.gymId,
+  };
 
   // Create or update journal entry
   Future<String?> saveJournalEntry(JournalEntry entry) async {
@@ -13,7 +22,7 @@ class JournalService {
             .collection('users')
             .doc(entry.userId)
             .collection('journal')
-            .add(entry.toMap());
+            .add(_withGym(entry));
         return null; // Success
       } else {
         // Update existing
@@ -22,7 +31,7 @@ class JournalService {
             .doc(entry.userId)
             .collection('journal')
             .doc(entry.entryId)
-            .update(entry.toMap());
+            .update(_withGym(entry));
         return null; // Success
       }
     } catch (e) {

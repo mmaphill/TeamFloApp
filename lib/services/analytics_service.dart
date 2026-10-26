@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../utils/log.dart';
+import 'gym_scope.dart';
 
 /// Wins or losses split by how the match ended
 typedef MethodBreakdown = ({int submissions, int points, int refDecisions});
@@ -482,9 +483,15 @@ class AnalyticsService {
   }
 
   // All unique techniques from the entire gym
+  // PHASE 1 STEP 3: once the gym is scoped, only journal entries tagged
+  // with this gym's ID (other gyms' techniques stay out of suggestions).
   Future<List<String>> getAllTechniquesFromGym() async {
     try {
-      final snapshot = await _firestore.collectionGroup('journal').get();
+      Query<Map<String, dynamic>> query = _firestore.collectionGroup('journal');
+      if (GymScope.isScoped) {
+        query = query.where('gymId', isEqualTo: GymScope.gymId);
+      }
+      final snapshot = await query.get();
 
       final all = <String>{};
       for (final doc in snapshot.docs) {

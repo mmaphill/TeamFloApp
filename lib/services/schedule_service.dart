@@ -1,16 +1,20 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';import '../models/class_history_model.dart';
-
+import 'package:firebase_auth/firebase_auth.dart';
+import '../models/class_history_model.dart';
 import '../models/class_schedule_model.dart';
 import '../utils/log.dart';
+import 'gym_scope.dart';
 
 class ScheduleService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+  // PHASE 1 STEP 3: classes and attendance belong to a gym.
+  CollectionReference<Map<String, dynamic>> get _classes => GymScope.col('classes');
+  CollectionReference<Map<String, dynamic>> get _history => GymScope.col('classHistory');
+
   // Get all classes
   Stream<List<ClassSchedule>> getClassesStream() {
-    return _firestore
-        .collection('classes')
+    return _classes
         .snapshots()
         .map((snapshot) {
       return snapshot.docs
@@ -40,7 +44,7 @@ class ScheduleService {
 
   Future<String?> _changeAttendance(String classId, String userId, {bool? join}) async {
     try {
-      final classRef = _firestore.collection('classes').doc(classId);
+      final classRef = _classes.doc(classId);
 
       await _firestore.runTransaction((transaction) async {
         // --- All reads first (Firestore transaction rule) ---
@@ -53,7 +57,7 @@ class ScheduleService {
         // fromMap drops sign-ups from past sessions
         final classSchedule = ClassSchedule.fromMap(data, classSnap.id);
 
-        final historyRef = _firestore.collection('classHistory').doc(
+        final historyRef = _history.doc(
           ClassHistoryRecord.buildId(classId, classSchedule.sessionDate, userId),
         );
         final historySnap = await transaction.get(historyRef);
@@ -102,8 +106,7 @@ class ScheduleService {
 
   // A member's full class history, newest first
   Stream<List<ClassHistoryRecord>> getUserHistoryStream(String userId) {
-    return _firestore
-        .collection('classHistory')
+    return _history
         .where('userId', isEqualTo: userId)
         .orderBy('sessionDate', descending: true)
         .snapshots()
@@ -115,7 +118,7 @@ class ScheduleService {
   // Get attendee details for a class (current session only)
   Future<List<Map<String, String>>> getClassAttendees(String classId) async {
     try {
-      final doc = await _firestore.collection('classes').doc(classId).get();
+      final doc = await _classes.doc(classId).get();
       final data = doc.data();
       if (data == null) return [];
 
@@ -147,7 +150,7 @@ class ScheduleService {
     required String instructor,
   }) async {
     try {
-      await _firestore.collection('classes').add({
+      await _classes.add({
         'className': className,
         'day': day,
         'startTime': startTime,
@@ -240,7 +243,7 @@ class ScheduleService {
   Future<void> clearAndSeedSchedule() async {
     try {
       // Delete all existing classes
-      QuerySnapshot existing = await _firestore.collection('classes').get();
+      QuerySnapshot existing = await _classes.get();
       for (var doc in existing.docs) {
         await doc.reference.delete();
       }
@@ -279,7 +282,7 @@ class ScheduleService {
 
       // Add all classes
       for (var classData in classes) {
-        await _firestore.collection('classes').add({
+        await _classes.add({
           ...classData,
           'capacity': 30,
           'attendees': [],
@@ -295,7 +298,7 @@ class ScheduleService {
 
   // Keep the original for future use
   Future<void> seedInitialSchedule() async {
-    QuerySnapshot existing = await _firestore.collection('classes').get();
+    QuerySnapshot existing = await _classes.get();
     if (existing.docs.isNotEmpty) {
       return;
     }

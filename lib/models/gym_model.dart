@@ -29,6 +29,7 @@ class GymModel {
   final String? instagramHandle;
   final String? ownerUid;
   final DateTime? createdAt;
+  final bool dataScoped;
 
   GymModel({
     required this.id,
@@ -41,6 +42,7 @@ class GymModel {
     this.instagramHandle,
     this.ownerUid,
     this.createdAt,
+    this.dataScoped = false,
   });
 
   static Map<String, bool> defaultModulesFor(String plan) {
@@ -82,6 +84,7 @@ class GymModel {
       instagramHandle: map['instagramHandle'] as String?,
       ownerUid: map['ownerUid'] as String?,
       createdAt: created is Timestamp ? created.toDate() : null,
+      dataScoped: map['dataScoped'] == true,
     );
   }
 
@@ -96,6 +99,7 @@ class GymModel {
       'instagramHandle': instagramHandle,
       'ownerUid': ownerUid,
       'createdAt': createdAt,
+      'dataScoped': dataScoped,
     };
   }
 }

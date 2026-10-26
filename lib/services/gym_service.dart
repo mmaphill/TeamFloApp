@@ -41,6 +41,9 @@ class GymService extends ChangeNotifier {
 
   bool get isStaff => AppRoles.isStaff(_role);
 
+  // True when this gym's data lives under gyms/{gymId}/
+  bool get dataScoped => _gym?.dataScoped ?? false;
+
   /// True if the gym has [module] turned on and returns false until that gym has loaded
   bool hasModule(String module) => _gym?.hasModule(module) ?? false;
 
@@ -67,7 +70,7 @@ class GymService extends ChangeNotifier {
     notifyListeners();
 
     _userSub = _firestore.collection('users').doc(user.uid).snapshots().listen(
-        (snapshot) => _onUserDoc(user, snapshot),
+      (snapshot) => _onUserDoc(user, snapshot),
       onError: (Object e) => _fail('Could not load your acciount: $e'),
     );
   }
@@ -85,7 +88,7 @@ class GymService extends ChangeNotifier {
     /// Role or gym changed on the server: the cloud Function updates the user's custom claim
     if (roleChanged || newGymId != _gymId) {
       user.getIdToken(true).catchError((Object e) {
-        log('Token  referesh failed: $e');
+        log('Token refresh failed: $e');
         return null;
       });
     }
