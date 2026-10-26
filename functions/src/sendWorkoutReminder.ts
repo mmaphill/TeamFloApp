@@ -4,6 +4,12 @@ import { sendToUser } from "./sendToUser";
 
 const TIME_ZONE = "America/New_York";
 
+// Start sending reminds 10 minutes after class has ended
+const REMINDER_DELAY_MINUTES = 10;
+
+// Don't send a reminder any longer than 1 hour after class has ended
+const LATE_LIMIT_MINUTES = 60;
+
 // Today's date in Eastern time as "yyyy-MM-dd" (e.g. "2026-10-12").
 // Matches the sessionDate format the app writes.
 function easternDateString(date: Date): string {
@@ -58,9 +64,15 @@ function parseTimeToMinutes(time: string): number | null {
     return hour * 60 + Number(match[2]);
 }
 
+// Most recent journal entry
+function journalSavedAt(entry: admin.firestore.DocumentData): Date | null {
+    const stamp = entry.updatedAt ?? entry.createdAt;
+    return stamp instanceof admin.firestore.Timestamp ? stamp.toDate() : null;
+}
+
 export const sendWorkoutReminder = onSchedule(
     {
-        schedule: "0 20 * * *",
+        schedule: "*/5 7-20 * * *",
         timeZone: TIME_ZONE,
     },
     async () => {
@@ -75,66 +87,81 @@ export const sendWorkoutReminder = onSchedule(
             .where("sessionDate", "==", today)
             .get();
 
-        console.log(`Found ${historySnapshot.size} classHistory records for ${today}`);
+        if (historySnapshot.empty) return;
 
-        // One reminder per person, even if they trained twice today
-        const toRemind = new Map<string, { classId: string; className: string }>();
-
+        // Records whose class ended at least 10 minutes ago and hasn't been handled
+        const due: admin.firestore.QueryDocumentSnapshot[] = [];
         for (const doc of historySnapshot.docs) {
             const record = doc.data();
-            const userId: string | undefined = record.userId;
-            if (!userId) continue;
+            if (!record.userId) continue;
 
-            // Marked absent by staff
-            if (record.status === "noShow") continue;
+            if (record.remnderCheckAt) continue; // already got their reminder for said class
 
-            // Class hasn't finished yet (e.g. a class ending after 8 PM)
+            if (record.status === 'noShow') continue; // signed up but didn't show up
+
             const endMinutes = parseTimeToMinutes(record.endTime ?? "");
-            if (endMinutes !== null && endMinutes > nowMinutes) continue;
+            if (endMinutes === null) continue;
 
-            if (!toRemind.has(userId)) {
-                toRemind.set(userId, {
-                    classId: record.classId,
-                    className: record.className || "class",
-                });
-            }
+            const minutesSinceEnd = nowMinutes - endMinutes;
+            if (minutesSinceEnd < REMINDER_DELAY_MINUTES) continue; // too early for reminder
+            if (minutesSinceEnd > LATE_LIMIT_MINUTES) continue; // too late for reminder
+
+            due.push(doc);
         }
 
-        console.log(`${toRemind.size} members trained today`);
+        if (due.length === 0) return;
 
-        // Journal entries dated today (Eastern) count as "already logged"
+        console.log(`${due.length} class records due for a reminder check on ${today}`);
+
+        // Today's date range in Easter time
         const dayStart = easternMidnight(today, now);
-        const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+        const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 1000);
         const startStamp = admin.firestore.Timestamp.fromDate(dayStart);
         const endStamp = admin.firestore.Timestamp.fromDate(dayEnd);
 
         let sent = 0;
 
-        for (const [userId, info] of toRemind) {
+        for (const doc of due) {
+            const record = doc.data();
+            const userId: string = record.userId;
+            let sentNow = false;
+
             try {
+                const startMinutes = parseTimeToMinutes(record.startTime ?? "") ?? 0;
+                const classStart = new Date(dayStart.getTime() + startMinutes * 60 * 1000);
+
                 const journalQuery = await db
                     .collection("users")
                     .doc(userId)
                     .collection("journal")
                     .where("date", ">=", startStamp)
-                    .where("date", "<", endStamp)
-                    .limit(1)
+                    .where("date", "<=", endStamp)
                     .get();
 
-                if (!journalQuery.empty) {
-                    console.log(`User ${userId} already logged today`);
-                    continue;
+                const alreadyLogged = journalQuery.docs.some((entry) => {
+                    const savedAt = journalSavedAt(entry.data());
+                    return savedAt === null || savedAt >= classStart;
+                })
+
+                if (alreadyLogged) {
+                    console.log(`User ${userId} already logged ${record.className}`);
+                } else {
+                    await sendToUser(
+                        userId,
+                        "Log your workout",
+                        `Don't forget to log your session from ${record.className} || "class"`,
+                        {type: "workout_reminder", classId: record.classId}
+                    );
+                    sentNow = true;
+                    sent++;
                 }
 
-                await sendToUser(
-                    userId,
-                    "Log your workout",
-                    `Don't forget to log your session from ${info.className}`,
-                    { type: "workout_reminder", classId: info.classId }
-                );
-                sent++;
+                await doc.ref.update({
+                    reminderCheckAt: admin.firestore.FieldValue.serverTimestamp(),
+                    reminderSent: sentNow,
+                });
             } catch (error) {
-                console.error(`Error processing reminder for ${userId}:`, error);
+                console.log(`Error processing reminder for ${userId}:`, error);
             }
         }
 

@@ -16,6 +16,7 @@ class StatsScreen extends StatefulWidget {
 }
 
 class _StatsScreenState extends State<StatsScreen> {
+  final AnalyticsService _analyticsService = AnalyticsService();
   static const int _maxSummaries = 3;
 
   late Future<Map<String, dynamic>> statsFuture;
@@ -40,7 +41,7 @@ class _StatsScreenState extends State<StatsScreen> {
     final uid = FirebaseAuth.instance.currentUser?.uid;
 
     if (uid != null) {
-      AnalyticsService().getSummaryPreference(uid).then((prefs) {
+      _analyticsService.getSummaryPreference(uid).then((prefs) {
         if (!mounted) return;
         // Ignore old/renamed entries that no longer match a card
         final valid = prefs
@@ -77,31 +78,32 @@ class _StatsScreenState extends State<StatsScreen> {
   }
 
   Future<Map<String, dynamic>> _loadStats() async {
-    final analyticsService = AnalyticsService();
     final uid = FirebaseAuth.instance.currentUser?.uid;
 
     if (uid == null) {
       throw Exception('User not authenticated');
     }
 
-    final journalEntries = await analyticsService.getJournalEntries(uid);
-    final userProfile = await analyticsService.getUserProfile(uid);
+    final journalEntries = await _analyticsService.getJournalEntries(uid);
+    final userProfile = await _analyticsService.getUserProfile(uid);
 
-    final types = analyticsService.aggregateTypes(journalEntries);
-    final submissions = analyticsService.aggregateSubmissions(journalEntries);
-    final positions = analyticsService.getPositionFrequency(journalEntries);
-    final techniques = analyticsService.aggregateTechniques(journalEntries);
-    final topTechniques = analyticsService.getTopTechniques(journalEntries, limit: 5);
-    final metrics = analyticsService.getAverageMetrics(journalEntries);
+    final types = _analyticsService.aggregateTypes(journalEntries);
+    final submissions = _analyticsService.aggregateSubmissions(journalEntries);
+    final topSubmissions = _analyticsService.getTopSubmissions(journalEntries, limit: 5);
+    final topCaughtWith = _analyticsService.getTopCaughtWith(journalEntries, limit: 5);
+    final positions = _analyticsService.getPositionFrequency(journalEntries);
+    final techniques = _analyticsService.aggregateTechniques(journalEntries);
+    final topTechniques = _analyticsService.getTopTechniques(journalEntries, limit: 5);
+    final metrics = _analyticsService.getAverageMetrics(journalEntries);
 
-    final competitionStats = analyticsService.parseCompetitionStats(userProfile);
-    final overallWinRate = analyticsService.calculateOverallWinRate(competitionStats);
-    final totalMatches = analyticsService.getTotalMatches(competitionStats);
-    final winBreakdown = analyticsService.getWinBreakdown(competitionStats);
-    final lossBreakdown = analyticsService.getLossBreakdown(competitionStats);
-    final statsByFormat = analyticsService.getStatsByFormat(competitionStats);
-    final statsByRank = analyticsService.getStatsByRank(competitionStats);
-    final submissionSuccessRate = analyticsService.calculateSubmissionSuccessRate(submissions);
+    final competitionStats = _analyticsService.parseCompetitionStats(userProfile);
+    final overallWinRate = _analyticsService.calculateOverallWinRate(competitionStats);
+    final totalMatches = _analyticsService.getTotalMatches(competitionStats);
+    final winBreakdown = _analyticsService.getWinBreakdown(competitionStats);
+    final lossBreakdown = _analyticsService.getLossBreakdown(competitionStats);
+    final statsByFormat = _analyticsService.getStatsByFormat(competitionStats);
+    final statsByRank = _analyticsService.getStatsByRank(competitionStats);
+    final submissionSuccessRate = _analyticsService.calculateSubmissionSuccessRate(submissions);
 
     return {
       'journalEntries': journalEntries,
@@ -111,6 +113,8 @@ class _StatsScreenState extends State<StatsScreen> {
       submissionAttempts: submissions.submissionAttempts,
       timesSubmitted: submissions.timesSubmitted,
       ),
+      'topSubmissions': topSubmissions,
+      'topCaughtWith': topCaughtWith,
       'positions': positions,
       'techniques': (
       techniquesByType: techniques.techniquesByType,
@@ -147,7 +151,7 @@ class _StatsScreenState extends State<StatsScreen> {
 
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid != null) {
-      await AnalyticsService().saveSummaryPreference(uid, selectedSummaries);
+      await _analyticsService.saveSummaryPreference(uid, selectedSummaries);
     }
   }
 
@@ -202,6 +206,8 @@ class _StatsScreenState extends State<StatsScreen> {
           final topTechniques = topTechniquesRaw.cast<Map<String, dynamic>>();
           final metrics = stats['metrics'] as AverageMetrics;
           final submissionSuccessRate = stats['submissionSuccessRate'] as double;
+          final topSubmissions = stats['topSubmissions'] as List<RankedItem>;
+          final topCaughtWith = stats['topCaughtWith'] as List<RankedItem>;
           // competitions
           final overallWinRate = stats['overallWinRate'] as double;
           final totalMatches = stats['totalMatches'] as int;
@@ -266,34 +272,34 @@ class _StatsScreenState extends State<StatsScreen> {
                     const SizedBox(height: 32),
 
                     // Competition Stats Summaries
-                    Text(
-                      'Competition Stats',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _summaryItem(
-                          'Competitions',
-                          '$totalMatches',
-                          'total matches',
-                        ),
-                        _summaryItem(
-                          'Submissions',
-                          '${winBreakdown.submissions}',
-                          'in comp',
-                        ),
-                        _summaryItem(
-                          'Point Wins',
-                          '${winBreakdown.points}',
-                          'in comps',
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 32),
+                    // Text(
+                    //   'Competition Stats',
+                    //   style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    //     fontWeight: FontWeight.bold,
+                    //   ),
+                    // ),
+                    // const SizedBox(height: 16),
+                    // Row(
+                    //   crossAxisAlignment: CrossAxisAlignment.start,
+                    //   children: [
+                    //     _summaryItem(
+                    //       'Competitions',
+                    //       '$totalMatches',
+                    //       'total matches',
+                    //     ),
+                    //     _summaryItem(
+                    //       'Submissions',
+                    //       '${winBreakdown.submissions}',
+                    //       'in comp',
+                    //     ),
+                    //     _summaryItem(
+                    //       'Point Wins',
+                    //       '${winBreakdown.points}',
+                    //       'in comps',
+                    //     ),
+                    //   ],
+                    // ),
+                    // const SizedBox(height: 32),
 
                     // Training Analytics
                     Text(
@@ -308,6 +314,18 @@ class _StatsScreenState extends State<StatsScreen> {
                     if (positions.isNotEmpty)
                       _buildTopPositions(positions),
                     const SizedBox(height: 24),
+
+                    // Top Submissions
+                    if (topSubmissions.isNotEmpty) ...[
+                      _buildRankedChips('Top Submissions', topSubmissions, Colors.green),
+                      const SizedBox(height: 24),
+                    ],
+
+                    // Top Submitted
+                    if (topCaughtWith.isNotEmpty) ...[
+                      _buildRankedChips('Top Submissions Caught With', topCaughtWith, Colors.red),
+                      const SizedBox(height: 24),
+                    ],
 
                     // Type breakdown
                     if (types.isNotEmpty)
@@ -868,5 +886,41 @@ class _StatsScreenState extends State<StatsScreen> {
         }),
       ],
     );
+  }
+
+  Widget _buildRankedChips(String title, List<RankedItem> items, Color color) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (int i = 0; i < items.length; i++)
+              Chip(
+                label: Text('${_titleCase(items[i].name)} (${items[i].count})'),
+                backgroundColor: color.withValues(alpha: i == 0 ? 0.25 : 0.1),
+                side: BorderSide(color: color.withValues(alpha: 0.3)),
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  String _titleCase(String text) {
+    return text
+        .split(' ')
+        .where((word) => word.isNotEmpty)
+        .map((word) => word[0]
+        .toUpperCase() + word.substring(1))
+        .join(' ');
   }
 }

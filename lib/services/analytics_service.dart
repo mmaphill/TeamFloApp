@@ -4,16 +4,107 @@ import '../utils/log.dart';
 /// Wins or losses split by how the match ended
 typedef MethodBreakdown = ({int submissions, int points, int refDecisions});
 
-/// Average Journal metics across all entries
-typedef AverageMetrics = ({
-  double avgEnergy,
-  double avgSleep,
-  double avgWater,
-  double avgFood,
+/// Total wins and losses for a group (format, rank, etc.)
+typedef WinLoss = ({int wins, int losses});
+
+/// Journal submission totals across all entries
+typedef SubmissionTotals = ({
+int totalSubmissions,
+int submissionAttempts,
+int timesSubmitted,
 });
+
+/// Average journal metrics across all entries
+typedef AverageMetrics = ({
+double avgEnergy,
+double avgSleep,
+double avgWater,
+double avgFood,
+});
+
+/// One item in a ranked list (technique, submission, etc.)
+typedef RankedItem = ({String name, int count});
 
 class AnalyticsService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  // Firestore field names for submission lists.
+  // These MUST match the keys used in JournalEntry.toMap().
+  static const String _madeSubmissionsKey = 'madeSubmissions';
+  static const String _caughtSubmissionsKey = 'caughtSubmissions';
+
+  // ===========================================================================
+  // Reading helpers — safe ways to pull values out of Firestore maps
+  // ===========================================================================
+
+  /// Reads a number safely. Missing or wrong type returns 0.
+  static int _int(Map<String, dynamic> map, String key) {
+    return (map[key] as num?)?.toInt() ?? 0;
+  }
+
+  /// Reads the entry date safely. Returns null if missing.
+  static DateTime? _dateOf(Map<String, dynamic> entry) {
+    final raw = entry['date'];
+    if (raw is Timestamp) return raw.toDate();
+    if (raw is DateTime) return raw;
+    return null;
+  }
+
+  /// Reads a list of names. Handles a List, the old Map format,
+  /// or a single String, so older entries don't break anything.
+  static List<String> _readStringList(dynamic data) {
+    if (data is List) {
+      return data.whereType<String>().toList();
+    }
+    if (data is Map) {
+      return data.values
+          .whereType<List>()
+          .expand((list) => list)
+          .whereType<String>()
+          .toList();
+    }
+    if (data is String) {
+      return [data];
+    }
+    return [];
+  }
+
+  /// Cleans a name so "Armbar", "armbar " and "ARMBAR" count as one.
+  static String _normalize(String value) => value.trim().toLowerCase();
+
+  // ===========================================================================
+  // Counting helpers — reusable for any list of names
+  // ===========================================================================
+
+  /// Counts how many times each name shows up. Blank names are skipped.
+  static Map<String, int> _countFrequency(Iterable<String> items) {
+    final counts = <String, int>{};
+    for (final raw in items) {
+      final item = _normalize(raw);
+      if (item.isEmpty) continue;
+      counts[item] = (counts[item] ?? 0) + 1;
+    }
+    return counts;
+  }
+
+  /// Sorts any frequency map from most to least common and keeps the top N.
+  /// Ties are sorted alphabetically so the order stays stable.
+  List<RankedItem> topN(Map<String, int> frequency, {int limit = 5}) {
+    final sorted = frequency.entries.toList()
+      ..sort((a, b) {
+        final byCount = b.value.compareTo(a.value);
+        return byCount != 0 ? byCount : a.key.compareTo(b.key);
+      });
+
+    return sorted
+        .take(limit)
+        .map((e) => (name: e.key, count: e.value))
+        .toList();
+  }
+
+  // ===========================================================================
+  // Firestore reads
+  // ===========================================================================
 
   // Fetch all journal entries for a user
   Future<List<Map<String, dynamic>>> getJournalEntries(String uid) async {
@@ -43,18 +134,20 @@ class AnalyticsService {
     }
   }
 
-  // Count classes this month
+  // ===========================================================================
+  // Journal analytics
+  // ===========================================================================
+
+  // Count journal entries this month
   int getClassesThisMonth(List<Map<String, dynamic>> entries) {
     final now = DateTime.now();
-    return entries
-        .where((e) {
-      final date = (e['date'] as Timestamp).toDate();
-      return date.year == now.year && date.month == now.month;
-    })
-        .length;
+    return entries.where((e) {
+      final date = _dateOf(e);
+      return date != null && date.year == now.year && date.month == now.month;
+    }).length;
   }
 
-  // Aggregate all type counts across entries
+  // Count how often each type (Pass, Sweep, etc.) was logged
   Map<String, int> aggregateTypes(List<Map<String, dynamic>> entries) {
     final types = {
       'Pass': 0,
@@ -65,104 +158,168 @@ class AnalyticsService {
     };
 
     for (final entry in entries) {
-      final type = entry['type'] as String?;
+      // Model saves this field as 'types', not 'type'
+      final type = entry['types'] as String?;
       if (type != null && types.containsKey(type)) {
-        types[type] = (types[type] ?? 0) + 1;
+        types[type] = types[type]! + 1;
       }
     }
 
     return types;
   }
 
-  // Aggregate submission counts (total submitted + times submitted)
-  ({int totalSubmissions, int submissionAttempts, int timesSubmitted}) aggregateSubmissions(
-      List<Map<String, dynamic>> entries,
-      ) {
+  // Total submissions, attempts, and times submitted across all entries
+  SubmissionTotals aggregateSubmissions(List<Map<String, dynamic>> entries) {
     int totalSubmissions = 0;
     int submissionAttempts = 0;
     int timesSubmitted = 0;
 
     for (final entry in entries) {
-      totalSubmissions += entry['submissions'] as int? ?? 0;
-      submissionAttempts += entry['submissionAttempts'] as int? ?? 0;
-      timesSubmitted += entry['timesSubmitted'] as int? ?? 0;
+      totalSubmissions += _int(entry, 'submissions');
+      submissionAttempts += _int(entry, 'submissionAttempts');
+      timesSubmitted += _int(entry, 'timesSubmitted');
     }
 
-    return (totalSubmissions: totalSubmissions, submissionAttempts: submissionAttempts, timesSubmitted: timesSubmitted);
+    return (
+    totalSubmissions: totalSubmissions,
+    submissionAttempts: submissionAttempts,
+    timesSubmitted: timesSubmitted,
+    );
   }
 
-  // Get position frequency
+  double calculateSubmissionSuccessRate(SubmissionTotals submissions) {
+    if (submissions.submissionAttempts == 0) return 0.0;
+    return submissions.totalSubmissions / submissions.submissionAttempts;
+  }
+
+  // How often each position was logged
   Map<String, int> getPositionFrequency(List<Map<String, dynamic>> entries) {
-    final positionCounts = <String, int>{};
-
-    for (final entry in entries) {
-      final position = entry['position'] as String?;
-      if (position != null && position.isNotEmpty) {
-        positionCounts[position] = (positionCounts[position] ?? 0) + 1;
-      }
-    }
-
-    return positionCounts;
+    final positions = entries
+        .map((e) => e['position'])
+        .whereType<String>();
+    return _countFrequency(positions);
   }
 
-  // Get attendance trend (classes per week over last N weeks)
+  // How often each submission was landed on training partners
+  Map<String, int> getSubmissionFrequency(List<Map<String, dynamic>> entries) {
+    final names = entries.expand((e) => _readStringList(e[_madeSubmissionsKey]));
+    return _countFrequency(names);
+  }
+
+  // How often each submission caught the user
+  Map<String, int> getSubmittedFrequency(List<Map<String, dynamic>> entries) {
+    final names = entries.expand((e) => _readStringList(e[_caughtSubmissionsKey]));
+    return _countFrequency(names);
+  }
+
+  // Top N submissions landed
+  List<RankedItem> getTopSubmissions(
+      List<Map<String, dynamic>> entries, {
+        int limit = 5,
+      }) {
+    return topN(getSubmissionFrequency(entries), limit: limit);
+  }
+
+  // Top N submissions the user got caught with
+  List<RankedItem> getTopCaughtWith(
+      List<Map<String, dynamic>> entries, {
+        int limit = 5,
+      }) {
+    return topN(getSubmittedFrequency(entries), limit: limit);
+  }
+
+  // Get attendance trend (entries per week over last N weeks)
   List<({int weekNumber, int classCount})> getAttendanceTrend(
       List<Map<String, dynamic>> entries, {
         int weeksBack = 8,
       }) {
     final now = DateTime.now();
-    final weekData = <int, int>{};
-
-    for (int i = 0; i < weeksBack; i++) {
-      weekData[i] = 0;
-    }
+    final weekData = List<int>.filled(weeksBack, 0);
 
     for (final entry in entries) {
-      final date = (entry['date'] as Timestamp).toDate();
-      final daysDiff = now.difference(date).inDays;
-      final weekNumber = daysDiff ~/ 7;
+      final date = _dateOf(entry);
+      if (date == null) continue;
 
-      if (weekNumber < weeksBack) {
-        weekData[weekNumber] = (weekData[weekNumber] ?? 0) + 1;
+      final weekNumber = now.difference(date).inDays ~/ 7;
+      if (weekNumber >= 0 && weekNumber < weeksBack) {
+        weekData[weekNumber]++;
       }
     }
 
-    // Convert to sorted list (oldest week first for chart)
+    // Oldest week first for the chart
     return List.generate(
       weeksBack,
-          (i) => (weekNumber: i, classCount: weekData[i] ?? 0),
+          (i) => (weekNumber: i, classCount: weekData[i]),
     ).reversed.toList();
   }
 
-  // Calculate average metrics (energy, sleep, water, food)
-  ({
-  double avgEnergy,
-  double avgSleep,
-  double avgWater,
-  double avgFood,
-  }) getAverageMetrics(List<Map<String, dynamic>> entries) {
-    if (entries.isEmpty) {
-      return (avgEnergy: 0, avgSleep: 0, avgWater: 0, avgFood: 0);
-    }
-
-    double totalEnergy = 0;
-    double totalSleep = 0;
-    double totalWater = 0;
-    double totalFood = 0;
-
-    for (final entry in entries) {
-      totalEnergy += entry['energy'] as int? ?? 0;
-      totalSleep += entry['sleep'] as int? ?? 0;
-      totalWater += entry['water'] as int? ?? 0;
-      totalFood += entry['food'] as int? ?? 0;
+  // Average daily metrics. A value of 0 means "not set", so it's skipped.
+  AverageMetrics getAverageMetrics(List<Map<String, dynamic>> entries) {
+    double averageOf(String key) {
+      final values = entries.map((e) => _int(e, key)).where((v) => v > 0);
+      if (values.isEmpty) return 0;
+      return values.reduce((a, b) => a + b) / values.length;
     }
 
     return (
-    avgEnergy: totalEnergy / entries.length,
-    avgSleep: totalSleep / entries.length,
-    avgWater: totalWater / entries.length,
-    avgFood: totalFood / entries.length,
+    avgEnergy: averageOf('energy'),
+    avgSleep: averageOf('sleep'),
+    avgWater: averageOf('water'),
+    avgFood: averageOf('food'),
     );
+  }
+
+  // ===========================================================================
+  // Competition analytics
+  // ===========================================================================
+
+  /// Reads the three win counts from one competition record.
+  static MethodBreakdown _winsOf(Map<String, dynamic> stats) => (
+  submissions: _int(stats, 'submissionWins'),
+  points: _int(stats, 'pointWins'),
+  refDecisions: _int(stats, 'refDecisionWins'),
+  );
+
+  /// Reads the three loss counts from one competition record.
+  static MethodBreakdown _lossesOf(Map<String, dynamic> stats) => (
+  submissions: _int(stats, 'submissionLosses'),
+  points: _int(stats, 'pointLosses'),
+  refDecisions: _int(stats, 'refDecisionLosses'),
+  );
+
+  static int _totalOf(MethodBreakdown b) =>
+      b.submissions + b.points + b.refDecisions;
+
+  static MethodBreakdown _addBreakdowns(MethodBreakdown a, MethodBreakdown b) => (
+  submissions: a.submissions + b.submissions,
+  points: a.points + b.points,
+  refDecisions: a.refDecisions + b.refDecisions,
+  );
+
+  static const MethodBreakdown _emptyBreakdown =
+  (submissions: 0, points: 0, refDecisions: 0);
+
+  /// Groups wins and losses by any field (format, rank, etc.)
+  static Map<String, WinLoss> _groupWinLoss(
+      List<Map<String, dynamic>> competitionStats,
+      String groupKey,
+      String fallback,
+      ) {
+    final grouped = <String, WinLoss>{};
+
+    for (final stats in competitionStats) {
+      final group = stats[groupKey] as String? ?? fallback;
+      final wins = _totalOf(_winsOf(stats));
+      final losses = _totalOf(_lossesOf(stats));
+
+      final current = grouped[group] ?? (wins: 0, losses: 0);
+      grouped[group] = (
+      wins: current.wins + wins,
+      losses: current.losses + losses,
+      );
+    }
+
+    return grouped;
   }
 
   // Parse competition stats from user profile
@@ -175,181 +332,71 @@ class AnalyticsService {
     return competitionStats.cast<Map<String, dynamic>>();
   }
 
-  // Calculate overall win rate across all formats and ranks
+  // Overall win rate across all formats and ranks
   double calculateOverallWinRate(List<Map<String, dynamic>> competitionStats) {
-    if (competitionStats.isEmpty) return 0.0;
-
-    int totalWins = 0;
-    int totalMatches = 0;
-
-    for (final stats in competitionStats) {
-      final submissionWins = stats['submissionWins'] as int? ?? 0;
-      final pointWins = stats['pointWins'] as int? ?? 0;
-      final refDecisionWins = stats['refDecisionWins'] as int? ?? 0;
-      final submissionLosses = stats['submissionLosses'] as int? ?? 0;
-      final pointLosses = stats['pointLosses'] as int? ?? 0;
-      final refDecisionLosses = stats['refDecisionLosses'] as int? ?? 0;
-
-      totalWins += submissionWins + pointWins + refDecisionWins;
-      totalMatches +=
-          submissionWins +
-              pointWins +
-              refDecisionWins +
-              submissionLosses +
-              pointLosses +
-              refDecisionLosses;
-    }
-
+    final totalMatches = getTotalMatches(competitionStats);
     if (totalMatches == 0) return 0.0;
+
+    final totalWins = _totalOf(getWinBreakdown(competitionStats));
     return totalWins / totalMatches;
   }
 
-  // Get total points from competition
-  // int getTotalPoints(List<Map<String, dynamic>> competitionStats) {
-  //   int total = 0;
-  //   for (final stats in competitionStats) {
-  //     final
-  //   }
-  // }
-
-  // Get total competition count
+  // Total number of competition matches
   int getTotalMatches(List<Map<String, dynamic>> competitionStats) {
-    int total = 0;
-    for (final stats in competitionStats) {
-      final submissionWins = stats['submissionWins'] as int? ?? 0;
-      final pointWins = stats['pointWins'] as int? ?? 0;
-      final refDecisionWins = stats['refDecisionWins'] as int? ?? 0;
-      final submissionLosses = stats['submissionLosses'] as int? ?? 0;
-      final pointLosses = stats['pointLosses'] as int? ?? 0;
-      final refDecisionLosses = stats['refDecisionLosses'] as int? ?? 0;
-
-      total +=
-          submissionWins +
-              pointWins +
-              refDecisionWins +
-              submissionLosses +
-              pointLosses +
-              refDecisionLosses;
-    }
-    return total;
+    return _totalOf(getWinBreakdown(competitionStats)) +
+        _totalOf(getLossBreakdown(competitionStats));
   }
 
-  // Get win breakdown by method (submission, points, ref decision)
-  ({int submissions, int points, int refDecisions}) getWinBreakdown(
+  // Wins split by method (submission, points, ref decision)
+  MethodBreakdown getWinBreakdown(List<Map<String, dynamic>> competitionStats) {
+    return competitionStats
+        .map(_winsOf)
+        .fold(_emptyBreakdown, _addBreakdowns);
+  }
+
+  // Losses split by method
+  MethodBreakdown getLossBreakdown(List<Map<String, dynamic>> competitionStats) {
+    return competitionStats
+        .map(_lossesOf)
+        .fold(_emptyBreakdown, _addBreakdowns);
+  }
+
+  // Wins/losses by format (Gi vs No Gi)
+  Map<String, WinLoss> getStatsByFormat(
       List<Map<String, dynamic>> competitionStats,
       ) {
-    int submissions = 0;
-    int points = 0;
-    int refDecisions = 0;
-
-    for (final stats in competitionStats) {
-      submissions += stats['submissionWins'] as int? ?? 0;
-      points += stats['pointWins'] as int? ?? 0;
-      refDecisions += stats['refDecisionWins'] as int? ?? 0;
-    }
-
-    return (submissions: submissions, points: points, refDecisions: refDecisions);
+    return _groupWinLoss(competitionStats, 'format', 'Gi');
   }
 
-  // Get loss breakdown by method
-  ({int submissions, int points, int refDecisions}) getLossBreakdown(
+  // Wins/losses by rank (belt level)
+  Map<String, WinLoss> getStatsByRank(
       List<Map<String, dynamic>> competitionStats,
       ) {
-    int submissions = 0;
-    int points = 0;
-    int refDecisions = 0;
-
-    for (final stats in competitionStats) {
-      submissions += stats['submissionLosses'] as int? ?? 0;
-      points += stats['pointLosses'] as int? ?? 0;
-      refDecisions += stats['refDecisionLosses'] as int? ?? 0;
-    }
-
-    return (submissions: submissions, points: points, refDecisions: refDecisions);
+    return _groupWinLoss(competitionStats, 'rank', 'Unknown');
   }
 
-  // Get stats by format (Gi vs No Gi)
-  Map<String, ({int wins, int losses})> getStatsByFormat(
-      List<Map<String, dynamic>> competitionStats,
-      ) {
-    final formatStats = <String, ({int wins, int losses})>{};
+  // ===========================================================================
+  // Display formatting
+  // ===========================================================================
 
-    for (final stats in competitionStats) {
-      final format = stats['format'] as String? ?? 'Gi';
-      final submissionWins = stats['submissionWins'] as int? ?? 0;
-      final pointWins = stats['pointWins'] as int? ?? 0;
-      final refDecisionWins = stats['refDecisionWins'] as int? ?? 0;
-      final submissionLosses = stats['submissionLosses'] as int? ?? 0;
-      final pointLosses = stats['pointLosses'] as int? ?? 0;
-      final refDecisionLosses = stats['refDecisionLosses'] as int? ?? 0;
-
-      final wins = submissionWins + pointWins + refDecisionWins;
-      final losses = submissionLosses + pointLosses + refDecisionLosses;
-
-      if (formatStats.containsKey(format)) {
-        final current = formatStats[format]!;
-        formatStats[format] = (
-        wins: current.wins + wins,
-        losses: current.losses + losses,
-        );
-      } else {
-        formatStats[format] = (wins: wins, losses: losses);
-      }
-    }
-
-    return formatStats;
-  }
-
-  // Get stats by rank (belt level)
-  Map<String, ({int wins, int losses})> getStatsByRank(
-      List<Map<String, dynamic>> competitionStats,
-      ) {
-    final rankStats = <String, ({int wins, int losses})>{};
-
-    for (final stats in competitionStats) {
-      final rank = stats['rank'] as String? ?? 'Unknown';
-      final submissionWins = stats['submissionWins'] as int? ?? 0;
-      final pointWins = stats['pointWins'] as int? ?? 0;
-      final refDecisionWins = stats['refDecisionWins'] as int? ?? 0;
-      final submissionLosses = stats['submissionLosses'] as int? ?? 0;
-      final pointLosses = stats['pointLosses'] as int? ?? 0;
-      final refDecisionLosses = stats['refDecisionLosses'] as int? ?? 0;
-
-      final wins = submissionWins + pointWins + refDecisionWins;
-      final losses = submissionLosses + pointLosses + refDecisionLosses;
-
-      if (rankStats.containsKey(rank)) {
-        final current = rankStats[rank]!;
-        rankStats[rank] = (
-        wins: current.wins + wins,
-        losses: current.losses + losses,
-        );
-      } else {
-        rankStats[rank] = (wins: wins, losses: losses);
-      }
-    }
-
-    return rankStats;
-  }
-
-  double calculateSubmissionSuccessRate(
-    ({int totalSubmissions, int submissionAttempts, int timesSubmitted}) submissions,
-  ){
-    if (submissions.submissionAttempts == 0) return 0.0;
-    return submissions.totalSubmissions / submissions.submissionAttempts;
-  }
-
-  // Format percentage for display
   String formatPercentage(double value) {
     return '${(value * 100).toStringAsFixed(0)}%';
   }
 
-  // Format number for display
   String formatNumber(int value) {
     return value.toString();
   }
 
-  // Save user's preferred summary stats
+  // ===========================================================================
+  // Summary preferences
+  // ===========================================================================
+
+  static const List<String> _defaultSummary = [
+    'Classes',
+    'Submissions',
+    'SubmissionSuccessRate',
+  ];
+
   Future<void> saveSummaryPreference(String uid, List<String> selectedStats) async {
     try {
       await _firestore.collection('users').doc(uid).update({
@@ -360,119 +407,96 @@ class AnalyticsService {
     }
   }
 
-  // Get user's preferred summary stats (default to all three)
   Future<List<String>> getSummaryPreference(String uid) async {
     try {
       final snapshot = await _firestore.collection('users').doc(uid).get();
       final preference = snapshot.data()?['summaryPreference'] as List?;
-      return preference?.cast<String>() ?? ['Classes', 'Submissions', 'SubmissionSuccessRate'];
+      return preference?.cast<String>() ?? _defaultSummary;
     } catch (e) {
       log('Error fetching summary preference: $e');
-      return ['Classes', 'Submissions', 'SubmissionSuccessRate'];
+      return _defaultSummary;
     }
   }
 
-  // Aggregate techniques by type with metrics
-  ({
-    Map<String, Map<String, int>> techniquesByType,
-    Map<String, int> techniqueFrequency,
-    String? mostUsedTechnique,
-    double techniqueDiversity,
-  }) aggregateTechniques(List<Map<String, dynamic>> entries) {
+  // ===========================================================================
+  // Technique analytics
+  // ===========================================================================
 
+  ({
+  Map<String, Map<String, int>> techniquesByType,
+  Map<String, int> techniqueFrequency,
+  String? mostUsedTechnique,
+  double techniqueDiversity,
+  }) aggregateTechniques(List<Map<String, dynamic>> entries) {
     final techniquesByType = <String, Map<String, int>>{};
-    final techniqueFrequency = <String, int>{};
+    final allTechniques = <String>[];
 
     for (final entry in entries) {
-      final techniques = entry['techniques'] as Map<String, dynamic>? ?? {};
+      final techniques = entry['techniques'];
+      if (techniques is! Map) continue;
 
-      for (final typeEntry in techniques.entries) {
-        final type = typeEntry.key;
-        final techniqueList = (typeEntry.value as List?)?.cast<String>() ?? [];
+      techniques.forEach((type, value) {
+        final list = _readStringList(value);
+        allTechniques.addAll(list);
 
-        if (!techniquesByType.containsKey(type)) {
-          techniquesByType[type] = {};
-        }
-
-        for (final technique in techniqueList) {
-          techniquesByType[type]![technique] = (techniquesByType[type]![technique] ?? 0) + 1;
-
-          techniqueFrequency[technique] = (techniqueFrequency[technique] ?? 0) + 1;
-        }
-      }
+        final typeCounts = _countFrequency(list);
+        final existing = techniquesByType.putIfAbsent(type.toString(), () => {});
+        typeCounts.forEach((name, count) {
+          existing[name] = (existing[name] ?? 0) + count;
+        });
+      });
     }
 
-    // Get most used technique
-    String? mostUsed;
-    int maxCount = 0;
-    techniqueFrequency.forEach((technique, techniqueCount) {
-      if (techniqueCount > maxCount) {
-        maxCount = techniqueCount;
-        mostUsed = technique;
-      }
-    });
+    final techniqueFrequency = _countFrequency(allTechniques);
+    final top = topN(techniqueFrequency, limit: 1);
 
-    // Calculate diversity (unique techniques / total entries with techniques)
-    final uniqueCount = techniqueFrequency.length;
-    final totalTechniquesLogged = techniqueFrequency.values.fold<int>(0, (total, v) => total + v);
-    final diversity = totalTechniquesLogged > 0 ? uniqueCount / totalTechniquesLogged : 0.0;
+    // Diversity = unique techniques / total techniques logged
+    final totalLogged = techniqueFrequency.values.fold<int>(0, (sum, v) => sum + v);
+    final diversity = totalLogged > 0 ? techniqueFrequency.length / totalLogged : 0.0;
 
     return (
     techniquesByType: techniquesByType,
     techniqueFrequency: techniqueFrequency,
-    mostUsedTechnique: mostUsed,
+    mostUsedTechnique: top.isEmpty ? null : top.first.name,
     techniqueDiversity: diversity,
     );
   }
 
-  // Get techniques for a specific type
+  // Techniques for a specific type
   Map<String, int> getTechniquesByType(
       List<Map<String, dynamic>> entries,
       String typeFilter,
       ) {
-    final aggregated = aggregateTechniques(entries);
-    return aggregated.techniquesByType[typeFilter] ?? {};
+    return aggregateTechniques(entries).techniquesByType[typeFilter] ?? {};
   }
 
-  // Get top N techniques
+  // Top N techniques (kept in the old map format so existing UI still works)
   List<Map<String, dynamic>> getTopTechniques(
       List<Map<String, dynamic>> entries, {
         int limit = 5,
       }) {
-    final aggregated = aggregateTechniques(entries);
-    final sorted = aggregated.techniqueFrequency.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-
-    return sorted.take(limit).map((e) => {
-      'technique': e.key,
-      'count': e.value,
-    }).toList();
+    final frequency = aggregateTechniques(entries).techniqueFrequency;
+    return topN(frequency, limit: limit)
+        .map((item) => {'technique': item.name, 'count': item.count})
+        .toList();
   }
 
-  // Get all unique techniques from the entire gym
+  // All unique techniques from the entire gym
   Future<List<String>> getAllTechniquesFromGym() async {
     try {
-      final snapshot = await _firestore
-          .collectionGroup('journal')
-          .get();
+      final snapshot = await _firestore.collectionGroup('journal').get();
 
       final all = <String>{};
       for (final doc in snapshot.docs) {
-        try {
-          // Safely access techniques field with null check
-          final techniques = doc.data()['techniques'] as Map<String, dynamic>? ?? {};
+        final techniques = doc.data()['techniques'];
+        if (techniques is! Map) continue;
 
-          for (final techniqueList in techniques.values) {
-            final list = (techniqueList as List?)?.cast<String>() ?? [];
-            all.addAll(list);
-          }
-        } catch (e) {
-          // Skip documents that don't have techniques or have parsing errors
-          log('Skipping entry: $e');
-          continue;
+        for (final value in techniques.values) {
+          all.addAll(_readStringList(value).map(_normalize));
         }
       }
 
+      all.remove('');
       return all.toList()..sort();
     } catch (e) {
       log('Error fetching gym techniques: $e');
@@ -480,11 +504,11 @@ class AnalyticsService {
     }
   }
 
-// Suggest techniques from gym-wide data
+  // Suggest techniques from gym-wide data
   List<String> suggestTechniques(List<String> allTechniques, String input) {
     if (input.isEmpty) return [];
 
-    final normalized = input.toLowerCase();
+    final normalized = _normalize(input);
 
     return allTechniques.where((tech) {
       final techNorm = tech.toLowerCase();
@@ -497,7 +521,10 @@ class AnalyticsService {
     if (s1.isEmpty) return s2.length;
     if (s2.isEmpty) return s1.length;
 
-    final matrix = List.generate(s1.length + 1, (i) => List.generate(s2.length + 1, (j) => 0));
+    final matrix = List.generate(
+      s1.length + 1,
+          (i) => List.generate(s2.length + 1, (j) => 0),
+    );
 
     for (int i = 0; i <= s1.length; i++) {
       matrix[i][0] = i;
