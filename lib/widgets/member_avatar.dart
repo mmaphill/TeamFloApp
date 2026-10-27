@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../config/colors.dart';
 import '../models/user_model.dart';
 
 class MemberAvatar extends StatelessWidget {
@@ -17,7 +18,7 @@ class MemberAvatar extends StatelessWidget {
     try {
       return Color(int.parse(hex.replaceFirst('#', '0xff')));
     } catch (_) {
-      return const Color(0xFF2196F3);
+      return AppColors.avatarDefault;
     }
   }
 
@@ -26,12 +27,12 @@ class MemberAvatar extends StatelessWidget {
       radius: radius,
       backgroundColor: _parseColor(user.avatarColor),
       child: Text(
-        user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
-        style: TextStyle(
-          fontSize: radius * 0.8,
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
-        )
+          user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
+          style: TextStyle(
+            fontSize: radius * 0.8,
+            fontWeight: FontWeight.bold,
+            color: AppColors.onPrimary,
+          )
       ),
     );
   }

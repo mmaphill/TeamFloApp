@@ -59,7 +59,7 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Privacy Policy'),
-          backgroundColor: AppColors.dark,
+          backgroundColor: context.colors.appBar,
           automaticallyImplyLeading: !widget.isFirstLogin, // Hide back on first login
         ),
         body: Column(
@@ -235,18 +235,18 @@ By using TeamFloApp, you acknowledge that you have read, understood, and agree t
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _acknowledgePolicy,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF3A3A3A),
-                    foregroundColor: Colors.white,
+                    backgroundColor: context.colors.surfaceHigh,
+                    foregroundColor: context.colors.text,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
                   child: _isLoading
-                      ? const SizedBox(
+                      ? SizedBox(
                     height: 20,
                     width: 20,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
                       valueColor: AlwaysStoppedAnimation<Color>(
-                        Colors.white,
+                        context.colors.text,
                       ),
                     ),
                   )

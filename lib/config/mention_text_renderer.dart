@@ -6,17 +6,18 @@ class MentionTextRenderer {
   /// Build a RichText widget with mentions styled in AppColors.mention (blue)
   /// Only applies styling to mentions with valid indices
   static RichText buildMentionText(
+      BuildContext context,
       String text,
       List<Mention> mentions, {
         TextStyle? baseStyle,
         TextStyle? mentionStyle,
       }) {
-    baseStyle ??= const TextStyle(
-      color: AppColors.darkText,
+    baseStyle ??= TextStyle(
+      color: context.colors.text,
       fontSize: 16,
     );
 
-    mentionStyle ??= const TextStyle(
+    mentionStyle ??= TextStyle(
       color: AppColors.mention,
       fontWeight: FontWeight.bold,
       fontSize: 16,
@@ -74,13 +75,14 @@ class MentionTextRenderer {
 
   /// Simpler version: just return TextSpan (use in Text.rich())
   static TextSpan buildMentionSpan(
+      BuildContext context,
       String text,
       List<Mention> mentions, {
         TextStyle? baseStyle,
         TextStyle? mentionStyle,
       }) {
-    baseStyle ??= const TextStyle(
-      color: AppColors.darkText,
+    baseStyle ??= TextStyle(
+      color: context.colors.text,
       fontSize: 16,
     );
 

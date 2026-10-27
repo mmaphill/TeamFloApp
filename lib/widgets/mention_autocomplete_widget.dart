@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../config/colors.dart';
 import '../services/mention_service.dart';
 
 class MentionAutocomplete extends StatefulWidget {
@@ -119,11 +120,11 @@ class _MentionAutocompleteState extends State<MentionAutocomplete> {
             maxHeight: 200,
           ),
           decoration: BoxDecoration(
-            color: const Color(0xFF4A4A4A), // Gray background
+            color: context.colors.surfaceHigh,
             borderRadius: BorderRadius.circular(8),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.3),
+                color: AppColors.shadow,
                 blurRadius: 8,
                 offset: const Offset(0, 4),
               ),
@@ -149,7 +150,7 @@ class _MentionAutocompleteState extends State<MentionAutocomplete> {
                       bottomLeft: Radius.circular(isLast ? 8 : 0),
                       bottomRight: Radius.circular(isLast ? 8 : 0),
                     ),
-                    color: const Color(0xFF4A4A4A),
+                    color: context.colors.surfaceHigh,
                   ),
                   child: MouseRegion(
                     onEnter: (_) {
@@ -157,8 +158,8 @@ class _MentionAutocompleteState extends State<MentionAutocomplete> {
                     },
                     child: Text(
                       user['name'],
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: context.colors.text,
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
                       ),

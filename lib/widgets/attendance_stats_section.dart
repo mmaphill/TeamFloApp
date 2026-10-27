@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../config/colors.dart';
 import '../models/class_history_model.dart';
 import '../screens/journal_entry_screen.dart';
 import '../services/attendance_stats_service.dart';
@@ -170,7 +171,7 @@ class AttendanceStatsSection extends StatelessWidget {
             runSpacing: 8,
             children: reached.map((m) {
               return Chip(
-                avatar: const Icon(Icons.emoji_events, size: 18, color: Colors.amber),
+                avatar: const Icon(Icons.emoji_events, size: 18, color: AppColors.gold),
                 label: Text('$m classes'),
               );
             }).toList(),
@@ -306,8 +307,8 @@ class AttendanceStatsSection extends StatelessWidget {
     final int total = stats.giCount + stats.noGiCount + stats.otherCount;
     final segments = [
       ('Gi', stats.giCount, Theme.of(context).primaryColor),
-      ('No Gi', stats.noGiCount, Colors.blueGrey),
-      ('Open Mat / Other', stats.otherCount, Colors.grey),
+      ('No Gi', stats.noGiCount, AppColors.chartNoGi),
+      ('Open Mat / Other', stats.otherCount, AppColors.chartOther),
     ].where((s) => s.$2 > 0).toList();
 
     return Column(
@@ -397,15 +398,15 @@ class AttendanceStatsSection extends StatelessWidget {
 
     if (record.status == AttendanceStatus.attended) {
       icon = Icons.check_circle;
-      color = Colors.green;
+      color = AppColors.success;
       statusText = record.walkIn ? 'Confirmed · walk-in' : 'Confirmed';
     } else if (record.status == AttendanceStatus.noShow) {
       icon = Icons.cancel;
-      color = Colors.red;
+      color = AppColors.error;
       statusText = 'Marked absent';
     } else if (record.isPast) {
       icon = Icons.schedule;
-      color = Colors.grey;
+      color = AppColors.neutral;
       statusText = 'Awaiting confirmation';
     } else {
       icon = Icons.event;

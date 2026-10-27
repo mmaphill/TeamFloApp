@@ -146,12 +146,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   child: Container(
                     decoration: BoxDecoration(
                       color: isToday
-                          ? AppColors.primary.withValues(alpha: 0.2)
+                          ? context.colors.primaryTint
                           : hasEntry
-                          ? Colors.grey.shade800
+                          ? context.colors.surfaceHigh
                           : Colors.transparent,
                       border: isToday
-                          ? Border.all(color: AppColors.primary, width: 2)
+                          ? Border.all(color: context.colors.primary, width: 2)
                           : null,
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -174,8 +174,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                             child: Container(
                               width: 4,
                               height: 4,
-                              decoration: const BoxDecoration(
-                                color: AppColors.primary,
+                              decoration: BoxDecoration(
+                                color: context.colors.primary,
                                 shape: BoxShape.circle,
                               ),
                             ),

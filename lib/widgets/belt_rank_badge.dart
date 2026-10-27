@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../config/colors.dart';
 
 class BeltRankBadge extends StatelessWidget {
   final String? beltRank;
@@ -54,8 +55,8 @@ class BeltRankBadge extends StatelessWidget {
           child: Center(
             child: Text(
               beltRank?.substring(0, 1).toUpperCase() ?? '?',
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: context.colors.text,
                 fontWeight: FontWeight.bold,
               ),
             ),

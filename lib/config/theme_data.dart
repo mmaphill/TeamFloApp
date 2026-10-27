@@ -22,16 +22,17 @@ class AppThemes {
       elevation: 0,
     ),
     cardColor: AppColors.darkSurface,
+    dividerColor: AppColors.darkBorder,
     canvasColor: AppColors.darkBg,
     colorScheme: ColorScheme.dark(
       primary: primary,
       secondary: AppColors.success,
       surface: AppColors.darkSurface,
-      error: AppColors.primary, // errors stay red whatever the gym color
-      onPrimary: Colors.white,
-      onSecondary: Colors.white,
+      error: AppColors.error, // errors stay red whatever the gym color
+      onPrimary: AppColors.onPrimary,
+      onSecondary: AppColors.onPrimary,
       onSurface: AppColors.darkText,
-      onError: Colors.white,
+      onError: AppColors.onPrimary,
     ),
     textTheme: TextTheme(
       bodyMedium: TextStyle(color: AppColors.darkText),
@@ -61,11 +62,11 @@ class AppThemes {
     bottomNavigationBarTheme: BottomNavigationBarThemeData(
       backgroundColor: AppColors.darkSurface,
       selectedItemColor: primary,
-      unselectedItemColor: AppColors.darkText.withAlpha(150),
+      unselectedItemColor: AppColors.onPrimary,
     ),
     floatingActionButtonTheme: FloatingActionButtonThemeData(
       backgroundColor: primary,
-      foregroundColor: Colors.white,
+      foregroundColor: AppColors.onPrimary,
     ),
     sliderTheme: SliderThemeData(
       trackHeight: 4,
@@ -89,16 +90,17 @@ class AppThemes {
       elevation: 1,
     ),
     cardColor: AppColors.lightSurface,
+    dividerColor: AppColors.lightBorder,
     canvasColor: AppColors.lightBg,
     colorScheme: ColorScheme.light(
       primary: primary,
       secondary: AppColors.success,
       surface: AppColors.lightSurface,
-      error: AppColors.primary, // errors stay red whatever the gym color
-      onPrimary: Colors.white,
-      onSecondary: Colors.white,
+      error: AppColors.error, // errors stay red whatever the gym color
+      onPrimary: AppColors.onPrimary,
+      onSecondary: AppColors.onPrimary,
       onSurface: AppColors.lightText,
-      onError: Colors.white,
+      onError: AppColors.onPrimary,
     ),
     textTheme: TextTheme(
       bodyMedium: TextStyle(color: AppColors.lightText),
@@ -132,7 +134,7 @@ class AppThemes {
     ),
     floatingActionButtonTheme: FloatingActionButtonThemeData(
       backgroundColor: primary,
-      foregroundColor: Colors.white,
+      foregroundColor: AppColors.onPrimary,
     ),
     sliderTheme: SliderThemeData(
       trackHeight: 4,

@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/painting.dart' show Color;
+import '../config/colors.dart';
 
 /// Plan names. Each plan turns on a set of modules (see defaultModulesFor).
 class GymPlans {
@@ -85,7 +86,7 @@ class GymModel {
     if (cleaned.length != 6) return null;
     final value = int.tryParse(cleaned, radix: 16);
     if (value == null) return null;
-    return Color(0xFF000000 | value);
+    return AppColors.fromRgb(value);
   }
 
   factory GymModel.fromMap(String id, Map<String, dynamic> map) {

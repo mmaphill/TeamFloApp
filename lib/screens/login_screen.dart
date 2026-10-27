@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:team_flo_app/screens/privacy_policy_screen.dart';
 import 'package:team_flo_app/services/validation_service.dart';
+import '../config/colors.dart';
 import '../services/auth_service.dart';
 import '../utils/log.dart';
 
@@ -162,15 +163,15 @@ class _LoginScreenState extends State<LoginScreen> {
             Text(
               _isLogin
                 ? 'Login to your account' : 'Sign up to get started',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
-                color: Colors.grey,
+                color: context.colors.textMuted,
               ),
             ),
             const SizedBox(height: 32),
 
             // Error Message
-            if (_errorMessage != null) Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration( color: Colors.red.shade100, borderRadius: BorderRadius.circular(8),), child: Text(_errorMessage!, style: TextStyle(color: Colors.red.shade700),),),
+            if (_errorMessage != null) Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration( color: Colors.red.shade100, borderRadius: BorderRadius.circular(8),), child: Text(_errorMessage!, style: TextStyle(color: context.colors.onErrorContainer),),),
             if (_errorMessage != null) const SizedBox(height: 16),
 
             // Name field (signup only)
@@ -246,8 +247,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   onTap: _isLogin ? _switchToSignup : _switchToLogin,
                   child: Text(
                     _isLogin ? 'Sign Up' : 'Login',
-                    style: const TextStyle(
-                      color: Colors.blue,
+                    style: TextStyle(
+                      color: context.colors.primary,
                       fontWeight: FontWeight.bold,
                     ),
                   ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../config/colors.dart';
 import 'package:video_player/video_player.dart';
 import '../utils/log.dart';
 
@@ -6,7 +7,7 @@ class VideoPreview extends StatefulWidget {
   final String videoUrl;
   final VoidCallback onTap;
 
-  const VideoPreview({super.key, 
+  const VideoPreview({super.key,
     required this.videoUrl,
     required this.onTap,
   });
@@ -46,7 +47,7 @@ class _VideoPreviewState extends State<VideoPreview> with SingleTickerProviderSt
     return GestureDetector(
       onTap: widget.onTap,
       child: Container(
-        color: Colors.black,
+        color: AppColors.mediaBackground,
         child: Stack(
           fit: StackFit.expand,
           alignment: Alignment.center,
@@ -63,7 +64,7 @@ class _VideoPreviewState extends State<VideoPreview> with SingleTickerProviderSt
             const Icon(
               Icons.play_circle_outline,
               size: 80,
-              color: Colors.white,
+              color: AppColors.mediaForeground,
             ),
           ],
         ),

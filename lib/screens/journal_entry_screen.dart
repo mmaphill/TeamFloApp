@@ -60,6 +60,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
   late TextEditingController _notesController;
 
   final List<String> positions = [
+    'standing',
     'Closed Guard',
     'Spider Guard',
     'Lasso Guard',
@@ -77,7 +78,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
     'North-South',
   ];
 
-  final List<String> types = ['Pass', 'Escape', 'Retention', 'Sweep', 'Submission',];
+  final List<String> types = ['Take down', 'Pass', 'Escape', 'Retention', 'Sweep', 'Submission',];
 
   final Map<String, List<String>> _techniques = {}; // {'Pass': ['Knee Slice'], etc}
 
@@ -291,7 +292,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: AppColors.dark,
+        backgroundColor: context.colors.appBar,
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 12),
@@ -326,10 +327,10 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
                     right: 0,
                     child: IconButton(
                       style: IconButton.styleFrom(
-                        backgroundColor: const Color(0xFF3A3A3A),
-                        foregroundColor: AppColors.light,
+                        backgroundColor: AppColors.mediaButtonBg,
+                        foregroundColor: AppColors.mediaForeground,
                       ),
-                      icon: const Icon(Icons.close, color: Colors.white),
+                      icon: const Icon(Icons.close, color: AppColors.mediaForeground),
                       onPressed: () => setState(() => _selectedPhoto = null),
                     ),
                   ),
@@ -340,7 +341,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
             else
               Container(
                 height: 100,
-                color: Colors.grey.shade800,
+                color: context.colors.surfaceHigh,
                 child: Center(
                   child: IconButton(
                     icon: const Icon(Icons.add_a_photo),
@@ -563,9 +564,9 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
           children: [
             Text(label),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.3),
+                color: context.colors.primaryTint,
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Text(
@@ -648,7 +649,7 @@ class _JournalEntryScreenState extends State<JournalEntryScreen> {
               Navigator.pop(context);
               await _deleteEntry();
             },
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            child: const Text('Delete', style: TextStyle(color: AppColors.error)),
           ),
         ],
       ),

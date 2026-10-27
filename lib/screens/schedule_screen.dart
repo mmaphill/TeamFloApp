@@ -90,7 +90,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.shade300),
+          border: Border.all(color: context.colors.border),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Column(
@@ -109,7 +109,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               children: [
                 Text(
                   '${classSchedule.startTime} - ${classSchedule.endTime}',
-                  style: const TextStyle(fontSize: 14, color: Colors.grey),
+                  style: TextStyle(fontSize: 14, color: context.colors.textMuted),
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -117,15 +117,15 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.2),
+                    color: context.colors.primaryTint,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
                     '${classSchedule.attendees.length}/${classSchedule.capacity}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
+                      color: context.colors.primary,
                     ),
                   ),
                 ),

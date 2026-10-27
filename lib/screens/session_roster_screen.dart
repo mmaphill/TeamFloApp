@@ -110,7 +110,7 @@ class _SessionRosterScreenState extends State<SessionRosterScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Remove', style: TextStyle(color: Colors.red)),
+            child: const Text('Remove', style: TextStyle(color: AppColors.error)),
           ),
         ],
       ),
@@ -154,7 +154,7 @@ class _SessionRosterScreenState extends State<SessionRosterScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(c.className),
-        backgroundColor: AppColors.dark,
+        backgroundColor: context.colors.appBar,
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _isBusy ? null : _addWalkIn,
@@ -188,11 +188,11 @@ class _SessionRosterScreenState extends State<SessionRosterScreen> {
 
         Row(
           children: [
-            Expanded(child: _countTile('Present', present, Colors.green)),
+            Expanded(child: _countTile('Present', present, AppColors.success)),
             const SizedBox(width: 8),
-            Expanded(child: _countTile('Absent', absent, Colors.red)),
+            Expanded(child: _countTile('Absent', absent, AppColors.error)),
             const SizedBox(width: 8),
-            Expanded(child: _countTile('Not checked', pending, Colors.orange)),
+            Expanded(child: _countTile('Not checked', pending, AppColors.warning)),
           ],
         ),
         const SizedBox(height: 16),
@@ -272,7 +272,7 @@ class _SessionRosterScreenState extends State<SessionRosterScreen> {
                 if (record.walkIn)
                   Text(
                     'Walk-in · Present',
-                    style: theme.textTheme.bodySmall?.copyWith(color: Colors.green),
+                    style: theme.textTheme.bodySmall?.copyWith(color: AppColors.success),
                   ),
               ],
             ),
@@ -284,9 +284,9 @@ class _SessionRosterScreenState extends State<SessionRosterScreen> {
               onPressed: _isBusy ? null : () => _removeWalkIn(record),
             )
           else ...[
-            _statusChip(record, AttendanceStatus.attended, 'Present', Icons.check, Colors.green),
+            _statusChip(record, AttendanceStatus.attended, 'Present', Icons.check, AppColors.success),
             const SizedBox(width: 6),
-            _statusChip(record, AttendanceStatus.noShow, 'Absent', Icons.close, Colors.red),
+            _statusChip(record, AttendanceStatus.noShow, 'Absent', Icons.close, AppColors.error),
           ],
         ],
       ),
@@ -304,9 +304,9 @@ class _SessionRosterScreenState extends State<SessionRosterScreen> {
     final bool selected = record.status == status;
     return ChoiceChip(
       showCheckmark: false,
-      avatar: Icon(icon, size: 16, color: selected ? Colors.white : color),
+      avatar: Icon(icon, size: 16, color: selected ? AppColors.onPrimary : color),
       label: Text(label),
-      labelStyle: TextStyle(color: selected ? Colors.white : null, fontSize: 12),
+      labelStyle: TextStyle(color: selected ? AppColors.onPrimary : null, fontSize: 12),
       selected: selected,
       selectedColor: color,
       onSelected: _isBusy

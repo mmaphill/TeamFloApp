@@ -141,14 +141,14 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                   hintText: 'What\'s on your mind? (@mention teammates)',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(
-                      color: AppColors.primary,
+                    borderSide: BorderSide(
+                      color: context.colors.primary,
                     ),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(
-                      color: AppColors.primary,
+                    borderSide: BorderSide(
+                      color: context.colors.primary,
                       width: 2,
                     ),
                   ),
@@ -189,7 +189,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                 width: double.infinity,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
+                    backgroundColor: context.colors.primary,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
                   onPressed: _isLoading ? null : _submitPost,
@@ -200,7 +200,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
                       valueColor: AlwaysStoppedAnimation<Color>(
-                        Colors.white,
+                        AppColors.onPrimary,
                       ),
                     ),
                   )
@@ -209,7 +209,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      color: AppColors.onPrimary,
                     ),
                   ),
                 ),

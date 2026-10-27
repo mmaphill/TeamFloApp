@@ -23,9 +23,9 @@ class _BottomNavWrapperState extends State<BottomNavWrapper> {
     return Scaffold(
       body: widget.child,
       bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: AppColors.primary,
-        selectedItemColor: const Color(0xFFFFB2B3),
-        unselectedItemColor: AppColors.light,
+        backgroundColor: context.colors.primary,
+        selectedItemColor: AppColors.primaryLight,
+        unselectedItemColor: AppColors.onPrimary,
 
         type: BottomNavigationBarType.fixed,
 

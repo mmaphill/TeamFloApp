@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../config/colors.dart';
 import '../services/chat_service.dart';
 import 'all_likers_sheet.dart';
 
@@ -94,8 +95,8 @@ class _LikersPopupState extends State<LikersPopup> {
                     },
                     child: Text(
                       'See all ${widget.likedBy.length} likes',
-                      style: const TextStyle(
-                        color: Color(0xFFEA2327),
+                      style: TextStyle(
+                        color: context.colors.primary,
                         fontWeight: FontWeight.bold,
                       ),
                     ),

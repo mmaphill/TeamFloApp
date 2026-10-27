@@ -151,61 +151,61 @@ class _ChatScreenState extends State<ChatScreen> {
                   children: [
                     // Avatar + Name + Timestamp
                     Expanded(
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(8),
-                        onTap: () => MemberProfileScreen.open(context, post.userId),
-                        child: Row(
-                          children: [
-                            // Avatar
-                            CircleAvatar(
-                              radius: 24,
-                              backgroundImage: (profile['photoUrl'] != null &&
-                                  profile['photoUrl'].isNotEmpty)
-                                  ? NetworkImage(profile['photoUrl'])
-                                  : null,
-                              backgroundColor: profile['photoUrl'] == null ||
-                                  profile['photoUrl'].isEmpty
-                                  ? Colors.grey[400]
-                                  : null,
-                              child: (profile['photoUrl'] == null ||
-                                  profile['photoUrl'].isEmpty)
-                                  ? Text(
-                                post.userName.isNotEmpty
-                                    ? post.userName[0].toUpperCase()
-                                    : '?',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              )
-                                  : null,
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    profile['name'] ?? post.userName,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                    ),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(8),
+                          onTap: () => MemberProfileScreen.open(context, post.userId),
+                          child: Row(
+                            children: [
+                              // Avatar
+                              CircleAvatar(
+                                radius: 24,
+                                backgroundImage: (profile['photoUrl'] != null &&
+                                    profile['photoUrl'].isNotEmpty)
+                                    ? NetworkImage(profile['photoUrl'])
+                                    : null,
+                                backgroundColor: profile['photoUrl'] == null ||
+                                    profile['photoUrl'].isEmpty
+                                    ? AppColors.neutral
+                                    : null,
+                                child: (profile['photoUrl'] == null ||
+                                    profile['photoUrl'].isEmpty)
+                                    ? Text(
+                                  post.userName.isNotEmpty
+                                      ? post.userName[0].toUpperCase()
+                                      : '?',
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.onPrimary,
                                   ),
-                                  Text(
-                                    _formatTime(post.createdAt),
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                ],
+                                )
+                                    : null,
                               ),
-                            ),
-                          ],
-                        ),
-                      )
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      profile['name'] ?? post.userName,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    Text(
+                                      _formatTime(post.createdAt),
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: context.colors.textMuted,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
                     ),
                     // Delete menu
                     if (post.userId == _currentUser.uid || _userRole == 'admin')
@@ -225,6 +225,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
             // Post Content with styled mentions
             MentionTextRenderer.buildMentionText(
+              context,
               post.content,
               _parseMentionsFromPost(post),
             ),
@@ -261,7 +262,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         },
                         child: Image.network(url, fit: BoxFit.cover),
                       )
-                      : AspectRatio(
+                          : AspectRatio(
                         aspectRatio: 0.5625,
                         child: VideoPreview(
                           videoUrl: url,
@@ -296,7 +297,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       IconButton(
                         icon: Icon(
                           isLikedByCurrentUser ? Icons.favorite : Icons.favorite_border,
-                          color: isLikedByCurrentUser ? AppColors.primary : Colors.grey,
+                          color: isLikedByCurrentUser ? context.colors.primary : context.colors.textMuted,
                         ),
                         onPressed: () => _chatService.likePost(post.postId, _currentUser.uid),
                       ),

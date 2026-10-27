@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../config/colors.dart';
 import 'package:video_player/video_player.dart';
 
 class VideoPlayerWidget extends StatefulWidget {
@@ -50,12 +51,12 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
                     });
                   },
                   child: Container(
-                    color: Colors.black26,
+                    color: AppColors.mediaScrim,
                     child: const Center(
                       child: Icon(
                         Icons.play_circle_outline,
                         size: 50,
-                        color: Colors.white,
+                        color: AppColors.mediaForeground,
                       ),
                     ),
                   ),
@@ -74,7 +75,7 @@ class _VideoPlayerWidgetState extends State<VideoPlayerWidget> {
           );
         } else {
           return Container(
-            color: Colors.black26,
+            color: AppColors.mediaScrim,
             child: const Center(
               child: CircularProgressIndicator(),
             ),

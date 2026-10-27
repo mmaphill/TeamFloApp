@@ -109,7 +109,7 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: AppColors.dark,
+        backgroundColor: context.colors.appBar,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
@@ -136,15 +136,15 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade300),
+                border: Border.all(color: context.colors.border),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Instructor',
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                    style: TextStyle(fontSize: 12, color: context.colors.textMuted),
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -166,15 +166,15 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
                   child: Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.shade300),
+                      border: Border.all(color: context.colors.border),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Day',
-                          style: TextStyle(fontSize: 12, color: Colors.grey),
+                          style: TextStyle(fontSize: 12, color: context.colors.textMuted),
                         ),
                         const SizedBox(height: 4),
                         Text(
@@ -193,15 +193,15 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
                   child: Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.shade300),
+                      border: Border.all(color: context.colors.border),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Time',
-                          style: TextStyle(fontSize: 12, color: Colors.grey),
+                          style: TextStyle(fontSize: 12, color: context.colors.textMuted),
                         ),
                         const SizedBox(height: 4),
                         Text(
@@ -229,7 +229,7 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade300),
+                border: Border.all(color: context.colors.border),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Column(
@@ -268,7 +268,7 @@ class _ClassDetailScreenState extends State<ClassDetailScreen> {
                   backgroundColor: _isAttending
                       ? Colors.red
                       : AppColors.primary,
-                  foregroundColor: Colors.white,
+                  foregroundColor: AppColors.onPrimary,
                   padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
                 child: Text(

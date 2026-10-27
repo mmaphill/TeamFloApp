@@ -180,7 +180,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
                     ),
                   )
               ),
-              backgroundColor: AppColors.dark,
+              backgroundColor: context.colors.appBar,
               actions: [
                 Padding(
                   padding: const EdgeInsets.only(right: 12),
@@ -250,9 +250,9 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
                       value: 'logout',
                       child: Row(
                         children: [
-                          Icon(Icons.logout, size: 20, color: Colors.red),
+                          Icon(Icons.logout, size: 20, color: AppColors.error),
                           SizedBox(width: 8),
-                          Text('Logout', style: TextStyle(color: Colors.red)),
+                          Text('Logout', style: TextStyle(color: AppColors.error)),
                         ],
                       ),
                     ),
@@ -264,10 +264,10 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
             bottomNavigationBar: BottomNavigationBar(
               // fixed: keeps labels and colors steady for 2 to 5 tabs
               type: BottomNavigationBarType.fixed,
-              backgroundColor: const Color(0xFF3A3A3A),
+              backgroundColor: context.colors.surfaceHigh,
               // PHASE 1 STEP 6: the gym's color, or Team Flo's pink if none is set
-              selectedItemColor: brandColor ?? const Color(0xFFFFB2B3),
-              unselectedItemColor: AppColors.light,
+              selectedItemColor: brandColor ?? context.colors.navSelected,
+              unselectedItemColor: context.colors.textMuted,
               elevation: 16.0,
               currentIndex: tabs.indexOf(currentTab),
               onTap: (index) {
@@ -293,7 +293,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Logout', style: TextStyle(color: Colors.red)),
+            child: const Text('Logout', style: TextStyle(color: AppColors.error)),
           ),
         ],
       ),

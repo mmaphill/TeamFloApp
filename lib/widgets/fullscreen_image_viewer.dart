@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../config/colors.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:photo_view/photo_view_gallery.dart';
 
@@ -36,7 +37,7 @@ class _FullscreenImageViewerState extends State<FullscreenImageViewer> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      backgroundColor: Colors.black,
+      backgroundColor: AppColors.mediaBackground,
       insetPadding: EdgeInsets.zero,
       child: Stack(
         fit: StackFit.expand,
@@ -54,13 +55,13 @@ class _FullscreenImageViewerState extends State<FullscreenImageViewer> {
               onTap: () => Navigator.pop(context),
               child: Container(
                 decoration: BoxDecoration(
-                  color: Colors.black54,
+                  color: AppColors.mediaButtonBg,
                   shape: BoxShape.circle,
                 ),
                 padding: const EdgeInsets.all(8),
                 child: const Icon(
                   Icons.close,
-                  color: Colors.white,
+                  color: AppColors.mediaForeground,
                   size: 28,
                 ),
               ),
@@ -80,13 +81,13 @@ class _FullscreenImageViewerState extends State<FullscreenImageViewer> {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.black54,
+                    color: AppColors.mediaButtonBg,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
                     '${_currentIndex + 1} / ${widget.imageUrls.length}',
                     style: const TextStyle(
-                      color: Colors.white,
+                      color: AppColors.mediaForeground,
                       fontSize: 14,
                     ),
                   ),

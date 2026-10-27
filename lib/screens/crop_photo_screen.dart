@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import '../config/colors.dart';
 import '../models/photo_crop_model.dart';
 import '../utils/log.dart';
 
@@ -92,7 +93,7 @@ class _CropPhotoScreenState extends State<CropPhotoScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Crop Profile Photo'),
-        backgroundColor: const Color(0xFF2A2A2A),
+        backgroundColor: AppColors.mediaAppBar,
       ),
       body: Column(
         children: [
@@ -126,7 +127,7 @@ class _CropPhotoScreenState extends State<CropPhotoScreen> {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: Colors.white70,
+                            color: AppColors.mediaForegroundMuted,
                             width: 2,
                           ),
                         ),
@@ -157,7 +158,7 @@ class _CropPhotoScreenState extends State<CropPhotoScreen> {
                 Text(
                   'Preview',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: Colors.white,
+                    color: AppColors.mediaForeground,
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -167,7 +168,7 @@ class _CropPhotoScreenState extends State<CropPhotoScreen> {
                     height: 120,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white30, width: 1),
+                      border: Border.all(color: AppColors.mediaBorder, width: 1),
                     ),
                     clipBehavior: Clip.antiAlias,
                     child: _imageSize != null
@@ -196,7 +197,7 @@ class _CropPhotoScreenState extends State<CropPhotoScreen> {
                     Text(
                       'Zoom: ${_cropData.scale.toStringAsFixed(1)}x',
                       style: const TextStyle(
-                        color: Colors.white70,
+                        color: AppColors.mediaForegroundMuted,
                         fontSize: 12,
                       ),
                     ),
@@ -204,8 +205,8 @@ class _CropPhotoScreenState extends State<CropPhotoScreen> {
                       value: _cropData.scale,
                       min: 1.0,
                       max: 3.0,
-                      activeColor: const Color(0xFFEA2327),
-                      inactiveColor: Colors.grey[700],
+                      activeColor: context.colors.primary,
+                      inactiveColor: AppColors.mediaInactive,
                       onChanged: (value) {
                         setState(() {
                           _cropData = _cropData.copyWith(scale: value);
@@ -223,8 +224,8 @@ class _CropPhotoScreenState extends State<CropPhotoScreen> {
                       child: OutlinedButton(
                         onPressed: _isProcessing ? null : _resetCrop,
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.white70,
-                          side: const BorderSide(color: Colors.white30),
+                          foregroundColor: AppColors.mediaForegroundMuted,
+                          side: const BorderSide(color: AppColors.mediaBorder),
                         ),
                         child: const Text('Reset'),
                       ),
@@ -234,8 +235,8 @@ class _CropPhotoScreenState extends State<CropPhotoScreen> {
                       child: ElevatedButton(
                         onPressed: _isProcessing ? null : _saveCrop,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFEA2327),
-                          foregroundColor: Colors.white,
+                          backgroundColor: context.colors.primary,
+                          foregroundColor: AppColors.mediaForeground,
                         ),
                         child: _isProcessing
                             ? const SizedBox(
@@ -244,7 +245,7 @@ class _CropPhotoScreenState extends State<CropPhotoScreen> {
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
                             valueColor:
-                            AlwaysStoppedAnimation<Color>(Colors.white),
+                            AlwaysStoppedAnimation<Color>(AppColors.mediaForeground),
                           ),
                         )
                             : const Text('Save'),
@@ -273,7 +274,7 @@ class CircleVignettePainter extends CustomPainter {
 
     // Draw semi-transparent overlay outside circle
     final paint = Paint()
-      ..color = Colors.black.withValues(alpha: 0.5)
+      ..color = AppColors.cropMask
       ..style = PaintingStyle.fill;
 
     // Draw rectangle covering entire canvas
@@ -289,7 +290,7 @@ class CircleVignettePainter extends CustomPainter {
       );
 
     canvas.clipPath(circlePath, doAntiAlias: true);
-    canvas.drawColor(Colors.transparent, BlendMode.clear);
+    canvas.drawColor(AppColors.transparent, BlendMode.clear);
   }
 
   @override

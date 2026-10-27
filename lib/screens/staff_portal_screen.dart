@@ -69,7 +69,7 @@ class _StaffPortalScreenState extends State<StaffPortalScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Staff Portal'),
-        backgroundColor: AppColors.dark,
+        backgroundColor: context.colors.appBar,
       ),
       body: _buildBody(),
     );
@@ -144,13 +144,13 @@ class _StaffPortalScreenState extends State<StaffPortalScreen> {
       margin: const EdgeInsets.only(bottom: 20),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.orange.withValues(alpha: 0.15),
-        border: Border.all(color: Colors.orange.withValues(alpha: 0.5)),
+        color: AppColors.warning.withValues(alpha: 0.15),
+        border: Border.all(color: AppColors.warning.withValues(alpha: 0.5)),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
-          const Icon(Icons.pending_actions, color: Colors.orange),
+          const Icon(Icons.pending_actions, color: AppColors.warning),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
@@ -246,16 +246,16 @@ class _StaffPortalScreenState extends State<StaffPortalScreen> {
     if (!session.hasEnded) {
       return _chip(
         session.hasStarted ? 'In progress' : 'Starts ${session.classSchedule.startTime}',
-        Colors.grey,
+        AppColors.neutral,
       );
     }
     if (pending > 0) {
-      return _chip('$pending to review', Colors.orange);
+      return _chip('$pending to review', AppColors.warning);
     }
     if (hasRecords) {
       return const Padding(
         padding: EdgeInsets.only(right: 4),
-        child: Icon(Icons.check_circle, color: Colors.green),
+        child: Icon(Icons.check_circle, color: AppColors.success),
       );
     }
     return const SizedBox.shrink();

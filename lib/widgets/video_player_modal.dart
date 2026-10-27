@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../config/colors.dart';
 import 'package:video_player/video_player.dart';
 
 class VideoPlayerModal extends StatefulWidget {
@@ -73,7 +74,7 @@ class _VideoPlayerModalState extends State<VideoPlayerModal> with SingleTickerPr
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      backgroundColor: Colors.black,
+      backgroundColor: AppColors.mediaBackground,
       insetPadding: const EdgeInsets.all(0),
       child: GestureDetector(
         onTap: () => Navigator.pop(context),
@@ -116,13 +117,13 @@ class _VideoPlayerModalState extends State<VideoPlayerModal> with SingleTickerPr
                 onTap: () => Navigator.pop(context),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.black54,
+                    color: AppColors.mediaButtonBg,
                     shape: BoxShape.circle,
                   ),
                   padding: const EdgeInsets.all(8),
                   child: const Icon(
                     Icons.close,
-                    color: Colors.white,
+                    color: AppColors.mediaForeground,
                     size: 28,
                   ),
                 ),
@@ -136,7 +137,7 @@ class _VideoPlayerModalState extends State<VideoPlayerModal> with SingleTickerPr
                   onTap: _handleTap,
                   child: Container(
                     decoration: BoxDecoration(
-                      color: Colors.black54,
+                      color: AppColors.mediaButtonBg,
                       shape: BoxShape.circle,
                     ),
                     padding: const EdgeInsets.all(16),
@@ -144,7 +145,7 @@ class _VideoPlayerModalState extends State<VideoPlayerModal> with SingleTickerPr
                       _controller.value.isPlaying
                           ? Icons.pause
                           : Icons.play_arrow,
-                      color: Colors.white,
+                      color: AppColors.mediaForeground,
                       size: 40,
                     ),
                   ),

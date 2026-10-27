@@ -984,7 +984,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       canPop: true,
       child: Scaffold(
         appBar: AppBar(
-          backgroundColor: AppColors.dark,
+          backgroundColor: context.colors.appBar,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
             onPressed: () => Navigator.pop(context),
@@ -1009,12 +1009,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.red.shade100,
+                    color: context.colors.errorContainer,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     _errorMessage!,
-                    style: TextStyle(color: Colors.red.shade800),
+                    style: TextStyle(color: context.colors.onErrorContainer),
                   ),
                 ),
               const SizedBox(height: 20),
@@ -1033,7 +1033,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         : null,
                     child: _userData.photoUrl == null
                         ? const Icon(Icons.camera_alt,
-                        size: 40, color: Colors.white)
+                        size: 40, color: AppColors.onPrimary)
                         : null,
                   ),
                 ),
@@ -1042,11 +1042,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Center(
                 child: GestureDetector(
                   onTap: _showAvatarColorPicker,
-                  child: const Text(
+                  child: Text(
                     'Tap avatar to change photo, tap text to change avatar color',
                     textAlign: TextAlign.center,
                     style:
-                    TextStyle(fontSize: 12, color: Colors.grey),
+                    TextStyle(fontSize: 12, color: context.colors.textMuted),
                   ),
                 ),
               ),
@@ -1104,9 +1104,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               color: Theme.of(context).textTheme.bodyMedium?.color,
                             ),
                           ),
-                          const Text(
+                          Text(
                             'Other members see your age on your profile',
-                            style: TextStyle(fontSize: 12, color: Colors.grey),
+                            style: TextStyle(fontSize: 12, color: context.colors.textMuted),
                           ),
                         ],
                       ),
@@ -1172,7 +1172,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             'Promoted: ${DateFormat('MMM d, yyyy').format(belt.promotionDate)}',
                           ),
                           trailing: IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.red),
+                            icon: const Icon(Icons.delete, color: AppColors.error),
                             onPressed: () => _deleteBeltRank(index),
                           ),
                         ),
@@ -1240,7 +1240,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 onTap: () => _showEditCompStatsDialog(index),
                               ),
                               PopupMenuItem(
-                                child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                                child: const Text('Delete', style: TextStyle(color: AppColors.error)),
                                 onTap: () => _deleteCompStats(index),
                               ),
                             ],
@@ -1365,7 +1365,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 onPressed: _showDeleteAccountDialog,
                 child: const Text(
                   'Delete Account',
-                  style: TextStyle(color: Colors.red),
+                  style: TextStyle(color: AppColors.error),
                 ),
               ),
               const SizedBox(height: 24),
@@ -1387,10 +1387,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.bold,
-            color: Colors.grey,
+            color: context.colors.textMuted,
           ),
         ),
         const SizedBox(height: 8),
@@ -1399,7 +1399,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.shade300),
+              border: Border.all(color: context.colors.border),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
@@ -1411,15 +1411,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     style: TextStyle(
                       fontSize: 16,
                       color: value.isEmpty || value == '(No goals set)'
-                          ? Colors.grey
-                          : Colors.white,
+                          ? context.colors.textMuted
+                          : context.colors.text,
                     ),
                     maxLines: isMultiline ? 3 : 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 const SizedBox(width: 8),
-                const Icon(Icons.edit, size: 18, color: Colors.white),
+                Icon(Icons.edit, size: 18, color: context.colors.textMuted),
               ],
             ),
           ),
@@ -1480,7 +1480,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     color: Color(int.parse(color.replaceFirst('#', '0xff'))),
                     shape: BoxShape.circle,
                     border: _userData.avatarColor == color
-                        ? Border.all(color: Colors.white, width: 3)
+                        ? Border.all(color: context.colors.text, width: 3)
                         : null,
                   ),
                   width: 50,
@@ -1753,7 +1753,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       beltRankHistory: _userData.beltRankHistory,
       competitionStats: _userData.competitionStats,
       photoUrl: _userData.photoUrl,
-      avatarColor: color,
+      avatarColor: _userData.avatarColor,
       currentBelt: currentBelt,
     );
 
@@ -1783,7 +1783,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            child: const Text('Delete', style: TextStyle(color: AppColors.error)),
           ),
         ],
       ),
@@ -1849,7 +1849,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            child: const Text('Delete', style: TextStyle(color: AppColors.error)),
           ),
         ],
       ),
@@ -1920,7 +1920,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Navigator.pop(context);
               await _deleteAccount();
             },
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            child: const Text('Delete', style: TextStyle(color: AppColors.error)),
           ),
         ],
       ),

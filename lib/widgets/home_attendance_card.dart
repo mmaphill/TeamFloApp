@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../config/colors.dart';
 import '../models/class_history_model.dart';
 import '../models/class_schedule_model.dart';
 import '../services/attendance_stats_service.dart';
@@ -72,7 +73,7 @@ class _HomeAttendanceCardState extends State<HomeAttendanceCard> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Leave', style: TextStyle(color: Colors.red)),
+            child: const Text('Leave', style: TextStyle(color: AppColors.error)),
           ),
         ],
       ),
@@ -132,7 +133,7 @@ class _HomeAttendanceCardState extends State<HomeAttendanceCard> {
         Expanded(
           child: _pill(
             icon: Icons.local_fire_department,
-            iconColor: Colors.orange,
+            iconColor: AppColors.warning,
             title: hasStreak ? '${stats.streakWeeks}-week streak' : 'Start a streak',
             subtitle: hasStreak ? 'keep it going' : 'train this week',
           ),
@@ -216,7 +217,7 @@ class _HomeAttendanceCardState extends State<HomeAttendanceCard> {
         onPressed: _isBusy ? null : () => _join(classSchedule),
         style: ElevatedButton.styleFrom(
           backgroundColor: theme.primaryColor,
-          foregroundColor: Colors.white,
+          foregroundColor: AppColors.onPrimary,
         ),
         child: const Text('Join'),
       ),

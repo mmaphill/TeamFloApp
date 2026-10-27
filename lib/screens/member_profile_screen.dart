@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../config/colors.dart';
 import '../models/belt_rank_model.dart';
 import '../models/user_model.dart';
 import '../widgets/belt_rank_badge.dart';
@@ -82,18 +83,7 @@ class MemberProfileScreen extends StatelessWidget {
     return rank.toLowerCase().contains('belt') ? rank : '$rank Belt';
   }
 
-  Color _beltColor(String rank) {
-    final r = rank.toLowerCase();
-    if (r.contains('black')) return Colors.black;
-    if (r.contains('brown')) return const Color(0xFF6D4C41);
-    if (r.contains('purple')) return const Color(0xFF7B1FA2);
-    if (r.contains('blue')) return const Color(0xFF1976D2);
-    if (r.contains('green')) return const Color(0xFF388E3C);
-    if (r.contains('orange')) return const Color(0xFFF57C00);
-    if (r.contains('yellow')) return const Color(0xFFFBC02D);
-    if (r.contains('grey') || r.contains('gray')) return Colors.grey;
-    return Colors.white;
-  }
+  Color _beltColor(String rank) => AppColors.beltColor(rank);
 
   // ---------------------------------------------------------------------------
   // Build

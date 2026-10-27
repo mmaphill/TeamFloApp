@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../config/colors.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:team_flo_app/models/instagram_post.dart';
@@ -56,7 +57,7 @@ class InstagramFeedWidget extends StatelessWidget {
                             topLeft: Radius.circular(12),
                             topRight: Radius.circular(12),
                           ),
-                          color: Colors.grey[300],
+                          color: context.colors.surfaceVariant,
                         ),
                         child: Image.network(
                           post.imageUrl,
@@ -65,7 +66,7 @@ class InstagramFeedWidget extends StatelessWidget {
                             return Center(
                               child: Icon(
                                 Icons.image_not_supported,
-                                color: Colors.grey[400],
+                                color: context.colors.textFaint,
                                 size: 48,
                               ),
                             );
@@ -80,12 +81,12 @@ class InstagramFeedWidget extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.9),
+                          color: AppColors.onPrimary.withValues(alpha: 0.9),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: const Icon(
                           Icons.camera_alt,
-                          color: Color(0xFFE4405F), // Instagram pink
+                          color: AppColors.instagram,
                           size: 20,
                         ),
                       ),
@@ -102,7 +103,7 @@ class InstagramFeedWidget extends StatelessWidget {
                         'Latest from Instagram',
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.grey[600],
+                          color: context.colors.textMuted,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -120,7 +121,7 @@ class InstagramFeedWidget extends StatelessWidget {
                         'Tap to view on Instagram →',
                         style: TextStyle(
                           fontSize: 11,
-                          color: const Color(0xFFE4405F),
+                          color: AppColors.instagram,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -143,7 +144,7 @@ class InstagramFeedWidget extends StatelessWidget {
         height: 300,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
-          color: isDarkMode ? const Color(0xFF1E1E1E) : const Color(0xFFF5F0F5),
+          color: context.colors.surface,
         ),
         child: const Center(
           child: CircularProgressIndicator(),
@@ -160,13 +161,13 @@ class InstagramFeedWidget extends StatelessWidget {
         height: 150,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
-          color: isDarkMode ? const Color(0xFF1E1E1E) : const Color(0xFFF5F0F5),
+          color: context.colors.surface,
         ),
         child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.error_outline, color: Colors.red[400]),
+              Icon(Icons.error_outline, color: AppColors.error),
               const SizedBox(height: 8),
               const Text('Error loading Instagram feed'),
             ],
@@ -184,13 +185,13 @@ class InstagramFeedWidget extends StatelessWidget {
         height: 150,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
-          color: isDarkMode ? const Color(0xFF1E1E1E) : const Color(0xFFF5F0F5),
+          color: context.colors.surface,
         ),
         child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.camera_alt, color: Color(0xFFE4405F)),
+              const Icon(Icons.camera_alt, color: AppColors.instagram),
               const SizedBox(height: 8),
               const Text('No Instagram posts yet'),
             ],

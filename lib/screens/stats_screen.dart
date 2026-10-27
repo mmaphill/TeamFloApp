@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../config/colors.dart';
 import '../models/class_history_model.dart';
 import '../services/analytics_service.dart';
 import '../services/attendance_stats_service.dart';
@@ -317,13 +318,13 @@ class _StatsScreenState extends State<StatsScreen> {
 
                     // Top Submissions
                     if (topSubmissions.isNotEmpty) ...[
-                      _buildRankedChips('Top Submissions', topSubmissions, Colors.green),
+                      _buildRankedChips('Top Submissions', topSubmissions, AppColors.success),
                       const SizedBox(height: 24),
                     ],
 
                     // Top Submitted
                     if (topCaughtWith.isNotEmpty) ...[
-                      _buildRankedChips('Top Submissions Caught With', topCaughtWith, Colors.red),
+                      _buildRankedChips('Top Submissions Caught With', topCaughtWith, AppColors.error),
                       const SizedBox(height: 24),
                     ],
 
@@ -616,9 +617,9 @@ class _StatsScreenState extends State<StatsScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            _buildMethodCard('Submission', winBreakdown.submissions, Colors.green),
-            _buildMethodCard('Points', winBreakdown.points, Colors.blue),
-            _buildMethodCard('Ref Decision', winBreakdown.refDecisions, Colors.orange),
+            _buildMethodCard('Submission', winBreakdown.submissions, AppColors.chartWinSubmission),
+            _buildMethodCard('Points', winBreakdown.points, AppColors.chartWinPoints),
+            _buildMethodCard('Ref Decision', winBreakdown.refDecisions, AppColors.chartWinDecision),
           ],
         ),
       ],
@@ -639,9 +640,9 @@ class _StatsScreenState extends State<StatsScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            _buildMethodCard('Submission', lossBreakdown.submissions, Colors.red),
-            _buildMethodCard('Points', lossBreakdown.points, Colors.blueGrey),
-            _buildMethodCard('Ref Decision', lossBreakdown.refDecisions, Colors.deepOrange),
+            _buildMethodCard('Submission', lossBreakdown.submissions, AppColors.chartLossSubmission),
+            _buildMethodCard('Points', lossBreakdown.points, AppColors.chartLossPoints),
+            _buildMethodCard('Ref Decision', lossBreakdown.refDecisions, AppColors.chartLossDecision),
           ],
         ),
       ],
