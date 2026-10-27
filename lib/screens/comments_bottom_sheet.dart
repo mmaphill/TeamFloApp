@@ -30,6 +30,8 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
   final AuthService _authService = AuthService();
   final TextEditingController _commentController = TextEditingController();
 
+  late final Stream<List<Map<String, dynamic>>> _commentStream;
+
   String? _currentUserName;
   bool _isSubmitting = false;
 
@@ -38,11 +40,13 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
   @override
   void initState() {
     super.initState();
+    _commentStream = _chatService.getCommentStream(widget.postId);
     _loadCurrentUserName();
   }
 
   Future<void> _loadCurrentUserName() async {
     final data = await _authService.getUserData(widget.currentUserId);
+    if (!mounted) return;
     if (data != null) {
       setState(() => _currentUserName = data['name'] ?? 'Anonymous');
     }
@@ -115,22 +119,19 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
       mentions: _mentions,
     );
 
+    if (!mounted) return;
     setState(() => _isSubmitting = false);
 
     if (error == null) {
       _commentController.clear();
       _mentions.clear();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Comment posted!')),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Comment posted!')),
+      );
     } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $error')),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $error')),
+      );
     }
   }
 
@@ -142,146 +143,164 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return DraggableScrollableSheet(
-      expand: false,
-      builder: (context, scrollController) {
-        return Container(
-          decoration: BoxDecoration(
-            color: context.colors.surface,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-          ),
-          child: Column(
-            children: [
-              // Header
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(color: context.colors.border, width: 0.5),
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+    final systemBottom = MediaQuery.of(context).viewPadding.bottom;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: keyboardHeight),
+      child: DraggableScrollableSheet(
+        expand: false,
+        builder: (context, scrollController) {
+          return Container(
+            decoration: BoxDecoration(
+              color: context.colors.surface,
+              borderRadius:
+              const BorderRadius.vertical(top: Radius.circular(16)),
+            ),
+            child: Column(
+              children: [
+                // Header
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      bottom:
+                      BorderSide(color: context.colors.border, width: 0.5),
+                    ),
                   ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Comments',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: context.colors.onPrimary,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Comments',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: context.colors.onPrimary,
+                        ),
                       ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close, color: Colors.white),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-              ),
-
-              // Comments List
-              Expanded(
-                child: StreamBuilder<List<Map<String, dynamic>>>(
-                  stream: _chatService.getCommentStream(widget.postId),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-
-                    if (snapshot.hasError) {
-                      return Center(child: Text('Error: ${snapshot.error}'));
-                    }
-
-                    final comments = snapshot.data ?? [];
-
-                    if (comments.isEmpty) {
-                      return Center(
-                        child: Text(
-                          'No comments yet',
-                          style: TextStyle(color: context.colors.textMuted),
-                        ),
-                      );
-                    }
-
-                    return ListView.builder(
-                      controller: scrollController,
-                      itemCount: comments.length,
-                      itemBuilder: (context, index) {
-                        final comment = comments[index];
-                        return _buildCommentTile(comment);
-                      },
-                    );
-                  },
-                ),
-              ),
-
-              // Comment Input Section
-              Container(
-                decoration: BoxDecoration(
-                  border: Border(
-                    top: BorderSide(color: context.colors.border, width: 0.5),
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Colors.white),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
                   ),
                 ),
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Comment input field
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _commentController,
-                            style: TextStyle(color: context.colors.text),
-                            decoration: InputDecoration(
-                              hintText: 'Add a comment... (@ to mention)',
-                              hintStyle: TextStyle(color: context.colors.textFaint),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: BorderSide(color: context.colors.border),
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
-                              ),
-                            ),
-                            maxLines: null,
-                            minLines: 1,
+
+                // Comments List
+                Expanded(
+                  child: StreamBuilder<List<Map<String, dynamic>>>(
+                    stream: _commentStream,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState ==
+                          ConnectionState.waiting) {
+                        return const Center(
+                            child: CircularProgressIndicator());
+                      }
+
+                      if (snapshot.hasError) {
+                        return Center(child: Text('Error: ${snapshot.error}'));
+                      }
+
+                      final comments = snapshot.data ?? [];
+
+                      if (comments.isEmpty) {
+                        return Center(
+                          child: Text(
+                            'No comments yet',
+                            style: TextStyle(color: context.colors.textMuted),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        IconButton(
-                          icon: _isSubmitting
-                              ? SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                context.colors.primary,
-                              ),
-                            ),
-                          )
-                              : Icon(Icons.send, color: context.colors.primary),
-                          onPressed: _isSubmitting ? null : _submitComment,
-                        ),
-                      ],
-                    ),
+                        );
+                      }
 
-                    const SizedBox(height: 8),
-
-                    // Mention autocomplete dropdown
-                    MentionAutocomplete(
-                      textController: _commentController,
-                      onMentionSelected: _onMentionSelected,
-                    ),
-                  ],
+                      return ListView.builder(
+                        controller: scrollController,
+                        itemCount: comments.length,
+                        itemBuilder: (context, index) {
+                          final comment = comments[index];
+                          return _buildCommentTile(comment);
+                        },
+                      );
+                    },
+                  ),
                 ),
-              ),
-            ],
-          ),
-        );
-      },
+
+                // Comment Input Section
+                Container(
+                  decoration: BoxDecoration(
+                    border: Border(
+                      top: BorderSide(color: context.colors.border, width: 0.5),
+                    ),
+                  ),
+                  padding: EdgeInsets.fromLTRB(
+                    12,
+                    12,
+                    12,
+                    keyboardHeight > 0 ? 12 : 12 + systemBottom,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Comment input field
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _commentController,
+                              style: TextStyle(color: context.colors.text),
+                              decoration: InputDecoration(
+                                hintText: 'Add a comment... (@ to mention)',
+                                hintStyle:
+                                TextStyle(color: context.colors.textFaint),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide:
+                                  BorderSide(color: context.colors.border),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                              ),
+                              maxLines: 4,
+                              minLines: 1,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: _isSubmitting
+                                ? SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  context.colors.primary,
+                                ),
+                              ),
+                            )
+                                : Icon(Icons.send,
+                                color: context.colors.primary),
+                            onPressed: _isSubmitting ? null : _submitComment,
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 8),
+
+                      // Mention autocomplete dropdown
+                      MentionAutocomplete(
+                        textController: _commentController,
+                        onMentionSelected: _onMentionSelected,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -325,7 +344,8 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                           (comment['createdAt'] as dynamic)?.toDate() ??
                               DateTime.now(),
                         ),
-                        style: TextStyle(fontSize: 12, color: context.colors.textMuted),
+                        style: TextStyle(
+                            fontSize: 12, color: context.colors.textMuted),
                       ),
                     ],
                   ),

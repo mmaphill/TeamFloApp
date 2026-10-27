@@ -382,6 +382,8 @@ class _ChatScreenState extends State<ChatScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: AppColors.transparent,
       builder: (context) => CommentsBottomSheet(
         postId: postId,
         currentUserId: _currentUser.uid,
