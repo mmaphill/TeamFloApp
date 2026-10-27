@@ -379,7 +379,7 @@ class _BeltDot extends StatelessWidget {
         color: color,
         shape: BoxShape.circle,
         // Outline so white and black belts are visible in both themes
-        border: Border.all(color: Colors.grey, width: 1.5),
+        border: Border.all(color: AppColors.neutral, width: 1.5),
       ),
     );
   }
@@ -462,7 +462,7 @@ class _Message extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 48, color: Colors.grey),
+            Icon(icon, size: 48, color: context.colors.textFaint),
             const SizedBox(height: 12),
             Text(text, textAlign: TextAlign.center),
           ],
