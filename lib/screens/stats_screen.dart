@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../config/colors.dart';
@@ -8,6 +9,7 @@ import '../services/attendance_stats_service.dart';
 import '../services/schedule_service.dart';
 import '../widgets/attendance_stats_section.dart';
 import '../utils/log.dart';
+import '../widgets/sparkline.dart';
 
 class StatsScreen extends StatefulWidget {
   const StatsScreen({super.key});
@@ -208,6 +210,7 @@ class _StatsScreenState extends State<StatsScreen> {
           final metrics = stats['metrics'] as AverageMetrics;
           final submissionSuccessRate = stats['submissionSuccessRate'] as double;
           final topSubmissions = stats['topSubmissions'] as List<RankedItem>;
+          final entries = stats['journalEntries'] as List<Map<String, dynamic>>;
           final topCaughtWith = stats['topCaughtWith'] as List<RankedItem>;
           // competitions
           final overallWinRate = stats['overallWinRate'] as double;
@@ -272,36 +275,6 @@ class _StatsScreenState extends State<StatsScreen> {
                     _buildAttendanceSection(),
                     const SizedBox(height: 32),
 
-                    // Competition Stats Summaries
-                    // Text(
-                    //   'Competition Stats',
-                    //   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    //     fontWeight: FontWeight.bold,
-                    //   ),
-                    // ),
-                    // const SizedBox(height: 16),
-                    // Row(
-                    //   crossAxisAlignment: CrossAxisAlignment.start,
-                    //   children: [
-                    //     _summaryItem(
-                    //       'Competitions',
-                    //       '$totalMatches',
-                    //       'total matches',
-                    //     ),
-                    //     _summaryItem(
-                    //       'Submissions',
-                    //       '${winBreakdown.submissions}',
-                    //       'in comp',
-                    //     ),
-                    //     _summaryItem(
-                    //       'Point Wins',
-                    //       '${winBreakdown.points}',
-                    //       'in comps',
-                    //     ),
-                    //   ],
-                    // ),
-                    // const SizedBox(height: 32),
-
                     // Training Analytics
                     Text(
                       'Training Analytics',
@@ -344,7 +317,7 @@ class _StatsScreenState extends State<StatsScreen> {
                     const SizedBox(height: 24),
 
                     // Average metrics
-                    _buildAverageMetrics(metrics),
+                    _buildAverageMetrics(metrics, entries),
                     const SizedBox(height: 32),
 
                     // Competition Analytics
@@ -549,7 +522,11 @@ class _StatsScreenState extends State<StatsScreen> {
     );
   }
 
-  Widget _buildAverageMetrics(AverageMetrics metrics) {
+  Widget _buildAverageMetrics(AverageMetrics metrics, List<Map<String, dynamic>> entries) {
+    final energyHistory = last30Days(entries, 'energy');
+    final sleepHistory  = last30Days(entries, 'sleep');
+    final waterHistory  = last30Days(entries, 'water');
+    final foodHistory   = last30Days(entries, 'food');
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -567,17 +544,17 @@ class _StatsScreenState extends State<StatsScreen> {
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           children: [
-            _buildMetricCard('Energy', metrics.avgEnergy.toStringAsFixed(1)),
-            _buildMetricCard('Sleep', metrics.avgSleep.toStringAsFixed(1)),
-            _buildMetricCard('Water', metrics.avgWater.toStringAsFixed(1)),
-            _buildMetricCard('Food', metrics.avgFood.toStringAsFixed(1)),
+            _buildMetricCard(context, 'Energy', metrics.avgEnergy.toStringAsFixed(1), energyHistory, AppColors.chartEnergy),
+            _buildMetricCard(context, 'Sleep', metrics.avgSleep.toStringAsFixed(1), sleepHistory, AppColors.chartSleep),
+            _buildMetricCard(context, 'Water', metrics.avgWater.toStringAsFixed(1), waterHistory, AppColors.chartWater),
+            _buildMetricCard(context, 'Food', metrics.avgFood.toStringAsFixed(1), foodHistory, AppColors.chartFood),
           ],
         ),
       ],
     );
   }
 
-  Widget _buildMetricCard(String label, String value) {
+  Widget _buildMetricCard(BuildContext context, String label, String value, List<double> history, Color color) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -598,9 +575,37 @@ class _StatsScreenState extends State<StatsScreen> {
               fontWeight: FontWeight.bold,
             ),
           ),
+          const SizedBox(height: 12),
+          Expanded(
+            child: Sparkline(values: history, color: color),
+          )
         ],
       ),
     );
+  }
+
+  List<double> last30Days(List<Map<String, dynamic>> entries, String key) {
+    final cutoff = DateTime.now().subtract(const Duration(days: 30));
+    final recent = <MapEntry<DateTime, double>>[];
+
+    for (final e in entries) {
+      final date = _toDate(e['date']);
+      final value = e[key];
+      if (date == null || value is! num) continue; // skip incomplete entries
+      if (date.isAfter(cutoff)) {
+        recent.add(MapEntry(date, value.toDouble()));
+      }
+    }
+
+    recent.sort((a, b) => a.key.compareTo(b.key)); // oldest → newest
+    return recent.map((e) => e.value).toList();
+  }
+
+  DateTime? _toDate(dynamic value) {
+    if (value is Timestamp) return value.toDate();
+    if (value is DateTime) return value;
+    if (value is String) return DateTime.tryParse(value);
+    return null;
   }
 
   Widget _buildWinBreakdown(MethodBreakdown winBreakdown) {

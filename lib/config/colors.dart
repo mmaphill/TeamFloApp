@@ -91,6 +91,12 @@ class AppColors {
   // Default avatar circle color when a member has no photo.
   static const Color avatarDefault = info;
 
+  // Session metric sparklines
+  static const Color chartEnergy = gold;
+  static const Color chartSleep = Color(0xFFAB47BC);
+  static const Color chartWater = info;
+  static const Color chartFood = success;
+
   /// Builds an opaque color from a stored int like 0xEA2327.
   /// Used for gym brand colors saved in Firestore.
   static Color fromRgb(int rgb) => Color(0xFF000000 | rgb);
