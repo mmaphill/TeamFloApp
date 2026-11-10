@@ -10,4 +10,5 @@ export { syncUserClaims } from "./syncUserClaims";
 export { setUserRole } from "./setUserRole";
 
 // Invite-only access
-export { claimInviteOnSignup, applyInviteToExistingAccount } from "./invites";
+export { claimInviteOnSignup, applyInviteToExistingAccount, claimMyInvite } from "./invites";
+export { removeFromGym } from "./removeFromGym";

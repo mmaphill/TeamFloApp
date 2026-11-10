@@ -3,8 +3,6 @@ import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { logger } from "firebase-functions";
 import { normalizeRole } from "./syncUserClaims";
 
-const LEGACY_GYM_ID = "teamflo";
-
 /** Roles that can be handed out through this function. */
 const ASSIGNABLE = ["owner", "manager", "instructor", "front_desk", "member"];
 
@@ -58,10 +56,12 @@ export const setUserRole = onCall(async (request) => {
 
     const callerRole = normalizeRole(caller.role);
     const targetRole = normalizeRole(target.role);
-    const callerGym = caller.gymId ?? LEGACY_GYM_ID;
-    const targetGym = target.gymId ?? LEGACY_GYM_ID;
+    // INVITES: no more 'teamflo' default. An account with no gymId isn't
+    // in any gym, so its role can't be changed until it's invited back.
+    const callerGym = caller.gymId;
+    const targetGym = target.gymId;
 
-    if (callerGym !== targetGym) {
+    if (typeof callerGym !== "string" || callerGym !== targetGym) {
         throw new HttpsError("permission-denied", "That member is not in your gym.");
     }
     if (callerRole !== "owner" && callerRole !== "manager") {

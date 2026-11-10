@@ -24,9 +24,10 @@ class AuthService {
   // an owner or manager through the setUserRole Cloud Function, so the app
   // can never be used to sign yourself up as staff.
   //
-  // INVITES: the new account has no gym. The claimInviteOnSignup Cloud
-  // Function gives it one if this email has a pending invite; otherwise
-  // the app shows the "Waiting for an invite" screen.
+  // INVITES: the new account has no gym. A verification email is sent
+  // right away; once the user clicks the link, the waiting screen calls
+  // the claimMyInvite Cloud Function, which adds them to the gym that
+  // invited this email.
   Future<String?> signup({
     required String email,
     required String password,
@@ -50,6 +51,16 @@ class AuthService {
         'privacyPolicyAcknowledged': false,
       });
 
+      // EMAIL VERIFICATION: an invite can only be claimed with a verified
+      // email, so nobody can sign up with someone else's address and take
+      // their invite. Failure here isn't fatal: the waiting screen has a
+      // "Resend email" button.
+      try {
+        await userCredential.user!.sendEmailVerification();
+      } catch (e) {
+        // Logged by the caller's error handling if needed; signup still succeeded
+      }
+
       return null; // Success
     } on FirebaseAuthException catch (e) {
       return e.message; // Return error message
@@ -69,6 +80,20 @@ class AuthService {
       return null; // Success
     } on FirebaseAuthException catch (e) {
       return e.message; // Return error message
+    }
+  }
+
+  // EMAIL VERIFICATION: send the verification link again.
+  // Returns null on success, or a message to show.
+  Future<String?> resendVerificationEmail() async {
+    try {
+      await _auth.currentUser?.sendEmailVerification();
+      return null;
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'too-many-requests') {
+        return 'Please wait a minute before sending another email.';
+      }
+      return e.message ?? 'Could not send the email';
     }
   }
 

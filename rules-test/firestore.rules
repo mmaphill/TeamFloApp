@@ -195,6 +195,14 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ----- Outgoing email -----
+    // Written only by Cloud Functions and read only by the Trigger Email
+    // extension (both skip these rules). The app can't read or write it,
+    // so nobody can send email through it or read other people's invites.
+    match /mail/{mailId} {
+      allow read, write: if false;
+    }
+
     // ----- Gyms -----
     match /gyms/{gymId} {
       // PHASE 1 STEP 4: members read only their own gym's settings.

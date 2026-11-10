@@ -8,6 +8,7 @@ import '../services/schedule_service.dart';
 import '../services/staff_service.dart';
 import '../utils/log.dart';
 import 'invites_screen.dart';
+import 'members_screen.dart';
 import 'session_roster_screen.dart';
 
 class StaffPortalScreen extends StatefulWidget {
@@ -72,6 +73,15 @@ class _StaffPortalScreenState extends State<StaffPortalScreen> {
         title: const Text('Staff Portal'),
         backgroundColor: context.colors.appBar,
         actions: [
+          // Everyone in the gym. Owners and managers can remove people here.
+          IconButton(
+            icon: const Icon(Icons.people),
+            tooltip: 'Members',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const MembersScreen()),
+            ),
+          ),
           // INVITES: owners, managers, instructors and front desk
           // (everyone who can open the Staff Portal) can invite members.
           IconButton(

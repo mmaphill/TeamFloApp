@@ -33,6 +33,7 @@ class GymService extends ChangeNotifier {
   bool _isLoaded = false;
   String? _error;
   bool _needsInvite = false;
+  bool _wasRemoved = false;
 
   /// Public Read-Only State
   String? get gymId => _gymId;
@@ -45,6 +46,11 @@ class GymService extends ChangeNotifier {
   /// the "Waiting for an invite" screen instead of the gym. Flips to false
   /// on its own when staff invite this email (a Cloud Function sets gymId).
   bool get needsInvite => _needsInvite;
+
+  /// True when an owner or manager removed this account from its gym
+  /// (set by the removeFromGym Cloud Function). The waiting screen uses it
+  /// to explain why access ended.
+  bool get wasRemoved => _wasRemoved;
 
   bool get isStaff => AppRoles.isStaff(_role);
 
@@ -93,6 +99,7 @@ class GymService extends ChangeNotifier {
     final String newRole = AppRoles.normalize(data['role'] as String?);
     final bool roleChanged = newRole != _role;
     _role = newRole;
+    _wasRemoved = data['removedFromGymId'] != null;
 
     if (newGymId == null || newGymId.isEmpty) {
       _gymSub?.cancel();
@@ -156,6 +163,7 @@ class GymService extends ChangeNotifier {
     _isLoaded = false;
     _error = null;
     _needsInvite = false;
+    _wasRemoved = false;
   }
 
   @override

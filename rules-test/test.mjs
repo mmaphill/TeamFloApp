@@ -244,6 +244,32 @@ await t('invite: member revokes invite blocked', assertFails(updateDoc(doc(as('a
 await t('invite: delete blocked', assertFails(deleteDoc(doc(as('mgr'), 'invites/a@x.com'))));
 
 // =====================================================================
+// Outgoing email: no app access at all
+// =====================================================================
+
+await env.withSecurityRulesDisabled(async c => {
+    await setDoc(doc(c.firestore(), 'mail/m1'), { to: 'pending@x.com', message: { subject: 'Invite' } });
+});
+await t('mail: staff reads queued email blocked', assertFails(getDoc(doc(as('mgr'), 'mail/m1'))));
+await t('mail: staff sends email directly blocked', assertFails(setDoc(doc(as('mgr'), 'mail/m2'), { to: 'a@x.com', message: { subject: 'hi' } })));
+await t('mail: member lists email blocked', assertFails(getDocs(collection(as('alice'), 'mail'))));
+
+// =====================================================================
+// Removed from gym (gymId cleared by the removeFromGym function)
+// =====================================================================
+
+await env.withSecurityRulesDisabled(async c => {
+    await setDoc(doc(c.firestore(), 'users/gone'), {
+        uid: 'gone', name: 'Gone', role: 'member', removedFromGymId: 'teamflo', removedBy: 'mgr',
+    });
+});
+await t('removed: reads own user doc', assertSucceeds(getDoc(doc(as('gone'), 'users/gone'))));
+await t('removed: reads Team Flo posts blocked', assertFails(getDoc(doc(as('gone'), 'gyms/teamflo/posts/p1'))));
+await t('removed: lists Team Flo members blocked', assertFails(getDocs(query(collection(as('gone'), 'users'), where('gymId', '==', 'teamflo')))));
+await t('removed: rejoins by setting own gymId blocked', assertFails(updateDoc(doc(as('gone'), 'users/gone'), { gymId: 'teamflo' })));
+await t('removed: Team Flo member opens their profile blocked', assertFails(getDoc(doc(as('alice'), 'users/gone'))));
+
+// =====================================================================
 // Storage (unchanged)
 // =====================================================================
 const st = (uid, claims) => env.authenticatedContext(uid, claims).storage();

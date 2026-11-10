@@ -56,7 +56,7 @@ class _InvitesScreenState extends State<InvitesScreen> {
     } else {
       _emailController.clear();
       _showMessage(
-          'Invite created. Ask them to download the app and sign up with ${InviteService.normalize(email)}.');
+          'Invite emailed to ${InviteService.normalize(email)}. They must sign up with this email.');
     }
   }
 
@@ -86,7 +86,7 @@ class _InvitesScreenState extends State<InvitesScreen> {
 
   Future<void> _resend(Invite invite) async {
     final error = await _inviteService.resend(invite.email);
-    _showMessage(error ?? 'Invite sent again', isError: error != null);
+    _showMessage(error ?? 'Invite emailed again', isError: error != null);
   }
 
   @override
@@ -157,7 +157,8 @@ class _InvitesScreenState extends State<InvitesScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Only people you invite can use the app. They must sign up with this exact email.',
+            'Only people you invite can use the app. We email them the download '
+                'links; they must sign up with this exact email.',
             style: TextStyle(color: context.colors.textMuted),
           ),
           const SizedBox(height: 12),
