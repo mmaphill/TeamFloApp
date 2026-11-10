@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:team_flo_app/services/notification_service.dart';
 import 'config/colors.dart';
@@ -36,6 +37,8 @@ void main() async {
 
   // Load the signed-in user's gym and role, and keep them up to date
   GymService.instance.start();
+
+  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
   runApp(const TeamFloApp());
 }

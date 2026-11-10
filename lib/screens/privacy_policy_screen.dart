@@ -226,35 +226,40 @@ By using TeamFloApp, you acknowledge that you have read, understood, and agree t
 
             // I Agree Button
             Container(
-              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 border: Border(top: BorderSide(color: Colors.grey.shade300)),
               ),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _acknowledgePolicy,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: context.colors.surfaceHigh,
-                    foregroundColor: context.colors.text,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                  child: _isLoading
-                      ? SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        context.colors.text,
+              child: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : _acknowledgePolicy,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: context.colors.surfaceHigh,
+                        foregroundColor: context.colors.text,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                      child: _isLoading
+                          ? SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            context.colors.text,
+                          ),
+                        ),
+                      )
+                          : const Text(
+                        'I Agree',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                     ),
-                  )
-                      : const Text(
-                    'I Agree',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
-                ),
+                )
               ),
             ),
           ],
