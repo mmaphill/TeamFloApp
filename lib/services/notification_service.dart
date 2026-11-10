@@ -37,9 +37,12 @@ class NotificationService {
     // App open: show a banner
     FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
 
-    // App in background: user tapped the notification
+    // App in background: user tapped the notification.
+    // FIX: this only logged the tap and never navigated, so the app
+    // just came back to whatever screen was open (usually Home).
     FirebaseMessaging.onMessageOpenedApp.listen((message) {
       log('Opened from background: ${message.data}');
+      _navigateFromData(message.data);
     });
   }
 

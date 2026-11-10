@@ -1,1 +1,35 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"teamfloapp","appId":"1:221166539130:android:25249249e5419d09d046c3","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"teamfloapp","configurations":{"android":"1:221166539130:android:25249249e5419d09d046c3","ios":"1:221166539130:ios:8dcb4905896c708fd046c3"}}}}},"functions":[{"source":"functions","codebase":"default","disallowLegacyRuntimeConfig":true,"ignore":["node_modules",".git","firebase-debug.log","firebase-debug.*.log","*.local"],"predeploy":["npm --prefix \"$RESOURCE_DIR\" run build"]}]}
+{
+  "flutter":
+  {
+    "platforms":
+    {
+      "android":
+      {
+        "default":
+        {
+          "projectId":"teamfloapp","appId":"1:221166539130:android:25249249e5419d09d046c3","fileOutput":"android/app/google-services.json"
+        }
+      },
+      "dart":{"lib/firebase_options.dart":
+      {
+        "projectId":"teamfloapp","configurations":
+        {
+          "android":"1:221166539130:android:25249249e5419d09d046c3","ios":"1:221166539130:ios:8dcb4905896c708fd046c3"
+        }
+      }
+      }
+    }
+  },
+  "functions":
+  [{
+    "source":"functions",
+    "codebase":"default",
+    "disallowLegacyRuntimeConfig":true,
+    "ignore":["node_modules",".git","firebase-debug.log","firebase-debug.*.log","*.local"],
+    "predeploy":["npm --prefix \"$RESOURCE_DIR\" run build"]
+  }],
+  "firestore":
+  {
+    "rules": "rules-test/firestore.rules"
+  }
+}

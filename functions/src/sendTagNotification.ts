@@ -6,6 +6,36 @@ import { sendToUser } from "./sendToUser";
 const LEGACY_GYM_ID = "teamflo";
 
 /**
+ * PHASE 1 STEP 7: only notify for posts created in the last few minutes.
+ *
+ * The migration copies every old post into gyms/teamflo/posts. Firestore
+ * treats each copy as a new document, so without this check every old
+ * @mention would be sent again. A real new post is only seconds old when
+ * this runs, so 10 minutes leaves plenty of room for slow triggers.
+ */
+const MAX_POST_AGE_MINUTES = 10;
+
+/** Reads createdAt whether it's a Firestore Timestamp, a Date, or a string. */
+function postCreatedAt(post: FirebaseFirestore.DocumentData): Date | null {
+    const value = post.createdAt;
+    if (value instanceof admin.firestore.Timestamp) return value.toDate();
+    if (value instanceof Date) return value;
+    if (typeof value === "string") {
+        const parsed = new Date(value);
+        return isNaN(parsed.getTime()) ? null : parsed;
+    }
+    return null;
+}
+
+function isRecentPost(post: FirebaseFirestore.DocumentData): boolean {
+    const createdAt = postCreatedAt(post);
+    // No readable date: skip rather than risk re-sending an old mention.
+    if (createdAt === null) return false;
+    const ageMinutes = (Date.now() - createdAt.getTime()) / 60000;
+    return ageMinutes <= MAX_POST_AGE_MINUTES;
+}
+
+/**
  * Sends a "You were tagged" notification to everyone @mentioned in a new post.
  *
  * PHASE 1 STEP 3: posts can live in two places, so there are two triggers
@@ -21,6 +51,11 @@ async function handleNewPost(
     postId: string,
     gymId: string
 ): Promise<void> {
+    if (!isRecentPost(post)) {
+        console.log(`Gym ${gymId}: skipped post ${postId}, created more than ${MAX_POST_AGE_MINUTES} min ago (copied or migrated)`);
+        return;
+    }
+
     const mentions: any[] = post.mentions || [];
     const authorId: string | undefined = post.userId;
     const authorName: string = post.userName || "Someone";

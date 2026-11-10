@@ -1,0 +1,5 @@
+# Never commit the service account key. It is a master password to the database.
+serviceAccountKey.json
+*.json
+!package.json
+node_modules/

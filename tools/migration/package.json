@@ -1,0 +1,9 @@
+{
+  "name": "teamflo-migration",
+  "private": true,
+  "description": "One-time Phase 1 step 7 migration: move Team Flo data under gyms/teamflo",
+  "main": "migrate.js",
+  "dependencies": {
+    "firebase-admin": "^13.0.0"
+  }
+}

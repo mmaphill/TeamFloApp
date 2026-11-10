@@ -270,52 +270,44 @@ service cloud.firestore {
       }
     }
 
-    // ----- Team Flo data before migration (shared collections) -----
-    // PHASE 1 STEP 4: only Team Flo members can see or change these.
-    // After the step 7 migration they are no longer used.
+    // ----- Old shared collections (backup only) -----
+    // PHASE 1 STEP 7: Team Flo's data now lives under gyms/teamflo/.
+    // These copies are kept as a backup and are READ-ONLY. If an app somehow
+    // still wrote here, the write fails with an error instead of landing
+    // somewhere nobody can see it. Admin SDK scripts skip these rules.
 
     match /posts/{postId} {
       allow read: if canReadPosts('teamflo');
-      allow create: if canCreatePost('teamflo');
-      allow update: if canUpdatePost('teamflo');
-      allow delete: if canDeletePost('teamflo');
+      allow write: if false;
 
       match /comments/{commentId} {
         allow read: if canReadPosts('teamflo');
-        allow create: if canCreatePost('teamflo');
-        allow update: if canUpdateComment('teamflo');
-        allow delete: if canDeletePost('teamflo');
+        allow write: if false;
       }
     }
 
     match /classes/{classId} {
       allow read: if canReadClasses('teamflo');
-      allow create, delete: if canCreateOrDeleteClass('teamflo');
-      allow update: if canUpdateClass('teamflo');
+      allow write: if false;
     }
 
     match /classHistory/{recordId} {
       allow get: if canGetHistory('teamflo', recordId);
       allow list: if canListHistory('teamflo');
-      allow create: if canCreateHistory('teamflo', recordId);
-      allow update: if canUpdateHistory('teamflo');
-      allow delete: if canDeleteHistory('teamflo');
+      allow write: if false;
     }
 
-    // Instagram feed (public)
     match /instagram/{document=**} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if false;
     }
 
     // ----- Journals -----
     // Gym-wide technique list (collection group query on 'journal').
-    // PHASE 1 STEP 4: other gyms must filter by their own gymId.
-    // TEMPORARY until step 7: Team Flo entries have no gymId yet, so Team Flo
-    // members can run the query without a filter. Step 7 removes this.
+    // PHASE 1 STEP 7: every gym, Team Flo included, must filter by its own
+    // gymId. The temporary Team Flo exception is gone.
     match /{path=**}/journal/{entryId} {
-      allow read: if isAuthenticated() &&
-        (myGymId() == 'teamflo' || resource.data.gymId == myGymId());
+      allow read: if isAuthenticated() && resource.data.gymId == myGymId();
     }
 
     // ----- Users -----
@@ -327,11 +319,9 @@ service cloud.firestore {
       allow get: if isAuthenticated() &&
         (request.auth.uid == uid || resource == null || sameGym(resource.data));
 
-      // PHASE 1 STEP 4: member lists (mentions, staff portal) must filter by
-      // gymId. TEMPORARY until step 7: Team Flo accounts have no gymId yet,
-      // so Team Flo members can list without a filter. Step 7 removes this.
-      allow list: if isAuthenticated() &&
-        (myGymId() == 'teamflo' || resource.data.gymId == myGymId());
+      // PHASE 1 STEP 7: member lists (mentions, staff portal) must filter by
+      // gymId for every gym. The temporary Team Flo exception is gone.
+      allow list: if isAuthenticated() && resource.data.gymId == myGymId();
 
       // New accounts start as 'member' (or no role) with no gym.
       // The gym is set by a Cloud Function, never by the app.
