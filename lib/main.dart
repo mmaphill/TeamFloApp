@@ -9,6 +9,7 @@ import 'config/theme_provider.dart';
 import 'firebase_options.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_home_screen.dart';
+import 'screens/waiting_for_invite_screen.dart';
 import 'config/theme_data.dart';
 import 'services/gym_service.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -129,8 +130,9 @@ class _TeamFloAppState extends State<TeamFloApp> {
 }
 
 /// Shows [child] once the user's gym has loaded.
-/// Shows a spinner while loading, and an error with a sign-out button
-/// if the gym could not be loaded.
+/// Shows a spinner while loading, an error with a sign-out button if the
+/// gym could not be loaded, and the "Waiting for an invite" screen if the
+/// account isn't in a gym yet (INVITES).
 class _GymGate extends StatelessWidget {
   final Widget child;
   const _GymGate({required this.child});
@@ -141,6 +143,11 @@ class _GymGate extends StatelessWidget {
 
     if (!gymService.isLoaded) {
       return const _LoadingScreen();
+    }
+
+    // INVITES: signed in, but no gym has invited this email yet
+    if (gymService.needsInvite) {
+      return const WaitingForInviteScreen();
     }
 
     if (gymService.error != null) {

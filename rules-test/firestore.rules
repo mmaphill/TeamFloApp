@@ -18,15 +18,20 @@ service cloud.firestore {
     // member instead of causing an error.
     function getUserRole() { return me().get('role', 'member'); }
 
-    // PHASE 1 STEP 4: the signed-in user's gym. Accounts made before
-    // multi-gym support have no gymId and belong to Team Flo.
-    function myGymId() { return me().get('gymId', 'teamflo'); }
+    // INVITES: the signed-in user's gym, or '' if they don't have one yet.
+    // (was: defaulted to 'teamflo'. Every Team Flo account was tagged in the
+    // step 7 migration, so an account with no gymId is now a new signup
+    // that hasn't been invited, and it gets no access to any gym.)
+    function myGymId() { return me().get('gymId', ''); }
 
-    // PHASE 1 STEP 4: signed in AND a member of this gym.
-    function inGym(gymId) { return isAuthenticated() && myGymId() == gymId; }
+    function hasGym() { return myGymId() != ''; }
 
-    // PHASE 1 STEP 4: is another user's document in my gym?
-    function sameGym(userData) { return userData.get('gymId', 'teamflo') == myGymId(); }
+    // Signed in AND a member of this gym.
+    function inGym(gymId) { return isAuthenticated() && hasGym() && myGymId() == gymId; }
+
+    // Is another user's document in my gym? Two accounts with no gym are
+    // NOT in the same gym.
+    function sameGym(userData) { return hasGym() && userData.get('gymId', '') == myGymId(); }
 
     function userInMyGym(userId) {
       return sameGym(get(/databases/$(database)/documents/users/$(userId)).data);
@@ -37,12 +42,9 @@ service cloud.firestore {
     // A role only ever applies inside the user's own gym: every rule below
     // also checks inGym() or sameGym().
     //
-    //   isAdmin()      owner, manager        schedule, moderation, member edits
-    //   isInstructor() + instructor          promotions, class edits
-    //   isStaff()      + front desk          attendance and walk-ins
+    //   isAdmin()   owner, manager                      schedule, moderation, member edits
+    //   isStaff()   + instructor, front desk            attendance, walk-ins, invites
     function isAdmin() { return getUserRole() in ['owner', 'manager', 'admin']; }
-
-    function isInstructor() { return getUserRole() in ['owner', 'manager', 'admin', 'instructor']; }
 
     function isStaff() { return getUserRole() in ['owner', 'manager', 'admin', 'instructor', 'front_desk']; }
 
@@ -147,85 +149,51 @@ service cloud.firestore {
     }
 
     // =================================================================================
-    // Validation Functions
-    // (Not called by any rule right now. Kept for later use.)
-    // =================================================================================
-    function validateUserData() {
-      let data = request.resource.data;
-      return data.keys().hasAll(['uid', 'name', 'email', 'beltRank', 'role', 'createdAt']) &&
-        data.uid is string &&
-        data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
-        data.email is string && data.email.matches('.*@.*\\..*') &&
-        data.role is string && data.role in ['member', 'instructor', 'admin'] &&
-        data.createdAt is timestamp;
-    }
-
-    function onlyAllowedUserFields() {
-      let incomingData = request.resource.data;
-      let existingData = resource.data;
-      return incomingData.uid == existingData.uid &&
-             incomingData.role == existingData.role &&
-             incomingData.createdAt == existingData.createdAt;
-    }
-
-    function validateClassData() {
-      let data = request.resource.data;
-      return data.keys().hasAll(['className', 'time', 'instructor', 'day']) &&
-             data.className is string && data.className.size() > 0 &&
-             data.time is string &&
-             data.instructor is string &&
-             data.day is string;
-    }
-
-    function validatePostData() {
-      let data = request.resource.data;
-      return data.keys().hasAll(['userId', 'content', 'createdAt']) &&
-             data.content is string &&
-             data.content.size() > 0 && data.content.size() <= 2000 &&
-             data.createdAt is timestamp;
-    }
-
-    function validateCommentData() {
-      let data = request.resource.data;
-      return data.keys().hasAll(['userId', 'content', 'createdAt']) &&
-             data.content is string &&
-             data.content.size() > 0 &&
-             data.content.size() <= 2000 &&
-             data.createdAt is timestamp;
-    }
-
-    function validateJournalData() {
-      let data = request.resource.data;
-      return data.keys().hasAll(['userId', 'date']) &&
-        data.userId is string &&
-        data.date is timestamp &&
-        (!('technique') || data.technique is string) &&
-        (!('position') || data.position is string) &&
-        (!('submissions') || data.submissions is number) &&
-        (!('submissionAttempts') || data.submissionAttempts is number) &&
-        (!('timesSubmitted') || data.timesSubmitted is number) &&
-        (!('energy') || data.energy is number) &&
-        (!('sleep') || data.sleep is number) &&
-        (!('water') || data.water is number) &&
-        (!('food') || data.food is number) &&
-        (!('generalNotes') || data.generalNotes is string) &&
-        (!('classesAttended') || data.classesAttended is list) &&
-        (!('photoUrl') || data.photoUrl is string) &&
-        (!('createdAt') || data.createdAt is timestamp) &&
-        (!('updatedAt') || data.updatedAt is timestamp);
-    }
-
-    function validateAttendanceData() {
-      let data = request.resource.data;
-      return data.keys().hasAll(['userId', 'classId', 'timestamp']) &&
-             data.userId is string &&
-             data.classId is string &&
-             data.timestamp is timestamp;
-    }
-
-    // =================================================================================
     // Collections
     // =================================================================================
+
+    // ----- Invites -----
+    // INVITES: one document per invited email, ID = the email in lowercase.
+    // Staff (owner, manager, instructor, front desk) invite people to THEIR
+    // gym only. Members can't see or create invites. A Cloud Function marks
+    // an invite 'used' when the person signs up; the app never can.
+    match /invites/{inviteId} {
+      // Staff can open an invite from their own gym, or check that an email
+      // has no invite yet (resource == null) before creating one.
+      allow get: if isAuthenticated() && hasGym() && isStaff() &&
+        (resource == null || resource.data.gymId == myGymId());
+
+      // Staff list their own gym's invites (the query must filter by gymId).
+      allow list: if isAuthenticated() && hasGym() && isStaff() &&
+        resource.data.gymId == myGymId();
+
+      // New invite: own gym, member role, pending, sent by me, nothing extra.
+      allow create: if isAuthenticated() && hasGym() && isStaff() &&
+        inviteId == request.resource.data.email &&
+        request.resource.data.keys().hasOnly(
+          ['email', 'gymId', 'role', 'status', 'invitedBy', 'invitedByName', 'createdAt']) &&
+        request.resource.data.gymId == myGymId() &&
+        request.resource.data.role == 'member' &&
+        request.resource.data.status == 'pending' &&
+        request.resource.data.invitedBy == request.auth.uid &&
+        request.resource.data.createdAt == request.time;
+
+      // Revoke a pending invite, or send a revoked or used one again
+      // (used: the member deleted their account and is coming back).
+      // Only the Cloud Function can mark an invite 'used'.
+      allow update: if isAuthenticated() && hasGym() && isStaff() &&
+        resource.data.gymId == myGymId() &&
+        onlyChanges(['status', 'invitedBy', 'invitedByName', 'createdAt', 'revokedBy', 'revokedAt']) &&
+        (
+          (resource.data.status == 'pending' && request.resource.data.status == 'revoked' &&
+           request.resource.data.revokedBy == request.auth.uid) ||
+          (resource.data.status in ['revoked', 'used'] && request.resource.data.status == 'pending' &&
+           request.resource.data.invitedBy == request.auth.uid &&
+           request.resource.data.createdAt == request.time)
+        );
+
+      allow delete: if false;
+    }
 
     // ----- Gyms -----
     match /gyms/{gymId} {
@@ -307,7 +275,7 @@ service cloud.firestore {
     // PHASE 1 STEP 7: every gym, Team Flo included, must filter by its own
     // gymId. The temporary Team Flo exception is gone.
     match /{path=**}/journal/{entryId} {
-      allow read: if isAuthenticated() && resource.data.gymId == myGymId();
+      allow read: if isAuthenticated() && hasGym() && resource.data.gymId == myGymId();
     }
 
     // ----- Users -----
@@ -321,7 +289,7 @@ service cloud.firestore {
 
       // PHASE 1 STEP 7: member lists (mentions, staff portal) must filter by
       // gymId for every gym. The temporary Team Flo exception is gone.
-      allow list: if isAuthenticated() && resource.data.gymId == myGymId();
+      allow list: if isAuthenticated() && hasGym() && resource.data.gymId == myGymId();
 
       // New accounts start as 'member' (or no role) with no gym.
       // The gym is set by a Cloud Function, never by the app.

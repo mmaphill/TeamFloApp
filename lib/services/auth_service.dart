@@ -6,6 +6,7 @@ import '../models/app_roles.dart';
 import '../models/belt_rank_model.dart';
 import '../models/competition_stats_model.dart';
 import 'gym_scope.dart';
+import 'gym_service.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -22,6 +23,10 @@ class AuthService {
   // Every new account starts as a member. Staff roles are given later by
   // an owner or manager through the setUserRole Cloud Function, so the app
   // can never be used to sign yourself up as staff.
+  //
+  // INVITES: the new account has no gym. The claimInviteOnSignup Cloud
+  // Function gives it one if this email has a pending invite; otherwise
+  // the app shows the "Waiting for an invite" screen.
   Future<String?> signup({
     required String email,
     required String password,
@@ -173,11 +178,15 @@ class AuthService {
 
       // Delete user's posts
       // PHASE 1 STEP 3: from this gym's posts (GymScope).
-      final postsQuery = await GymScope.col('posts')
-          .where('userId', isEqualTo: uid)
-          .get();
-      for (var doc in postsQuery.docs) {
-        await doc.reference.delete();
+      // INVITES: an account still waiting for an invite has no gym, so it
+      // can't have posts, and the rules would block the query. Skip it.
+      if (GymService.instance.gymId != null) {
+        final postsQuery = await GymScope.col('posts')
+            .where('userId', isEqualTo: uid)
+            .get();
+        for (var doc in postsQuery.docs) {
+          await doc.reference.delete();
+        }
       }
 
       // Delete user's journal entries

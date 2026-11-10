@@ -8,3 +8,6 @@ export { sendWorkoutReminder } from "./sendWorkoutReminder";
 // Phase 1: multi-gym roles
 export { syncUserClaims } from "./syncUserClaims";
 export { setUserRole } from "./setUserRole";
+
+// Invite-only access
+export { claimInviteOnSignup, applyInviteToExistingAccount } from "./invites";

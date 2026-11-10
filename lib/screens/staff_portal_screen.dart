@@ -7,6 +7,7 @@ import '../services/attendance_stats_service.dart';
 import '../services/schedule_service.dart';
 import '../services/staff_service.dart';
 import '../utils/log.dart';
+import 'invites_screen.dart';
 import 'session_roster_screen.dart';
 
 class StaffPortalScreen extends StatefulWidget {
@@ -70,6 +71,18 @@ class _StaffPortalScreenState extends State<StaffPortalScreen> {
       appBar: AppBar(
         title: const Text('Staff Portal'),
         backgroundColor: context.colors.appBar,
+        actions: [
+          // INVITES: owners, managers, instructors and front desk
+          // (everyone who can open the Staff Portal) can invite members.
+          IconButton(
+            icon: const Icon(Icons.person_add),
+            tooltip: 'Invites',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const InvitesScreen()),
+            ),
+          ),
+        ],
       ),
       body: _buildBody(),
     );

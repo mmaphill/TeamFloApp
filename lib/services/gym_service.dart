@@ -6,7 +6,7 @@ import '../models/app_roles.dart';
 import '../models/gym_model.dart';
 import '../utils/log.dart';
 
-/// Loads the signed-in user's gym and rol, and keeps them up to date.
+/// Loads the signed-in user's gym and role, and keeps them up to date.
 ///
 /// Flow: Auth user -> users/{uid} (gymId,role) -> gyms/{gymId}
 ///
@@ -16,8 +16,9 @@ class GymService extends ChangeNotifier {
   GymService._();
   static final GymService instance = GymService._();
 
-  /// Every Team Flo account created before multi-gym support has no gymId.
-  /// This will be updated at a later time
+  /// Fallback used by GymScope when no gym is loaded. Since the step 7
+  /// migration and invite-only access, an account with no gymId is shown
+  /// the "Waiting for an invite" screen, so GymScope isn't used then.
   static const String legacyGymId = 'teamflo';
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -31,6 +32,7 @@ class GymService extends ChangeNotifier {
   GymModel? _gym;
   bool _isLoaded = false;
   String? _error;
+  bool _needsInvite = false;
 
   /// Public Read-Only State
   String? get gymId => _gymId;
@@ -38,6 +40,11 @@ class GymService extends ChangeNotifier {
   String get role => _role;
   bool get isLoaded => _isLoaded;
   String? get error => _error;
+
+  /// INVITES: true when the signed-in account has no gym yet. The app shows
+  /// the "Waiting for an invite" screen instead of the gym. Flips to false
+  /// on its own when staff invite this email (a Cloud Function sets gymId).
+  bool get needsInvite => _needsInvite;
 
   bool get isStaff => AppRoles.isStaff(_role);
 
@@ -70,8 +77,8 @@ class GymService extends ChangeNotifier {
     notifyListeners();
 
     _userSub = _firestore.collection('users').doc(user.uid).snapshots().listen(
-      (snapshot) => _onUserDoc(user, snapshot),
-      onError: (Object e) => _fail('Could not load your acciount: $e'),
+          (snapshot) => _onUserDoc(user, snapshot),
+      onError: (Object e) => _fail('Could not load your account: $e'),
     );
   }
 
@@ -80,10 +87,25 @@ class GymService extends ChangeNotifier {
 
     if (data == null) return;
 
-    final String newGymId = (data['gymId'] as String?) ?? legacyGymId;
+    // INVITES: no gymId means this account hasn't been invited yet.
+    // (was: defaulted to Team Flo)
+    final String? newGymId = data['gymId'] as String?;
     final String newRole = AppRoles.normalize(data['role'] as String?);
     final bool roleChanged = newRole != _role;
     _role = newRole;
+
+    if (newGymId == null || newGymId.isEmpty) {
+      _gymSub?.cancel();
+      _gymSub = null;
+      _gymId = null;
+      _gym = null;
+      _error = null;
+      _needsInvite = true;
+      _isLoaded = true;
+      notifyListeners();
+      return;
+    }
+    _needsInvite = false;
 
     /// Role or gym changed on the server: the cloud Function updates the user's custom claim
     if (roleChanged || newGymId != _gymId) {
@@ -94,25 +116,29 @@ class GymService extends ChangeNotifier {
     }
 
     if (newGymId == _gymId) {
-      notifyListeners(); // roles may have chnaged
+      notifyListeners(); // roles may have changed
       return;
     }
 
     _gymId = newGymId;
+    // Show the loading screen until the new gym's settings arrive (matters
+    // when a waiting account is invited and joins a gym while the app is open).
+    _isLoaded = false;
+    notifyListeners();
     _gymSub?.cancel();
     _gymSub = _firestore.collection('gyms').doc(newGymId).snapshots().listen(
-        (gymSnap) {
-          final gymData = gymSnap.data();
-          if (gymData == null) {
-            _fail('Gym "newGymId" was not found');
-            return;
-          }
-          _gym = GymModel.fromMap(gymSnap.id, gymData);
-          _error = null;
-          _isLoaded = true;
-          notifyListeners();
-        },
-        onError: (Object e) => _fail('Could not load gym settings: $e'),
+          (gymSnap) {
+        final gymData = gymSnap.data();
+        if (gymData == null) {
+          _fail('Gym "$newGymId" was not found');
+          return;
+        }
+        _gym = GymModel.fromMap(gymSnap.id, gymData);
+        _error = null;
+        _isLoaded = true;
+        notifyListeners();
+      },
+      onError: (Object e) => _fail('Could not load gym settings: $e'),
     );
   }
 
@@ -129,6 +155,7 @@ class GymService extends ChangeNotifier {
     _role = AppRoles.member;
     _isLoaded = false;
     _error = null;
+    _needsInvite = false;
   }
 
   @override
