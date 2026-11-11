@@ -1,17 +1,14 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 
 import '../models/app_roles.dart';
 import '../models/belt_rank_model.dart';
 import '../models/competition_stats_model.dart';
-import 'gym_scope.dart';
-import 'gym_service.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseStorage _storage = FirebaseStorage.instance;
 
   // Stream to listen to auth state changes
   Stream<User?> get authStateChanges => _auth.authStateChanges();
@@ -208,93 +205,42 @@ class AuthService {
     }
   }
 
-  // Delete user account and all associated data
+  // ACCOUNT DELETION: delete this account and everything the user created.
+  //
+  // The work is done by the deleteMyAccount Cloud Function, not the app,
+  // so nothing is left behind: posts (with their comments), the user's
+  // comments on other people's posts, likes, journal, block list, invite,
+  // uploaded files, the user document and the sign-in account.
+  //
+  // Returns null on success, or a message to show. On success the user is
+  // signed out and main.dart shows the login screen.
   Future<String?> deleteAccount(String uid) async {
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        return 'No user logged in';
-      }
-
-      // PHASE 1 STEP 4: the user document is now deleted LAST (below).
-      // The security rules read it to know which gym the user is in, so
-      // the posts and journal cleanup must happen while it still exists.
-
-      // Delete user's posts
-      // PHASE 1 STEP 3: from this gym's posts (GymScope).
-      // INVITES: an account still waiting for an invite has no gym, so it
-      // can't have posts, and the rules would block the query. Skip it.
-      if (GymService.instance.gymId != null) {
-        final postsQuery = await GymScope.col('posts')
-            .where('userId', isEqualTo: uid)
-            .get();
-        for (var doc in postsQuery.docs) {
-          await doc.reference.delete();
-        }
-      }
-
-      // Delete user's journal entries
-      final journalQuery = await _firestore
-          .collection('users')
-          .doc(uid)
-          .collection('journal')
-          .get();
-      for (var doc in journalQuery.docs) {
-        await doc.reference.delete();
-      }
-
-      // REPORT AND BLOCK: delete this user's private block list
-      final blockedQuery = await _firestore
-          .collection('users')
-          .doc(uid)
-          .collection('blocked')
-          .get();
-      for (var doc in blockedQuery.docs) {
-        await doc.reference.delete();
-      }
-
-      // Delete user document from Firestore (last, see note above)
-      await _firestore.collection('users').doc(uid).delete();
-
-      // Delete user files from Storage
-      final profilePath = 'profiles/$uid';
-      final postsPath = 'posts/$uid';
-      final journalPath = 'journals/$uid';
-
-      try {
-        final profileList = await _storage.ref(profilePath).listAll();
-        for (var file in profileList.items) {
-          await file.delete();
-        }
-      } catch (e) {
-        // Directory might not exist
-      }
-
-      try {
-        final postsList = await _storage.ref(postsPath).listAll();
-        for (var file in postsList.items) {
-          await file.delete();
-        }
-      } catch (e) {
-        // Directory might not exist
-      }
-
-      try {
-        final journalList = await _storage.ref(journalPath).listAll();
-        for (var file in journalList.items) {
-          await file.delete();
-        }
-      } catch (e) {
-        // Directory might not exist
-      }
-
-      // Delete Firebase Auth user
-      await user.delete();
-
-      return null; // Success
-    } catch (e) {
-      return e.toString();
+    if (_auth.currentUser == null) {
+      return 'No user logged in';
     }
+
+    try {
+      await FirebaseFunctions.instance
+          .httpsCallable(
+        'deleteMyAccount',
+        // Deleting a lot of posts and comments can take a while
+        options: HttpsCallableOptions(timeout: const Duration(minutes: 5)),
+      )
+          .call();
+    } on FirebaseFunctionsException catch (e) {
+      return e.message ?? 'Could not delete your account. Please try again.';
+    } catch (e) {
+      return 'Could not delete your account. Please check your connection and try again.';
+    }
+
+    // The sign-in account no longer exists. Signing out clears it from this
+    // device and returns the app to the login screen.
+    try {
+      await _auth.signOut();
+    } catch (_) {
+      // Already signed out
+    }
+    return null; // Success
   }
 
   Future<String?> updateBeltRank(

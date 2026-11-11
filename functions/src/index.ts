@@ -15,3 +15,6 @@ export { removeFromGym } from "./removeFromGym";
 
 // Report and block
 export { notifyStaffOfReport } from "./notifyStaffOfReport";
+
+// Account deletion (runs on the server so nothing is left behind)
+export { deleteMyAccount } from "./deleteMyAccount";

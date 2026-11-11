@@ -13,6 +13,7 @@ import '../models/competition_stats_model.dart';
 import '../config/colors.dart';
 import '../services/storage_service.dart';
 import '../services/validation_service.dart';
+import 'blocked_members_screen.dart';
 import 'crop_photo_screen.dart';
 import '../config/theme_provider.dart';
 import 'package:provider/provider.dart';
@@ -122,7 +123,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       if (!mounted) return;
       setState(() {
-        _userData = user.copyWith(currentBelt: currentBelt);
+        // FIX: take the uid from the signed-in account, not from a 'uid'
+        // field inside the document. An account whose document has no
+        // 'uid' field (made by hand in the console, or left incomplete)
+        // used to load with an empty uid, and the screen showed a spinner
+        // forever, so the person could not even delete their account.
+        _userData = user.copyWith(
+          uid: _currentUser.uid,
+          currentBelt: currentBelt,
+        );
       });
     } catch (e, stack) {
       debugPrint('PROFILE: error loading user data: $e\n$stack');
@@ -255,7 +264,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
     }
   }
-  
+
   // ============ Show Age Toggle ============
   Future<void> _setShowAge(bool value) async {
     final previous = _userData.showAge;
@@ -744,8 +753,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     const placeOptions = ['1st', '2nd', '3rd', 'N/A'];
     String place = placeOptions.contains(stat.place) ? stat.place : 'N/A';
     final rankOptions = format == 'Gi'
-      ? ['White', 'Blue', 'Purple', 'Brown', 'Black']
-      : ['Beginner', 'Intermediate', 'Advanced'];
+        ? ['White', 'Blue', 'Purple', 'Brown', 'Black']
+        : ['Beginner', 'Intermediate', 'Advanced'];
     String rank = rankOptions.contains(stat.place) ? stat.place : 'N/A';
     int submissionWins = stat.submissionWins;
     int submissionLosses = stat.submissionLosses;
@@ -817,8 +826,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     border: OutlineInputBorder(),
                   ),
                   items: placeOptions
-                    .map((p) => DropdownMenuItem(value: p, child: Text(p)))
-                    .toList(),
+                      .map((p) => DropdownMenuItem(value: p, child: Text(p)))
+                      .toList(),
                   onChanged: (value) {
                     setDialogState(() => place = value ?? 'NA');
                   },
@@ -991,14 +1000,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           title: const Text('Profile'),
           bottom: _isLoading
-            ? const PreferredSize(
+              ? const PreferredSize(
             preferredSize: Size.fromHeight(2),
             child: LinearProgressIndicator(minHeight: 2),
           )
               : null,
         ),
-        body: _userData.uid.isEmpty // Add this check
+        body: _userData.uid.isEmpty
+        // Still loading, or loading failed. FIX: a failed load used to
+        // show the spinner forever; now it shows the reason, and the
+        // account can still be deleted from here.
+            ? (_errorMessage == null
             ? const Center(child: CircularProgressIndicator())
+            : Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(_errorMessage!, textAlign: TextAlign.center),
+                const SizedBox(height: 16),
+                TextButton(
+                  onPressed: _showDeleteAccountDialog,
+                  child: const Text(
+                    'Delete Account',
+                    style: TextStyle(color: AppColors.error),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ))
             : SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
           child: Column(
@@ -1072,12 +1104,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _buildEditableField(
                 label: 'Date of Birth',
                 value: _userData.dob != null
-                  ? DateFormat('MMM d, yyyy').format(_userData.dob!)
-                  : '(No date of birth set)',
+                    ? DateFormat('MMM d, yyyy').format(_userData.dob!)
+                    : '(No date of birth set)',
                 onTap: _showEditDobDialog,
               ),
               const SizedBox(height: 16),
-              
+
               // Show Age Toggle
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -1345,6 +1377,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 12),
 
+              // Blocked members (REPORT AND BLOCK): see and unblock people
+              TextButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const BlockedMembersScreen(),
+                    ),
+                  );
+                },
+                child: const Text('Blocked members'),
+              ),
+              const SizedBox(height: 8),
+
               // Privacy Policy
               TextButton(
                 onPressed: () {
@@ -1566,22 +1612,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
-                  initialValue: place,
-                  decoration: const InputDecoration(
-                    labelText: 'Place',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: const [
-                    DropdownMenuItem(value: '1st', child: Text('1st')),
-                    DropdownMenuItem(value: '2nd', child: Text('2nd')),
-                    DropdownMenuItem(value: '3rd', child: Text('3rd')),
-                    DropdownMenuItem(value: 'N/A', child: Text('N/A')),
-                  ],
-                  onChanged: (value) {
-                    setDialogState(() {
-                      place = value ?? '';
-                    });
-                  }
+                    initialValue: place,
+                    decoration: const InputDecoration(
+                      labelText: 'Place',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: '1st', child: Text('1st')),
+                      DropdownMenuItem(value: '2nd', child: Text('2nd')),
+                      DropdownMenuItem(value: '3rd', child: Text('3rd')),
+                      DropdownMenuItem(value: 'N/A', child: Text('N/A')),
+                    ],
+                    onChanged: (value) {
+                      setDialogState(() {
+                        place = value ?? '';
+                      });
+                    }
                 ),
                 // Date Picker
                 ListTile(
@@ -1932,6 +1978,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     String? error = await _authService.deleteAccount(_currentUser.uid);
 
+    if (!mounted) return;
     setState(() => _isLoading = false);
 
     if (error == null) {
@@ -1939,10 +1986,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Account deleted successfully')),
         );
-        Navigator.of(context).pushNamedAndRemoveUntil(
-          '/login',
-              (route) => false,
-        );
+        // FIX: was pushNamedAndRemoveUntil('/login'), but the app has no
+        // '/login' route, so it threw an error and left this screen open.
+        // The user is signed out now, so main.dart already shows the login
+        // screen underneath. Close this screen to reveal it.
+        Navigator.of(context).popUntil((route) => route.isFirst);
       }
     } else {
       if (mounted) {
