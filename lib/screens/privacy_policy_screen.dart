@@ -25,6 +25,7 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
     String uid = FirebaseAuth.instance.currentUser!.uid;
     String? error = await _authService.acknowledgePrivacyPolicy(uid);
 
+    if (!mounted) return;
     setState(() => _isLoading = false);
 
     if (error == null) {
@@ -53,12 +54,12 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
       onPopInvokedWithResult: (didPop,result) {
         if (didPop) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please review and accept the privacy policy to continue')),
+          const SnackBar(content: Text('Please review and accept the privacy policy and community rules to continue')),
         );
       },
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Privacy Policy'),
+          title: const Text('Privacy & Community Rules'),
           backgroundColor: context.colors.appBar,
           automaticallyImplyLeading: !widget.isFirstLogin, // Hide back on first login
         ),
@@ -69,10 +70,12 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
                 child: SelectableText(
-                  '''TeamFloApp Privacy Policy
+                  '''TeamFloApp Privacy Policy and Community Rules
 
-Last Updated: 10/13/2026
-Effective Date: 10/13/2026
+Last Updated: 11/11/2026
+Effective Date: 11/11/2026
+
+What's new: Community Rules (Section 10), and how reports and blocked members are handled (Sections 2 and 4).
 
 1. INTRODUCTION
 
@@ -95,6 +98,8 @@ Application Usage:
 - Competition records you choose to enter
 - Photos and videos you upload
 - Personal training reflections
+- Reports you send about posts or comments
+- The list of members you block
 
 Device Information:
 - A device token used to send push notifications (only if you turn notifications on)
@@ -121,13 +126,18 @@ Public Information (visible to other app users):
 - Posts you create
 - Comments you make
 
-Private Information (only for you and admins):
+Private Information (only for you and gym staff):
 - Your email address
 - Your date of birth (only your calculated age is shown, and only if you allow it)
 - Your password (admins cannot see your password, but may help you reset it)
 - Your training journal entries
 - Your competition records
 - Your personal statistics
+
+Reports and blocking:
+- Reports you send are seen only by your gym's owners and managers, along with your name
+- The member you report is not told who reported them
+- Your list of blocked members is seen only by you. Blocked members are not told
 
 We do not sell your data, and we do not share it with advertisers.
 
@@ -213,21 +223,51 @@ Response Time: 30-45 days
 
 We will not discriminate against you for exercising these rights.
 
-10. CONTACT US
+10. COMMUNITY RULES
 
-If you have questions about this Privacy Policy:
+The community feed is for members of your gym. By posting or commenting, you agree to these rules.
+
+Do:
+- Treat other members with respect
+- Only post content you have the right to share
+
+Do not post:
+- Harassment, bullying, threats, or hate speech
+- Nudity or sexual content
+- Violent or illegal content
+- Spam or advertising
+- Other people's private information
+
+There is no tolerance for objectionable content or abusive behavior.
+
+Reporting and blocking:
+- To report a post or comment, tap the three dots on it and choose Report
+- To stop seeing a member's posts and comments, tap the three dots and choose Block member
+- You can unblock members from Profile > Blocked members
+
+What happens after a report:
+- Gym staff review reports within 24 hours
+- Content that breaks these rules is removed
+- A member who breaks these rules can be removed from the gym and lose access to the app
+
+11. CONTACT US
+
+If you have questions about this Privacy Policy or these Community Rules, or want to report a problem:
 Email: phill.w.nunez@gmail.com
 
-By using TeamFloApp, you acknowledge that you have read, understood, and agree to be bound by this Privacy Policy.''',
+By using TeamFloApp, you acknowledge that you have read, understood, and agree to be bound by this Privacy Policy and these Community Rules.''',
                   style: const TextStyle(fontSize: 14, height: 1.6),
                 ),
               ),
             ),
 
             // I Agree Button
+            // SafeArea(top: false) adds bottom padding equal to the
+            // Android nav bar / iPhone home indicator so the button
+            // is never hidden behind them.
             Container(
               decoration: BoxDecoration(
-                border: Border(top: BorderSide(color: Colors.grey.shade300)),
+                border: Border(top: BorderSide(color: context.colors.border)),
               ),
               child: SafeArea(
                 top: false,
@@ -259,7 +299,7 @@ By using TeamFloApp, you acknowledge that you have read, understood, and agree t
                       ),
                     ),
                   ),
-                )
+                ),
               ),
             ),
           ],

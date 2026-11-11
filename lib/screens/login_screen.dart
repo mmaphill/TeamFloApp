@@ -1,7 +1,5 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:team_flo_app/screens/privacy_policy_screen.dart';
 import 'package:team_flo_app/services/validation_service.dart';
 import '../config/colors.dart';
 import '../services/auth_service.dart';
@@ -46,6 +44,9 @@ class _LoginScreenState extends State<LoginScreen> {
       password: _passwordController.text,
     );
 
+    // Signing in makes main.dart swap this screen for the app, so this
+    // screen may already be gone by now.
+    if (!mounted) return;
     setState(() => _isLoading = false);
 
     if (error == null) {
@@ -53,28 +54,16 @@ class _LoginScreenState extends State<LoginScreen> {
         log('Login Successful!');
       }
 
-      // Get user data to check privacy policy
-      final userData = await _authService.getUserData(
-        FirebaseAuth.instance.currentUser!.uid,
+      // COMMUNITY RULES: the Privacy Policy and Community Rules check now
+      // lives in one place, MainHomeScreen._checkPrivacyPolicy(), which runs
+      // every time the app opens. The copy that was here used
+      // Navigator.pushReplacement, which replaced the app's root screen
+      // (the one that switches between login and the app); agreeing then
+      // closed the only screen left. It rarely ran, because this screen is
+      // usually gone before the user data loads.
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Login successful!')),
       );
-
-      if (mounted) {
-        // If privacy policy NOT acknowledged, show it (forces them to read)
-        if (userData != null && userData['privacyPolicyAcknowledged'] != true) {
-          Navigator.pushReplacement(  // ← USE pushReplacement to replace login screen
-            context,
-            MaterialPageRoute(
-              builder: (context) => const PrivacyPolicyScreen(isFirstLogin: true),
-            ),
-          );
-        } else {
-          // Privacy policy already acknowledged, go to home
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Login successful!')),
-          );
-          // The StreamBuilder in main.dart will handle navigation to MainHomeScreen
-        }
-      }
     } else {
       setState(() => _errorMessage = error);
     }
@@ -162,7 +151,7 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 8),
             Text(
               _isLogin
-                ? 'Login to your account' : 'Sign up to get started',
+                  ? 'Login to your account' : 'Sign up to get started',
               style: TextStyle(
                 fontSize: 14,
                 color: context.colors.textMuted,

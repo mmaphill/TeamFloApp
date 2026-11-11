@@ -123,7 +123,9 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
       FirebaseAuth.instance.currentUser!.uid,
     );
 
-    if (mounted && userData != null && userData['privacyPolicyAcknowledged'] != true) {
+    // COMMUNITY RULES: also asks members who agreed to an older version
+    // (see AuthService.currentTermsVersion).
+    if (mounted && AuthService.needsToAcceptTerms(userData)) {
       Navigator.push(
         context,
         MaterialPageRoute(

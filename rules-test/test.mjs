@@ -270,6 +270,44 @@ await t('removed: rejoins by setting own gymId blocked', assertFails(updateDoc(d
 await t('removed: Team Flo member opens their profile blocked', assertFails(getDoc(doc(as('alice'), 'users/gone'))));
 
 // =====================================================================
+// Report and block
+// =====================================================================
+
+const newReport = (uid, type, targetId, extra = {}) => ({
+    type, targetId, postId: 'p1', contentAuthorId: 'alice', contentAuthorName: 'Alice',
+    contentText: 'Team Flo post', mediaCount: 0, reportedBy: uid, reportedByName: 'Reporter',
+    reason: 'Spam', status: 'open', createdAt: serverTimestamp(), ...extra,
+});
+const closeReport = (uid, status) => ({ status, resolvedBy: uid, resolvedAt: serverTimestamp() });
+
+await t('report: member reports a post', assertSucceeds(setDoc(doc(as('legacy'), 'gyms/teamflo/reports/post_p1_legacy'), newReport('legacy', 'post', 'p1'))));
+await t('report: member reports a comment', assertSucceeds(setDoc(doc(as('legacy'), 'gyms/teamflo/reports/comment_c9_legacy'), newReport('legacy', 'comment', 'c9', { commentId: 'c9' }))));
+await t('report: same member reports the same post twice blocked', assertFails(setDoc(doc(as('legacy'), 'gyms/teamflo/reports/post_p1_legacy'), newReport('legacy', 'post', 'p1'))));
+await t('report: report in someone elses name blocked', assertFails(setDoc(doc(as('legacy'), 'gyms/teamflo/reports/post_p1_instr'), newReport('instr', 'post', 'p1'))));
+await t('report: wrong document ID blocked', assertFails(setDoc(doc(as('instr'), 'gyms/teamflo/reports/anything'), newReport('instr', 'post', 'p1'))));
+await t('report: created already closed blocked', assertFails(setDoc(doc(as('instr'), 'gyms/teamflo/reports/post_p1_instr'), newReport('instr', 'post', 'p1', { status: 'dismissed' }))));
+await t('report: other gym member reports in Team Flo blocked', assertFails(setDoc(doc(as('ozzy'), 'gyms/teamflo/reports/post_p1_ozzy'), newReport('ozzy', 'post', 'p1'))));
+await t('report: no-gym account reports blocked', assertFails(setDoc(doc(as('newbie'), 'gyms/teamflo/reports/post_p1_newbie'), newReport('newbie', 'post', 'p1'))));
+await t('report: member reads reports blocked', assertFails(getDoc(doc(as('legacy'), 'gyms/teamflo/reports/post_p1_legacy'))));
+await t('report: instructor reads reports blocked', assertFails(getDocs(collection(as('instr'), 'gyms/teamflo/reports'))));
+await t('report: manager lists reports', assertSucceeds(getDocs(collection(as('mgr'), 'gyms/teamflo/reports'))));
+await t('report: other gym manager lists Team Flo reports blocked', assertFails(getDocs(collection(as('omgr'), 'gyms/teamflo/reports'))));
+await t('report: member closes a report blocked', assertFails(updateDoc(doc(as('legacy'), 'gyms/teamflo/reports/post_p1_legacy'), closeReport('legacy', 'dismissed'))));
+await t('report: manager edits report text blocked', assertFails(updateDoc(doc(as('mgr'), 'gyms/teamflo/reports/post_p1_legacy'), { reason: 'changed' })));
+await t('report: manager dismisses a report', assertSucceeds(updateDoc(doc(as('mgr'), 'gyms/teamflo/reports/post_p1_legacy'), closeReport('mgr', 'dismissed'))));
+await t('report: owner marks content removed', assertSucceeds(updateDoc(doc(as('oldadmin'), 'gyms/teamflo/reports/comment_c9_legacy'), closeReport('oldadmin', 'removed'))));
+await t('report: delete blocked', assertFails(deleteDoc(doc(as('mgr'), 'gyms/teamflo/reports/post_p1_legacy'))));
+
+const blockDoc = (blockedUid) => ({ blockedUid, name: 'Someone', createdAt: serverTimestamp() });
+await t('block: member blocks another member', assertSucceeds(setDoc(doc(as('alice'), 'users/alice/blocked/legacy'), blockDoc('legacy'))));
+await t('block: member reads own block list', assertSucceeds(getDocs(collection(as('alice'), 'users/alice/blocked'))));
+await t('block: blocking yourself blocked', assertFails(setDoc(doc(as('alice'), 'users/alice/blocked/alice'), blockDoc('alice'))));
+await t('block: writing to someone elses block list blocked', assertFails(setDoc(doc(as('legacy'), 'users/alice/blocked/mgr'), blockDoc('mgr'))));
+await t('block: gym-mate reads your block list blocked', assertFails(getDocs(collection(as('legacy'), 'users/alice/blocked'))));
+await t('block: manager reads your block list blocked', assertFails(getDoc(doc(as('mgr'), 'users/alice/blocked/legacy'))));
+await t('block: member unblocks', assertSucceeds(deleteDoc(doc(as('alice'), 'users/alice/blocked/legacy'))));
+
+// =====================================================================
 // Storage (unchanged)
 // =====================================================================
 const st = (uid, claims) => env.authenticatedContext(uid, claims).storage();

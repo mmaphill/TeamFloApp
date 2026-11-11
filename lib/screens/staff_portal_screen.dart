@@ -2,13 +2,16 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../config/colors.dart';
 import '../models/class_history_model.dart';
+import '../models/app_roles.dart';
 import '../models/class_schedule_model.dart';
 import '../services/attendance_stats_service.dart';
+import '../services/gym_service.dart';
 import '../services/schedule_service.dart';
 import '../services/staff_service.dart';
 import '../utils/log.dart';
 import 'invites_screen.dart';
 import 'members_screen.dart';
+import 'reports_screen.dart';
 import 'session_roster_screen.dart';
 
 class StaffPortalScreen extends StatefulWidget {
@@ -73,6 +76,17 @@ class _StaffPortalScreenState extends State<StaffPortalScreen> {
         title: const Text('Staff Portal'),
         backgroundColor: context.colors.appBar,
         actions: [
+          // REPORT AND BLOCK: reported posts and comments. Owners and
+          // managers only, since they are the ones who can delete content.
+          if (AppRoles.canManageMembers(GymService.instance.role))
+            IconButton(
+              icon: const Icon(Icons.flag),
+              tooltip: 'Reports',
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ReportsScreen()),
+              ),
+            ),
           // Everyone in the gym. Owners and managers can remove people here.
           IconButton(
             icon: const Icon(Icons.people),

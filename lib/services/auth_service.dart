@@ -177,11 +177,30 @@ class AuthService {
     }
   }
 
-  // Privacy Policy Acknowledgement
+  // COMMUNITY RULES: the version of the Privacy Policy and Community Rules
+  // members must have agreed to. Raise this number by 1 whenever the text
+  // changes in a way people need to agree to again; everyone is then asked
+  // on their next app open.
+  //   1 = privacy policy only (before Nov 2026)
+  //   2 = adds Community Rules, reporting and blocking
+  static const int currentTermsVersion = 2;
+
+  /// True if this user still has to agree to the current version.
+  /// Accounts that agreed before versions existed count as version 1.
+  static bool needsToAcceptTerms(Map<String, dynamic>? userData) {
+    if (userData == null) return false; // couldn't load: don't block the app
+    if (userData['privacyPolicyAcknowledged'] != true) return true;
+    final accepted = (userData['termsVersionAccepted'] as num?)?.toInt() ?? 1;
+    return accepted < currentTermsVersion;
+  }
+
+  // Privacy Policy and Community Rules acknowledgement
   Future<String?> acknowledgePrivacyPolicy(String uid) async {
     try {
       await _firestore.collection('users').doc(uid).update({
         'privacyPolicyAcknowledged': true,
+        'termsVersionAccepted': currentTermsVersion,
+        'termsAcceptedAt': FieldValue.serverTimestamp(),
       });
       return null;
     } catch (e) {
@@ -221,6 +240,16 @@ class AuthService {
           .collection('journal')
           .get();
       for (var doc in journalQuery.docs) {
+        await doc.reference.delete();
+      }
+
+      // REPORT AND BLOCK: delete this user's private block list
+      final blockedQuery = await _firestore
+          .collection('users')
+          .doc(uid)
+          .collection('blocked')
+          .get();
+      for (var doc in blockedQuery.docs) {
         await doc.reference.delete();
       }
 

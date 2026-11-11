@@ -1,10 +1,15 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import '../models/app_roles.dart';
 import '../models/post_model.dart';
 import '../models/mention_model.dart';
 import '../services/chat_service.dart';
 import '../services/auth_service.dart';
+import '../services/gym_service.dart';
+import '../services/moderation_service.dart';
 import '../config/colors.dart';
 import '../widgets/mention_autocomplete_widget.dart';
+import '../widgets/report_dialog.dart';
 import '../config/mention_text_renderer.dart';
 import '../utils/log.dart';
 import 'member_profile_screen.dart';
@@ -37,11 +42,22 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
 
   final List<Mention> _mentions = [];
 
+  // REPORT AND BLOCK: members this user has blocked. Their comments are hidden.
+  StreamSubscription<Set<String>>? _blockedSubscription;
+  Set<String> _blockedIds = {};
+
+  /// Owners and managers can delete anyone's comment.
+  bool get _canModerate => AppRoles.canManageMembers(GymService.instance.role);
+
   @override
   void initState() {
     super.initState();
     _commentStream = _chatService.getCommentStream(widget.postId);
     _loadCurrentUserName();
+    _blockedSubscription = ModerationService().blockedIdsStream().listen((ids) {
+      if (!mounted) return;
+      setState(() => _blockedIds = ids);
+    }, onError: (Object e) => log('Could not load blocked members: $e'));
   }
 
   Future<void> _loadCurrentUserName() async {
@@ -137,6 +153,7 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
 
   @override
   void dispose() {
+    _blockedSubscription?.cancel();
     _commentController.dispose();
     super.dispose();
   }
@@ -202,7 +219,10 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
                         return Center(child: Text('Error: ${snapshot.error}'));
                       }
 
-                      final comments = snapshot.data ?? [];
+                      // Without anyone this user has blocked
+                      final comments = (snapshot.data ?? [])
+                          .where((c) => !_blockedIds.contains(c['userId']))
+                          .toList();
 
                       if (comments.isEmpty) {
                         return Center(
@@ -304,54 +324,156 @@ class _CommentsBottomSheetState extends State<CommentsBottomSheet> {
     );
   }
 
+  // REPORT AND BLOCK: delete one comment (your own, or any as owner/manager)
+  Future<void> _deleteComment(String commentId) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete comment?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete', style: TextStyle(color: AppColors.error)),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    final error = await _chatService.deleteComment(
+      widget.postId,
+      commentId,
+      widget.currentUserId,
+    );
+    if (!mounted || error == null) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Could not delete the comment: $error')),
+    );
+  }
+
+  // REPORT AND BLOCK: the three-dot menu on each comment.
+  Widget _buildCommentMenu(Map<String, dynamic> comment) {
+    final String commenterId = (comment['userId'] as String?) ?? '';
+    final String commenterName = (comment['userName'] as String?) ?? 'Anonymous';
+    final String commentId = (comment['commentId'] as String?) ?? '';
+    final bool isMine = commenterId == widget.currentUserId;
+
+    return PopupMenuButton<String>(
+      icon: Icon(Icons.more_vert, size: 20, color: context.colors.textMuted),
+      onSelected: (value) {
+        if (value == 'delete') {
+          _deleteComment(commentId);
+        } else if (value == 'report') {
+          ModerationDialogs.report(
+            context,
+            postId: widget.postId,
+            commentId: commentId,
+            authorId: commenterId,
+            authorName: commenterName,
+            text: (comment['content'] ?? '').toString(),
+          );
+        } else if (value == 'block') {
+          ModerationDialogs.block(context, userId: commenterId, name: commenterName);
+        }
+      },
+      itemBuilder: (context) => [
+        if (isMine || _canModerate)
+          const PopupMenuItem(
+            value: 'delete',
+            child: Row(
+              children: [
+                Icon(Icons.delete_outline, size: 20),
+                SizedBox(width: 8),
+                Text('Delete'),
+              ],
+            ),
+          ),
+        if (!isMine)
+          const PopupMenuItem(
+            value: 'report',
+            child: Row(
+              children: [
+                Icon(Icons.flag_outlined, size: 20),
+                SizedBox(width: 8),
+                Text('Report comment'),
+              ],
+            ),
+          ),
+        if (!isMine)
+          const PopupMenuItem(
+            value: 'block',
+            child: Row(
+              children: [
+                Icon(Icons.block, size: 20, color: AppColors.error),
+                SizedBox(width: 8),
+                Text('Block member', style: TextStyle(color: AppColors.error)),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
   Widget _buildCommentTile(Map<String, dynamic> comment) {
     final String commenterId = (comment['userId'] as String?) ?? '';
+    final String commenterName = (comment['userName'] as String?) ?? '';
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          InkWell(
-            borderRadius: BorderRadius.circular(8),
-            onTap: () => MemberProfileScreen.open(context, commenterId),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 20,
-                  backgroundColor: AppColors.neutral,
-                  child: Text(
-                    (comment['userName'] as String).isNotEmpty
-                        ? (comment['userName'] as String)[0].toUpperCase()
-                        : '?',
-                    style: const TextStyle(color: AppColors.onPrimary),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+          Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: () => MemberProfileScreen.open(context, commenterId),
+                  child: Row(
                     children: [
-                      Text(
-                        comment['userName'] ?? 'Anonymous',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: context.colors.text,
+                      CircleAvatar(
+                        radius: 20,
+                        backgroundColor: AppColors.neutral,
+                        child: Text(
+                          commenterName.isNotEmpty
+                              ? commenterName[0].toUpperCase()
+                              : '?',
+                          style: const TextStyle(color: AppColors.onPrimary),
                         ),
                       ),
-                      Text(
-                        _formatTime(
-                          (comment['createdAt'] as dynamic)?.toDate() ??
-                              DateTime.now(),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              comment['userName'] ?? 'Anonymous',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: context.colors.text,
+                              ),
+                            ),
+                            Text(
+                              _formatTime(
+                                (comment['createdAt'] as dynamic)?.toDate() ??
+                                    DateTime.now(),
+                              ),
+                              style: TextStyle(
+                                  fontSize: 12, color: context.colors.textMuted),
+                            ),
+                          ],
                         ),
-                        style: TextStyle(
-                            fontSize: 12, color: context.colors.textMuted),
                       ),
                     ],
                   ),
                 ),
-              ],
-            ),
+              ),
+              _buildCommentMenu(comment),
+            ],
           ),
           const SizedBox(height: 8),
           Padding(

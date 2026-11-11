@@ -12,3 +12,6 @@ export { setUserRole } from "./setUserRole";
 // Invite-only access
 export { claimInviteOnSignup, applyInviteToExistingAccount, claimMyInvite } from "./invites";
 export { removeFromGym } from "./removeFromGym";
+
+// Report and block
+export { notifyStaffOfReport } from "./notifyStaffOfReport";

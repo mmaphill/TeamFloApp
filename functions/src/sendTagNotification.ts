@@ -2,7 +2,7 @@ import * as admin from "firebase-admin";
 import { onDocumentCreated } from "firebase-functions/v2/firestore";
 import { sendToUser } from "./sendToUser";
 
-/** Accounts made before multi-gym support have no gymId. */
+/** Team Flo's gym ID. Used only by the old shared posts trigger below. */
 const LEGACY_GYM_ID = "teamflo";
 
 /**
@@ -67,19 +67,33 @@ async function handleNewPost(
 
     if (taggedUserIds.length === 0) return;
 
-    // Keep only people in the same gym as the post
+    // Keep only people in the same gym as the post.
+    // INVITES: an account with no gymId hasn't been invited to any gym,
+    // so it is never notified (was: treated as Team Flo).
     const userDocs = await admin
         .firestore()
         .getAll(...taggedUserIds.map((id) => admin.firestore().doc(`users/${id}`)));
 
     const sameGymIds = userDocs
-        .filter((doc) => doc.exists && (doc.get("gymId") ?? LEGACY_GYM_ID) === gymId)
+        .filter((doc) => doc.exists && doc.get("gymId") === gymId)
         .map((doc) => doc.id);
 
     if (sameGymIds.length === 0) return;
 
+    // REPORT AND BLOCK: don't notify anyone who has blocked the author.
+    // A member's block list is users/{uid}/blocked/{blockedUid}.
+    let notifyIds = sameGymIds;
+    if (authorId) {
+        const blockDocs = await admin.firestore().getAll(
+            ...sameGymIds.map((id) => admin.firestore().doc(`users/${id}/blocked/${authorId}`))
+        );
+        notifyIds = sameGymIds.filter((_, i) => !blockDocs[i].exists);
+    }
+
+    if (notifyIds.length === 0) return;
+
     await Promise.all(
-        sameGymIds.map((userId) =>
+        notifyIds.map((userId) =>
             sendToUser(
                 userId,
                 "You were tagged",
@@ -89,10 +103,14 @@ async function handleNewPost(
         )
     );
 
-    console.log(`Gym ${gymId}: processed ${sameGymIds.length} tag notification(s)`);
+    console.log(`Gym ${gymId}: processed ${notifyIds.length} tag notification(s)`);
 }
 
-/** Posts in the shared collection (Team Flo before migration). */
+/**
+ * Posts in the old shared collection. Since step 7 this collection is a
+ * read-only backup, so this trigger no longer fires. It can be removed
+ * when the old collections are deleted.
+ */
 export const sendTagNotification = onDocumentCreated(
     "posts/{postId}",
     async (event) => {
