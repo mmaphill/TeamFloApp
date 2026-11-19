@@ -13,6 +13,7 @@ import 'invites_screen.dart';
 import 'members_screen.dart';
 import 'reports_screen.dart';
 import 'session_roster_screen.dart';
+import 'staff_analytics_screen.dart';
 
 class StaffPortalScreen extends StatefulWidget {
   const StaffPortalScreen({super.key});
@@ -76,6 +77,17 @@ class _StaffPortalScreenState extends State<StaffPortalScreen> {
         title: const Text('Staff Portal'),
         backgroundColor: context.colors.appBar,
         actions: [
+          // STAFF ANALYTICS: gym-wide attendance and class numbers.
+          // Owners and managers only.
+          if (AppRoles.canViewDashboard(GymService.instance.role))
+            IconButton(
+              icon: const Icon(Icons.insights),
+              tooltip: 'Analytics',
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const StaffAnalyticsScreen()),
+              ),
+            ),
           // REPORT AND BLOCK: reported posts and comments. Owners and
           // managers only, since they are the ones who can delete content.
           if (AppRoles.canManageMembers(GymService.instance.role))

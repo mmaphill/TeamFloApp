@@ -86,6 +86,16 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
       role: 'member',
       createdAt: DateTime.now(),
     );
+
+    // Reminder Shortcut: opened from a workout reminder
+    // Pressing back lands on the Calendar tab. This is skipped
+    // if the gym's plan doesn't include the journal feature
+    if (widget.classId != null && GymService.instance.hasModule(GymModules.journal)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _openJournalEntry(DateTime.now());
+      });
+    }
   }
 
   Widget _screenFor(_AppTab tab) {
@@ -119,8 +129,7 @@ class _MainHomeScreenState extends State<MainHomeScreen> {
   }
 
   Future<void> _checkPrivacyPolicy() async {
-    final userData = await _authService.getUserData(
-      FirebaseAuth.instance.currentUser!.uid,
+    final userData = await _authService.getUserData(FirebaseAuth.instance.currentUser!.uid,
     );
 
     // COMMUNITY RULES: also asks members who agreed to an older version
