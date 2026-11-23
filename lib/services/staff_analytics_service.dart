@@ -1,8 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../models/app_roles.dart';
 import '../models/class_history_model.dart';
 import '../models/class_schedule_model.dart';
+import '../models/user_model.dart';
+import '../utils/log.dart';
 import 'attendance_stats_service.dart';
 import 'gym_scope.dart';
+import 'gym_service.dart';
 
 /// STAFF ANALYTICS (Phase 1, Step 1): gym-wide attendance numbers for
 /// owners and managers. Reads the last 8 weeks of class history once
@@ -21,23 +25,74 @@ class StaffAnalyticsService {
     final DateTime now = DateTime.now();
     final DateTime from = StaffAnalytics.firstWeekStart(now);
 
+    // All three loads start at once, then we wait for each.
     // sessionDate is stored as 'yyyy-MM-dd', so comparing the text works
     // like comparing dates. One range filter on one field: no extra index.
-    final results = await Future.wait([
-      _history.where('sessionDate', isGreaterThanOrEqualTo: dateKey(from)).get(),
-      _classes.get(),
-    ]);
+    final historyFuture =
+    _history.where('sessionDate', isGreaterThanOrEqualTo: dateKey(from)).get();
+    final classesFuture = _classes.get();
+    final membersFuture = _loadGymMembers(); // STEP 2
 
-    final records = results[0]
+    final records = (await historyFuture)
         .docs
         .map((doc) => ClassHistoryRecord.fromMap(doc.data(), doc.id))
         .toList();
-    final classes = results[1]
+    final classes = (await classesFuture)
         .docs
         .map((doc) => ClassSchedule.fromMap(doc.data(), doc.id))
         .toList();
+    final members = await membersFuture;
 
-    return StaffAnalytics.compute(records, classes, now: now);
+    return StaffAnalytics.compute(records, classes, members: members, now: now);
+  }
+
+  /// STEP 2: everyone in this gym (members and staff), one read per person.
+  /// The users rule only allows listing when the query filters by your own
+  /// gymId, so the filter here is required, not just tidy.
+  /// A user doc that can't be read is skipped and logged instead of
+  /// breaking the whole screen (same lesson as the grey screen bug).
+  Future<List<MemberInfo>> _loadGymMembers() async {
+    final String? gymId = GymService.instance.gymId;
+    if (gymId == null) return [];
+
+    final snap = await FirebaseFirestore.instance
+        .collection('users')
+        .where('gymId', isEqualTo: gymId)
+        .get();
+
+    final List<MemberInfo> list = [];
+    for (final doc in snap.docs) {
+      try {
+        final data = doc.data();
+        final user = UserModel.fromMap(data);
+
+        // Current belt = the most recent promotion
+        String? belt;
+        if (user.beltRankHistory.isNotEmpty) {
+          final sorted = List.of(user.beltRankHistory)
+            ..sort((a, b) => b.promotionDate.compareTo(a.promotionDate));
+          belt = sorted.first.rank;
+        }
+
+        // Read createdAt from the raw doc, not the model: if the field is
+        // missing, the model may fill in "now", which would make old
+        // accounts look like brand new members.
+        final rawCreated = data['createdAt'];
+        final DateTime? joined = rawCreated is Timestamp ? rawCreated.toDate() : null;
+
+        list.add(MemberInfo(
+          id: doc.id,
+          name: user.name.trim().isEmpty ? 'Unnamed member' : user.name,
+          photoUrl: user.photoUrl,
+          role: AppRoles.normalize(user.role),
+          joined: joined,
+          belt: (belt == null || belt.trim().isEmpty) ? null : belt,
+        ));
+      } catch (e) {
+        log('Staff analytics: skipped user ${doc.id}: $e');
+      }
+    }
+    return list;
   }
 
   /// MEMBER LISTS: names and photos for a set of user IDs.
@@ -78,6 +133,33 @@ class MemberSummary {
   final String name;
   final String? photoUrl;
   const MemberSummary({required this.name, this.photoUrl});
+}
+
+/// STEP 2: one person in the gym, as the analytics screen needs them.
+class MemberInfo {
+  final String id;
+  final String name;
+  final String? photoUrl;
+  final String role;     // normalized: owner, manager, ..., member
+  final DateTime? joined; // null if the account has no createdAt
+  final String? belt;     // most recent belt, null if none recorded
+
+  const MemberInfo({
+    required this.id,
+    required this.name,
+    this.photoUrl,
+    required this.role,
+    this.joined,
+    this.belt,
+  });
+}
+
+/// STEP 2: a member and the last class they came to (inside the 8 weeks).
+class MemberActivity {
+  final MemberInfo member;
+  final DateTime? lastClass; // null = no classes in the 8 weeks
+
+  const MemberActivity(this.member, this.lastClass);
 }
 
 /// One class (by its classId) over the 8 weeks.
@@ -133,7 +215,38 @@ class StaffAnalytics {
   final List<ClassHistoryRecord> thisWeekRecords;
   final List<ClassHistoryRecord> thisMonthRecords;
 
+  // ---------- STEP 2: member activity and growth ----------
+  /// A member counts as active if they trained within this many days.
+  static const int activeDays = 14;
+  /// How many months the "new members" chart shows, including this one.
+  static const int monthsShown = 6;
+
+  final int memberCount;  // role 'member' only
+  final int staffCount;   // owner, manager, instructor, front desk
+  /// Check-ins in the last 14 days by members (the "Active" tile's list)
+  final List<ClassHistoryRecord> activeRecords;
+  final int activeCount;
+  /// Members who haven't trained in 14+ days. Most recently lapsed first
+  /// (easiest to win back), then members with no classes in 8 weeks.
+  final List<MemberActivity> watchList;
+  final List<DateTime> monthStarts;   // oldest first
+  final List<int> newMembersByMonth;  // same order as monthStarts
+  final int newThisMonth;
+  final int unknownJoinDate;          // members with no createdAt
+  /// Belt -> number of members, most common first. 'No belt' if none.
+  final List<MapEntry<String, int>> beltCounts;
+
   StaffAnalytics._({
+    required this.memberCount,
+    required this.staffCount,
+    required this.activeRecords,
+    required this.activeCount,
+    required this.watchList,
+    required this.monthStarts,
+    required this.newMembersByMonth,
+    required this.newThisMonth,
+    required this.unknownJoinDate,
+    required this.beltCounts,
     required this.thisWeekRecords,
     required this.thisMonthRecords,
     required this.weekStarts,
@@ -160,6 +273,7 @@ class StaffAnalytics {
   factory StaffAnalytics.compute(
       List<ClassHistoryRecord> records,
       List<ClassSchedule> schedule, {
+        List<MemberInfo> members = const [],
         DateTime? now,
       }) {
     final DateTime today = now ?? DateTime.now();
@@ -245,7 +359,77 @@ class StaffAnalytics {
     thisWeekRecords.sort(newestFirst);
     thisMonthRecords.sort(newestFirst);
 
+    // ---------- STEP 2: member activity ----------
+    // Staff train too, but these numbers are about paying members.
+    final gymMembers = members.where((m) => m.role == AppRoles.member).toList();
+    final memberIds = gymMembers.map((m) => m.id).toSet();
+
+    // Last class per person, from the check-ins already loaded
+    final Map<String, DateTime> lastClass = {};
+    for (final r in attended) {
+      final day = r.sessionDay!;
+      final prev = lastClass[r.userId];
+      if (prev == null || day.isAfter(prev)) lastClass[r.userId] = day;
+    }
+
+    final DateTime activeCutoff = DateTime(today.year, today.month, today.day - activeDays);
+
+    final activeRecords = attended
+        .where((r) => memberIds.contains(r.userId) && !r.sessionDay!.isBefore(activeCutoff))
+        .toList()
+      ..sort(newestFirst);
+    final int activeCount = activeRecords.map((r) => r.userId).toSet().length;
+
+    final watchList = gymMembers
+        .where((m) {
+      final last = lastClass[m.id];
+      return last == null || last.isBefore(activeCutoff);
+    })
+        .map((m) => MemberActivity(m, lastClass[m.id]))
+        .toList()
+      ..sort((a, b) {
+        // Members with a last class come first, most recent first.
+        if (a.lastClass != null && b.lastClass != null) {
+          return b.lastClass!.compareTo(a.lastClass!);
+        }
+        if (a.lastClass != null) return -1;
+        if (b.lastClass != null) return 1;
+        return a.member.name.toLowerCase().compareTo(b.member.name.toLowerCase());
+      });
+
+    // ---------- STEP 2: growth ----------
+    final List<DateTime> monthStarts = [];
+    final List<int> newByMonth = [];
+    for (int i = monthsShown - 1; i >= 0; i--) {
+      final start = DateTime(today.year, today.month - i, 1);
+      monthStarts.add(start);
+      newByMonth.add(gymMembers
+          .where((m) =>
+      m.joined != null &&
+          m.joined!.year == start.year &&
+          m.joined!.month == start.month)
+          .length);
+    }
+
+    final Map<String, int> belts = {};
+    for (final m in gymMembers) {
+      final key = m.belt ?? 'No belt';
+      belts[key] = (belts[key] ?? 0) + 1;
+    }
+    final beltCounts = belts.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
     return StaffAnalytics._(
+      memberCount: gymMembers.length,
+      staffCount: members.length - gymMembers.length,
+      activeRecords: activeRecords,
+      activeCount: activeCount,
+      watchList: watchList,
+      monthStarts: monthStarts,
+      newMembersByMonth: newByMonth,
+      newThisMonth: newByMonth.last,
+      unknownJoinDate: gymMembers.where((m) => m.joined == null).length,
+      beltCounts: beltCounts,
       thisWeekRecords: thisWeekRecords,
       thisMonthRecords: thisMonthRecords,
       weekStarts: weekStarts,

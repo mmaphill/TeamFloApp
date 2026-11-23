@@ -5,10 +5,12 @@ import '../models/class_history_model.dart';
 import '../services/attendance_stats_service.dart';
 import '../services/gym_service.dart';
 import '../services/staff_analytics_service.dart';
+import 'member_profile_screen.dart';
 import 'staff_member_list_screen.dart';
 
-/// STAFF ANALYTICS (Phase 1, Step 1): attendance overview and class
-/// performance for owners and managers. Opened from the Staff Portal.
+/// STAFF ANALYTICS (Phase 1): attendance overview and class performance
+/// (Step 1), member activity and membership growth (Step 2), for owners
+/// and managers. Opened from the Staff Portal.
 class StaffAnalyticsScreen extends StatefulWidget {
   const StaffAnalyticsScreen({super.key});
 
@@ -22,6 +24,9 @@ class _StaffAnalyticsScreenState extends State<StaffAnalyticsScreen> {
   // Created once here, not in build(), so it loads once (and again on
   // pull-to-refresh), not every time the screen rebuilds.
   late Future<StaffAnalytics> _future;
+
+  // STEP 2: the most recent loaded data, for buttons outside the builder
+  StaffAnalytics? _latest;
 
   static const List<String> _weekdayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -67,6 +72,7 @@ class _StaffAnalyticsScreenState extends State<StaffAnalyticsScreen> {
           if (snapshot.hasError) {
             return _message('Could not load analytics.\n${snapshot.error}');
           }
+          _latest = snapshot.data;
           return RefreshIndicator(
             onRefresh: _refresh,
             child: _buildContent(snapshot.data!),
@@ -93,13 +99,76 @@ class _StaffAnalyticsScreenState extends State<StaffAnalyticsScreen> {
       padding: const EdgeInsets.all(16),
       children: [
         Text(
-          'Last ${StaffAnalyticsService.weeksShown} weeks · pull down to refresh',
+          'Pull down to refresh',
           style: theme.textTheme.bodySmall?.copyWith(color: context.colors.textMuted),
         ),
         const SizedBox(height: 16),
 
+        // ---------- STEP 2: Members ----------
+        _sectionHeader('Members'),
+        Row(
+          children: [
+            _statTile('Total members', '${a.memberCount}',
+                '+ ${a.staffCount} staff'),
+            _statTile('Active', '${a.activeCount}',
+                'trained in last ${StaffAnalytics.activeDays} days',
+                onTap: () => _openList(
+                    'Active members', a.activeRecords, byMember: true)),
+          ],
+        ),
+        Row(
+          children: [
+            _statTile('Watch list', '${a.watchList.length}',
+                'no class in ${StaffAnalytics.activeDays}+ days',
+                onTap: _openWatchList),
+            _statTile('New this month', '${a.newThisMonth}', 'joined the gym'),
+          ],
+        ),
+        const SizedBox(height: 16),
+
+        // Watch list preview: the 5 most recently lapsed
+        if (a.watchList.isNotEmpty) ...[
+          _subHeader('Watch list'),
+          ...a.watchList.take(5).map((w) => _watchTile(w)),
+          if (a.watchList.length > 5)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton(
+                onPressed: _openWatchList,
+                child: Text('See all ${a.watchList.length}'),
+              ),
+            ),
+          const SizedBox(height: 24),
+        ],
+
+        _subHeader('New members per month'),
+        _columnBars(
+          a.newMembersByMonth,
+          a.monthStarts.map(_monthLabel).toList(),
+        ),
+        if (a.unknownJoinDate > 0) ...[
+          const SizedBox(height: 4),
+          Text(
+            '${a.unknownJoinDate} ${a.unknownJoinDate == 1 ? 'member has' : 'members have'} no join date recorded and ${a.unknownJoinDate == 1 ? 'isn\'t' : 'aren\'t'} counted here.',
+            style: theme.textTheme.bodySmall?.copyWith(color: context.colors.textMuted),
+          ),
+        ],
+        const SizedBox(height: 24),
+
+        _subHeader('Belt ranks'),
+        if (a.beltCounts.isEmpty)
+          const Text('No members yet.')
+        else
+          _beltBars(a.beltCounts),
+        const SizedBox(height: 32),
+
         // ---------- Attendance overview ----------
         _sectionHeader('Attendance'),
+        Text(
+          'Last ${StaffAnalyticsService.weeksShown} weeks',
+          style: theme.textTheme.bodySmall?.copyWith(color: context.colors.textMuted),
+        ),
+        const SizedBox(height: 16),
         // MEMBER LISTS: tap a tile to see who's behind the number
         Row(
           children: [
@@ -249,10 +318,26 @@ class _StaffAnalyticsScreenState extends State<StaffAnalyticsScreen> {
     );
   }
 
-  /// Simple vertical bar chart: one bar per week, oldest on the left.
+  /// One bar per week, oldest on the left.
   Widget _weeklyBars(StaffAnalytics a) {
+    return _columnBars(
+      a.weeklyTotals,
+      a.weekStarts.map(AttendanceStats.monthDay).toList(),
+    );
+  }
+
+  static const List<String> _monthNames = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+  ];
+
+  String _monthLabel(DateTime d) => _monthNames[d.month - 1];
+
+  /// STEP 2: simple vertical bar chart (was only for weeks, now shared with
+  /// the new members chart). The last bar is lighter because that week or
+  /// month is still in progress.
+  Widget _columnBars(List<int> values, List<String> labels) {
     const double maxBarHeight = 120;
-    final int maxValue = a.weeklyTotals.fold(0, (m, v) => v > m ? v : m);
+    final int maxValue = values.fold(0, (m, v) => v > m ? v : m);
     final theme = Theme.of(context);
 
     return SizedBox(
@@ -260,22 +345,21 @@ class _StaffAnalyticsScreenState extends State<StaffAnalyticsScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          for (int i = 0; i < a.weeklyTotals.length; i++)
+          for (int i = 0; i < values.length; i++)
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 3),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    Text('${a.weeklyTotals[i]}', style: theme.textTheme.labelSmall),
+                    Text('${values[i]}', style: theme.textTheme.labelSmall),
                     const SizedBox(height: 4),
                     Container(
                       height: maxValue == 0
                           ? 2.0
-                          : (a.weeklyTotals[i] / maxValue * maxBarHeight).clamp(2.0, maxBarHeight),
+                          : (values[i] / maxValue * maxBarHeight).clamp(2.0, maxBarHeight),
                       decoration: BoxDecoration(
-                        // The current week is still in progress, so it's lighter
-                        color: i == a.weeklyTotals.length - 1
+                        color: i == values.length - 1
                             ? context.colors.primary.withValues(alpha: 0.4)
                             : context.colors.primary,
                         borderRadius: BorderRadius.circular(4),
@@ -284,7 +368,7 @@ class _StaffAnalyticsScreenState extends State<StaffAnalyticsScreen> {
                     const SizedBox(height: 4),
                     FittedBox(
                       child: Text(
-                        AttendanceStats.monthDay(a.weekStarts[i]),
+                        labels[i],
                         style: theme.textTheme.labelSmall?.copyWith(color: context.colors.textMuted),
                       ),
                     ),
@@ -296,6 +380,57 @@ class _StaffAnalyticsScreenState extends State<StaffAnalyticsScreen> {
       ),
     );
   }
+
+  /// STEP 2: horizontal bars, one per belt, most common first.
+  Widget _beltBars(List<MapEntry<String, int>> counts) {
+    final int maxValue = counts.fold(0, (m, e) => e.value > m ? e.value : m);
+    final theme = Theme.of(context);
+
+    return Column(
+      children: [
+        for (final e in counts)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 90,
+                  child: Text(e.key, overflow: TextOverflow.ellipsis),
+                ),
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: maxValue == 0 ? 0 : e.value / maxValue,
+                      minHeight: 18,
+                      backgroundColor: theme.dividerColor,
+                      valueColor: AlwaysStoppedAnimation<Color>(context.colors.primary),
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  width: 44,
+                  child: Text('${e.value}', textAlign: TextAlign.right, style: theme.textTheme.bodySmall),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  // ---------- STEP 2: watch list ----------
+
+  void _openWatchList() {
+    final data = _latest;
+    if (data == null) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => _WatchListScreen(watchList: data.watchList)),
+    );
+  }
+
+  Widget _watchTile(MemberActivity w) => _WatchListScreen.tile(context, w);
 
   /// Horizontal bars, Monday to Sunday.
   Widget _weekdayBars(List<double> averages) {
@@ -389,5 +524,76 @@ class _StaffAnalyticsScreenState extends State<StaffAnalyticsScreen> {
         ],
       ),
     );
+  }
+}
+
+/// STEP 2: the full watch list. Members who haven't trained in 14+ days,
+/// most recently lapsed first, then those with no classes in 8 weeks.
+/// Tap a member to open their profile.
+class _WatchListScreen extends StatelessWidget {
+  final List<MemberActivity> watchList;
+
+  const _WatchListScreen({required this.watchList});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Watch list'),
+        backgroundColor: context.colors.appBar,
+      ),
+      body: watchList.isEmpty
+          ? const Center(child: Text('Everyone has trained recently.'))
+          : ListView.separated(
+        itemCount: watchList.length,
+        separatorBuilder: (_, __) => const Divider(height: 1),
+        itemBuilder: (context, index) => tile(context, watchList[index]),
+      ),
+    );
+  }
+
+  /// One row. Also used for the 5-row preview on the Analytics screen.
+  static Widget tile(BuildContext context, MemberActivity w) {
+    final m = w.member;
+    final bool hasPhoto = m.photoUrl != null && m.photoUrl!.isNotEmpty;
+
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+      leading: CircleAvatar(
+        backgroundImage: hasPhoto ? NetworkImage(m.photoUrl!) : null,
+        backgroundColor: hasPhoto ? null : AppColors.neutral,
+        child: hasPhoto
+            ? null
+            : Text(
+          m.name.isNotEmpty ? m.name[0].toUpperCase() : '?',
+          style: const TextStyle(color: AppColors.onPrimary, fontWeight: FontWeight.bold),
+        ),
+      ),
+      title: Text(m.name),
+      subtitle: Text(_description(w)),
+      trailing: m.belt == null ? null : Text(m.belt!, style: Theme.of(context).textTheme.bodySmall),
+      onTap: () => MemberProfileScreen.open(context, m.id),
+    );
+  }
+
+  static String _description(MemberActivity w) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    if (w.lastClass != null) {
+      final days = today.difference(w.lastClass!).inDays;
+      return 'Last class ${AttendanceStats.shortDate(w.lastClass!)} · $days days ago';
+    }
+
+    // No classes in the 8 weeks. Say so differently for brand-new members.
+    final joined = w.member.joined;
+    if (joined != null) {
+      final joinedDay = DateTime(joined.year, joined.month, joined.day);
+      final firstWeek = StaffAnalytics.firstWeekStart(now);
+      if (!joinedDay.isBefore(firstWeek)) {
+        return 'Joined ${AttendanceStats.monthDay(joinedDay)} · no classes yet';
+      }
+    }
+    return 'No classes in ${StaffAnalyticsService.weeksShown}+ weeks';
   }
 }
