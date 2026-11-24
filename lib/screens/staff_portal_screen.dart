@@ -10,6 +10,7 @@ import '../services/schedule_service.dart';
 import '../services/staff_service.dart';
 import '../utils/log.dart';
 import 'invites_screen.dart';
+import 'manage_updates_screen.dart';
 import 'members_screen.dart';
 import 'reports_screen.dart';
 import 'session_roster_screen.dart';
@@ -86,6 +87,17 @@ class _StaffPortalScreenState extends State<StaffPortalScreen> {
               onPressed: () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const StaffAnalyticsScreen()),
+              ),
+            ),
+          // GYM UPDATES: post news and events to members' Home screen.
+          // Owners, managers and front desk.
+          if (AppRoles.canSendAnnouncements(GymService.instance.role))
+            IconButton(
+              icon: const Icon(Icons.campaign),
+              tooltip: 'Gym Updates',
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ManageUpdatesScreen()),
               ),
             ),
           // REPORT AND BLOCK: reported posts and comments. Owners and

@@ -2,7 +2,9 @@ import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import '../screens/gym_update_detail_screen.dart';
 import '../utils/log.dart';
 import '../main.dart';
 
@@ -151,6 +153,15 @@ class NotificationService {
       final classId = data['classId'] as String?;
       navigator.popUntil((route) => route.isFirst);
       navigator.pushNamed('/journal', arguments: classId);
+    } else if (type == 'gym_update') {
+      // GYM UPDATES: open the update that was just posted
+      final updateId = data['updateId'] as String?;
+      navigator.popUntil((route) => route.isFirst);
+      if (updateId != null) {
+        navigator.push(
+          MaterialPageRoute(builder: (_) => GymUpdateDetailScreen(updateId: updateId)),
+        );
+      }
     } else {
       log('Unknown notification type $type');
     }

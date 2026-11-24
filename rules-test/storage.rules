@@ -18,6 +18,12 @@ service firebase.storage {
       return request.auth != null;
     }
 
+    // GYM UPDATES: owner, manager and front desk (from the role claim)
+    function canPostUpdates() {
+      return request.auth != null &&
+        request.auth.token.role in ['owner', 'manager', 'admin', 'front_desk'];
+    }
+
     // =================================================================================
     // Profile pictures - users can upload their own, admins can manage all
     // =================================================================================
@@ -43,6 +49,21 @@ service firebase.storage {
       allow read: if request.auth.uid == userId || isAdmin();
       allow create, update: if request.auth.uid == userId;
       allow delete: if request.auth.uid == userId || isAdmin();
+    }
+
+    // =================================================================================
+    // GYM UPDATES: pictures and videos on gym updates
+    // Pictures up to 10 MB, videos up to 200 MB, nothing else.
+    // =================================================================================
+    match /gyms/{gymId}/updates/{fileName} {
+      allow read: if isAuthenticated();
+      allow create, update: if canPostUpdates() && (
+        (request.resource.contentType.matches('image/.*') &&
+         request.resource.size < 10 * 1024 * 1024) ||
+        (request.resource.contentType.matches('video/.*') &&
+         request.resource.size < 200 * 1024 * 1024)
+      );
+      allow delete: if canPostUpdates();
     }
 
     // =================================================================================

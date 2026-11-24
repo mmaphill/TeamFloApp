@@ -8,6 +8,7 @@ import '../models/gym_model.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
 import '../services/gym_service.dart';
+import '../widgets/home_updates_section.dart';
 import '../widgets/stats_highlights.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -100,6 +101,10 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             const SizedBox(height: 20),
+
+            // GYM UPDATES: news and events posted by staff.
+            // Hides itself when there's nothing current to show.
+            const HomeUpdatesSection(),
 
             // instagram feed
             // PHASE 1 STEP 5: only if the gym's plan includes it

@@ -148,6 +148,26 @@ service cloud.firestore {
       );
     }
 
+    // ----- Gym updates (news and events on the Home screen) -----
+    // GYM UPDATES: owner, manager and front desk post. Same group as
+    // AppRoles.canSendAnnouncements in the app.
+    function canPostUpdates() {
+      return getUserRole() in ['owner', 'manager', 'admin', 'front_desk'];
+    }
+
+    // Only the expected fields, with sensible sizes and types.
+    function validUpdate() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['title', 'description', 'mediaUrl', 'mediaType', 'mediaPath',
+                               'eventDate', 'notify', 'createdBy', 'createdByName',
+                               'createdAt', 'updatedAt']) &&
+        d.title is string && d.title.size() > 0 && d.title.size() <= 100 &&
+        d.description is string && d.description.size() <= 5000 &&
+        d.get('mediaType', null) in [null, 'image', 'video'] &&
+        (d.get('eventDate', null) == null || d.get('eventDate', null) is timestamp) &&
+        d.get('notify', false) is bool;
+    }
+
     // =================================================================================
     // Collections
     // =================================================================================
@@ -262,6 +282,19 @@ service cloud.firestore {
           request.resource.data.resolvedBy == request.auth.uid;
 
         allow delete: if false;
+      }
+
+      // GYM UPDATES: everyone in the gym reads; posters write.
+      // createdBy and createdAt can't be changed after posting.
+      match /updates/{updateId} {
+        allow read: if inGym(gymId);
+        allow create: if inGym(gymId) && canPostUpdates() && validUpdate() &&
+          request.resource.data.createdBy == request.auth.uid &&
+          request.resource.data.createdAt == request.time;
+        allow update: if inGym(gymId) && canPostUpdates() && validUpdate() &&
+          request.resource.data.createdBy == resource.data.createdBy &&
+          request.resource.data.createdAt == resource.data.createdAt;
+        allow delete: if inGym(gymId) && canPostUpdates();
       }
 
       // PHASE 1 STEP 6: the gym's Instagram card (latest post)

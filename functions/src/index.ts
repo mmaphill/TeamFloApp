@@ -13,6 +13,9 @@ export { setUserRole } from "./setUserRole";
 export { claimInviteOnSignup, applyInviteToExistingAccount, claimMyInvite } from "./invites";
 export { removeFromGym } from "./removeFromGym";
 
+// Gym updates (news and events on the Home screen)
+export { sendGymUpdateNotification } from "./sendGymUpdateNotification";
+
 // Report and block
 export { notifyStaffOfReport } from "./notifyStaffOfReport";
 
