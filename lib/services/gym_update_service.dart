@@ -96,7 +96,7 @@ class GymUpdateService {
     _UploadedMedia? uploaded;
     final bool replacing = newMediaFile != null && newMediaType != null;
     if (replacing) {
-      uploaded = await _uploadMedia(newMediaFile!, newMediaType!);
+      uploaded = await _uploadMedia(newMediaFile, newMediaType);
       changes['mediaUrl'] = uploaded.url;
       changes['mediaType'] = newMediaType;
       changes['mediaPath'] = uploaded.path;

@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/app_roles.dart';
-import '../models/gym_model.dart';
 import '../models/gym_update_model.dart';
 import '../services/gym_service.dart';
 import '../services/gym_update_service.dart';
